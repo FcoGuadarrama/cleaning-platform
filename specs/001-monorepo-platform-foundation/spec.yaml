@@ -1,0 +1,707 @@
+# Feature Specification (YAML)
+# This is the source of truth. Markdown is auto-generated from this file.
+
+name: monorepo-platform-foundation
+number: 001
+branch: feat/001-monorepo-platform-foundation
+oneLiner: Role
+Act as the application architect, UX/UI lead, technical coordinator and integration owner. Use Shep to manage features, worktrees, execution status and review. Claude Code is the preferred coordinator; Codex CLI is the primary worker; Gemini CLI and Claude Code are alternatives. Cursor CLI is optional only if installed, authenticated and authorized. Keep this specification and technical project instructions in English; communicate with the owner and write customer-facing product copy in Spanish unless requested otherwise. Minimize token consumption. Do not repeat the business discovery below.
+Mandatory version policy: USE THE LATEST OFFICIAL LTS VERSIONS
+Explicit requirement: use the latest officially released Long-Term Support (LTS) release line of every selected technology that provides an official LTS channel, including its latest supported patch release. Verify this using official release and support documentation at implementation time. Do not select versions from memory or preserve the old illustrative numbers Python 3.12, Expo SDK 54, Expo Router v4, NativeWind v4 or MySQL 8.4 as constraints.
+
+Not every project publishes an LTS line. When no official LTS channel exists, explicitly record “No official LTS channel” and select the latest stable, supported release compatible with the selected stack. Never invent an LTS label. Do not select alpha, beta, release candidate, nightly, canary, end-of-life or MySQL Innovation releases as substitutes for LTS.
+
+Resolve versions as a compatible set. In particular, use the React Native, React, Expo Router and native dependency versions supported by the selected Expo SDK. Verify the NativeWind/Tailwind compatibility matrix; mobile and dashboard styling toolchains need not use identical dependency versions. If the latest required LTS/stable components cannot work together, document the exact conflict and request a focused decision instead of silently downgrading or forcing installation.
+
+Before implementation, create docs/VERSIONS.md with technology, exact selected version, official LTS status or stable-only policy, release/support evidence URL, verification date, compatibility constraints and known support end date when published. Pin resolved versions in lockfiles and reproducible container tags/digests; never deploy a floating latest image. “Latest” means verified at selection time, followed by reviewed upgrades, not uncontrolled upgrades on every deployment.
+Required stack and monorepo
+The technology families below are selected by the owner. Do not reopen the stack comparison or substitute Laravel, PostgreSQL or a React dashboard without explicit approval. Apply the mandatory version policy to all components.
+Layer	Required technology and responsibility
+Backend API	Python, FastAPI, Pydantic, asynchronous SQLAlchemy and Alembic migrations. Use the current supported APIs corresponding to the selected versions.
+API contract	FastAPI-generated OpenAPI 3.1 contract with stable operation IDs and explicit request, response and error schemas; generated TypeScript client/types shared by web and mobile.
+Internal dashboard	Vue, Vite, TypeScript, Pinia and Tailwind CSS. Staff administration, service pricing, versioned subscription terms, scheduling, review moderation and weekly settlement.
+Mobile	React Native with Expo, Expo Router and NativeWind; use the latest supported compatible release set under the version policy. One application per target OS with customer and staff role-based experiences.
+Design system	Shared semantic Vanilla design tokens, Apple Human Interface Guidelines and appropriate Android platform conventions. Neutral visual identity ready for branding.
+Database	MySQL ONLY for the application: local development, every worktree, automated persistence/integration tests, staging and production. Use the latest official MySQL LTS line and its latest patch.
+Infrastructure	Docker Compose, Nginx reverse proxy, Cloudflare and GitHub Actions. Reproducible local/production environments, automated CI and controlled continuous delivery.
+Repository and agents	One monorepo managed through Shep worktrees. Claude Code coordination, Codex implementation, Gemini fallback; optional Cursor only when available and authorized.
+
+
+Required repository layout:
+/apps/api
+/apps/web-dashboard
+/apps/mobile-client
+/packages/api-client
+/packages/design-tokens
+/docs/contracts
+/docs/tasks
+The mobile folder serves BOTH customers and staff despite its name. Use a package workspace for JavaScript/TypeScript packages and a reproducibly locked Python environment for the API. Generate the shared API client from the backend contract; do not hand-maintain duplicate transport types in Vue and React Native. Keep frontend view models separate from generated DTOs. Verify the generator supports the actual OpenAPI 3.1/JSON Schema features emitted by FastAPI. CI must detect contract/client drift and type-check both consumers.
+Database parity and worktree isolation
+Do not use SQLite, PostgreSQL or an in-memory SQLite substitute for any application database environment or persistence test. Shep's own internal database is outside this restriction; do not modify it.
+
+Provision MySQL through Docker Compose from the start. Each worktree needs a unique Compose project name, network/ports as applicable, credentials, database and persistent volume. A dedicated MySQL container per worktree is the default isolation strategy. Parallel CI jobs also need isolated databases and must run real MySQL migrations and integration tests. Never point a worktree or test job at production or a shared mutable development schema. A replacement worker reuses the same worktree database/volume instead of resetting it.
+
+Keep the MySQL release line, migration path, engine, character set, collation, SQL mode and relevant transaction settings consistent across environments. Use InnoDB, foreign keys and deterministic transaction boundaries. Select a supported asynchronous MySQL driver and a session lifecycle safe for concurrent requests. Test reservation locking, race conditions, money calculations and webhook idempotency against MySQL. Mock external services when appropriate; do not replace the database dialect in those tests.
+Confirmed product and operating model
+- One cleaning company employing and managing its own cleaning staff. One brand with future multi-city operation. Launch in Veracruz and its metropolitan area; exact municipalities and service boundaries remain pending.
+- Initial operation: approximately two services per day and four cleaners. The owner maintains code and infrastructure with agents and knows PHP/Laravel, SQL and JavaScript/TypeScript frameworks. Python is the newly selected backend; document its setup and maintenance commands clearly.
+- Android and iOS from launch, using a single role-aware mobile application per OS; internal administration uses the web dashboard. Enforce roles and resource-level authorization on the server, not only in navigation. Customers see their own records; staff see assigned services and their own earnings. Staff accounts are provisioned/controlled by administration; public registration cannot grant staff or admin privileges.
+- Free customer accounts. Single visits or automatically renewing subscriptions; payments initiated inside the app through a provider suitable for physical services. Confirm current provider capabilities and platform rules before integration.
+- Customers browse staff profiles, availability, ratings and reviews and choose their cleaner. Only completed services enable verified reviews. Include reporting and moderation.
+- Services run Monday through Friday. A subscription reserves a recurring weekday selected by the customer, for example every Tuesday, with the same cleaner. Visits are scheduled rather than left as unscheduled credits. Show the initial scheduled dates before confirming the purchase; renewal must preserve the agreed recurrence.
+- If the selected cleaner cannot attend, the customer chooses a replacement or rescheduling.
+- With at least 24 hours' notice before service start, the customer can move that visit to another available date within the same billing cycle without changing the other visits.
+- A cancellation with less than 24 hours' notice, or inability to perform the visit attributable to the customer, charges the single visit or consumes the subscription visit. Cleaner compensation for those cases remains unresolved.
+- Staff mode: controlled login, assigned schedule, incident reporting, GPS-assisted check-in/check-out and current-week earnings. Offline execution is deferred; administration resolves connectivity incidents in the MVP.
+- Weekly settlement and a fixed amount earned for each completed service. Amounts are pending. Keep service completion, customer payment, cleaner earnings, approved settlement and recorded payout separate.
+- Customers supply cleaning tools/products, with an optional additional kit. Kit content, price and delivery remain pending.
+- Administration configures subscription prices and terms. Version these terms and preserve the agreement accepted for each purchase. Do not retroactively change existing bookings or earnings when updating rates.
+- Initial infrastructure is economical and self-managed by the owner. Use the selected container-based stack; hosting provider and budget remain undecided.
+GPS attendance
+Capture foreground location only when staff check in/out, including timestamp, reported accuracy and service association. Request appropriate permissions and protect access to location data. Do not add continuous/background tracking by default. GPS is supporting evidence, not proof that cannot be spoofed. Handle denied permission, unavailable/poor location and connectivity failures with a documented administrative exception flow and audit trail. Do not silently record a successful GPS check-in when capture failed. Geofence radius, retention and any automatic payment consequences require explicit rules.
+Design and branding
+Build @repo/design-tokens around one canonical, schema-validated branding JSON, with generated web CSS/Tailwind and React Native/NativeWind adapters. Centralize semantic colors, typography, spacing, radii, elevations, component variants and configurable asset references; do not hardcode brand values in screens. Keep generation reproducible and fail CI on token drift.
+
+Changing the JSON must update supported theme values across web and mobile after the appropriate rebuild/update. Do not promise that one JSON file can instantly replace every asset or native setting: icons, splash screens, bundled fonts and store metadata may require asset updates, native builds or store submissions. Document those boundaries.
+
+Create polished neutral UI, accessible contrast and text scaling, keyboard/screen-reader behavior and complete loading, empty, error and disabled states. Follow Apple HIG on iOS and platform-appropriate Android navigation/back behavior while retaining one brand. Check available design skills before claiming any Apple Design skill is installed. Do not use experimental native UI features solely for appearance.
+Unresolved decisions: do not invent agreements
+Service duration and prices are not approved. Four-hour/eight-hour blocks and the previous MXN 600 single visit / MXN 2,280 subscription examples are NOT confirmed business rules. The owner still needs to settle the relationship between “four monthly visits” and “every selected weekday,” because a monthly cycle can contain five occurrences. Do not silently replace monthly billing with a 28-day cycle or skip the fifth weekday. Calendar and sandbox work can proceed; live recurring billing requires resolved, accepted terms.
+
+Other pending items: payment provider, failed payments, subscription pause/cancellation, refunds, exact administrative permissions, staff verification, notification channels, service durations/travel buffers and incident handling. Propose reversible defaults and ask only when a decision blocks the affected flow. Group at most three focused questions. Do not restart a long interview.
+Shared context and contracts
+Create a compact, version-controlled source of truth:
+- AGENTS.md: shared rules, commands and context index without duplicating all documents.
+- CLAUDE.md and GEMINI.md: prefer Git-tracked relative symlinks to AGENTS.md on Mac/Linux. Preserve existing instructions before creating links. If symlinks are not supported, use small files with an explicit supported import. Verify actual instruction discovery for each installed CLI. Provide explicit paths when needed. Configure optional Cursor to read the same rules through its supported mechanism.
+- docs/PRODUCT.md: distinguish confirmed scope, proposals and open decisions.
+- docs/DOMAIN.md: glossary, states and business invariants.
+- docs/ARCHITECTURE.md and docs/adr/: architecture decisions and rationale.
+- docs/VERSIONS.md: verified versions, official LTS/stable status and compatibility evidence.
+- docs/contracts/: exported OpenAPI, event/error/state contracts and generation instructions. Database migrations live with the API.
+- docs/DESIGN.md: tokens, components, accessibility and platform adaptations.
+- docs/SPRINTS.md: vertical releases and acceptance criteria.
+- docs/STATE.md: compact project status, recent decisions and next action.
+- docs/tasks/<id>.md: objective, scope, allowed files, contract versions and acceptance.
+Every agent reads shared rules, the context index and domain summary, then the contracts relevant to its task. Make the full domain available without resending the entire chat on every invocation. Record the task's base SHA and full hashes of the relevant contracts. Reconcile if they change.
+
+After preserving any existing instructions, relative links may be created with:
+ln -s AGENTS.md CLAUDE.md
+ln -s AGENTS.md GEMINI.md
+Check that the tracked links resolve inside every worktree. File presence does not guarantee compliance or shared conversation history. Worktrees contain their branch's commit, not automatically the latest changes from other branches. Share updates through explicit commits/merges or handoffs. Install dependencies and generate clients when required; do not assume Git includes node_modules or untracked generated artifacts. Contracts and shared package changes require coordinated integration and automated verification.
+Mandatory WORKTREE_STATE.md checkpoints
+Include these rules in AGENTS.md. Every worker maintains WORKTREE_STATE.md at the root of its worktree. At the end of each microtask, update the state FIRST and then create a WIP commit containing both the state and relevant code. Aim for recoverable checkpoints every 3–5 minutes when progress exists; an LLM instruction is not a guaranteed timer or protection against abrupt quota exhaustion. Avoid empty commits, secrets and indiscriminate staging.
+
+Write state through an atomic file replacement. Record checkpoint/commit failures and preserve files. The wrapper captures the actual checkpoint commit SHA separately; a tracked file cannot contain the hash of the very commit that includes it.
+
+Minimum template; placeholders and examples are not product decisions:
+# WORKTREE STATE & HANDOFF LOG
+- **Feature:** <feature ID>
+- **Current Agent:** codex-cli
+- **Last Updated:** <UTC ISO 8601 timestamp>
+- **Branch / Worktree:** <branch and path>
+- **Base SHA:** <task base commit>
+- **Contract Version:** <contract path and full SHA-256; repeat as needed>
+- **Database:** <non-secret worktree database/Compose identifier>
+
+## Microtask checklist
+- [x] 1. <completed and verified microtask>
+- [ ] 2. <microtask IN PROGRESS>
+- [ ] 3. <pending verification>
+
+## Immediate context / Handoff notes
+<What exists, decisions taken, constraints and remaining work.>
+
+## Verification
+- Last command executed:
+- Result and timestamp:
+- Pending tests:
+
+## Partial work
+- Modified or new files:
+- Operations in progress:
+- Blockers:
+
+## Exact next action
+- <concrete action the successor can execute>
+Use Git for history and keep current state short. When integrating multiple features, archive handoffs under per-feature paths such as docs/tasks/<id>/handoff.md to avoid overwriting unrelated root state files.
+Wrapper protocol for worker handover
+Implement recovery outside the LLM and persist execution state:
+1. Prefer structured/documented events, process exit status and actual CLI error output for failure classification. A quoted “rate limit” or “quota exceeded” string in source code, tests or ordinary output is not evidence of exhausted quota. Back off on transient limits, bound retries and distinguish authentication, quota and implementation errors.
+2. Suspend new feature retries through Shep's supported interface. Confirm the old worker and its file-writing child processes have terminated. Acquire an exclusive per-worktree lock respected by every launcher. If exclusion cannot also be enforced against Shep's retries, stop automatic handover and explain the required manual step.
+3. Capture branch, worktree, current SHA, git status, staged/unstaged diffs, untracked files, pending operations and database/migration state. Preserve all of them; never run destructive reset, clean, checkout or worktree/volume deletion. Exclude secrets from logs and prompts. Disk state may be newer than the last checkpoint.
+4. Record the cause, outgoing/incoming agents and pending task. Verify successor availability and authentication. Update feature assignment/status through Shep's documented interface, not its internal SQLite or global defaults while concurrent features exist. Start the successor in the SAME worktree and database only when the adapter can preserve a coherent Shep lifecycle. An externally launched CLI is not automatically a registered Shep worker.
+5. Supply the handover prompt below. Hold the lock throughout execution and confirm no file-writing processes remain before releasing it. Validate actual code, base SHA and contract hashes; reconcile discrepancies and refresh the checkpoint.
+6. Save outcomes, verification and next action. Do not repeat completed external effects. If all agents are unavailable, preserve state, pause and provide exact resumption instructions without indefinite retries.
+Handover prompt:
+Work in the specified worktree. Read AGENTS.md, WORKTREE_STATE.md, the assigned task, domain summary and relevant contracts. Inspect git status, staged/unstaged diffs and new files. Check the base SHA, contract hashes and worktree database/migration state. Preserve completed work: briefly verify that it exists and meets acceptance, changing it only if evidence shows a problem. Resume the pending microtask while accounting for changes newer than the checkpoint. Do not discard modifications, reset the database or repeat external operations. Update WORKTREE_STATE.md before the next WIP commit and record actual verification results.
+
+Test with simulated quota exhaustion, termination during an edit, stale checkpoints, ordinary code failures, contract mismatch and concurrent takeover attempts. Automatic handover is complete only after these checks and real Shep integration pass. Do not exhaust real quotas to test recovery.
+Routing, quotas and coordinator recovery
+1. Inspect installed Shep/CLI versions, help and MCP schemas. Do not invent flags or configuration files. Codex can be Shep's default worker while an external Claude Code session coordinates through MCP.
+2. Worker preference: Codex, then Gemini, then Claude when quota is exhausted and alternatives are authenticated and available. Coordinator preference: Claude, then Codex, then Gemini. Optional Cursor may be added only after availability/authorization checks. Never run two coordinators simultaneously.
+3. Infer quota state only from documented signals or observed errors; do not claim access to remaining usage unless an actual supported interface provides it. Respect retry-after where applicable. Never switch to paid API billing without authorization.
+4. Before controlled handover, persist branch/worktree, SHA, pending diff, task, tests, blocker and next action. Abrupt failures must be recovered from actual disk/process state when the outgoing agent could not save. Do not repeat payments, pushes or other completed side effects.
+5. First verify installed Shep's native capabilities. If automatic cross-provider routing is absent, implement a small deterministic supervisor outside the LLM. A coordinator without quota cannot guarantee its own replacement. Until a tested supervisor exists, label coordinator replacement as manual and document exact steps.
+6. Prefer supported per-feature agent selection. If unavailable through the API, describe the manual operation or build an adapter against a documented interface. Never edit Shep's internal database or use concurrent global-default changes as per-feature routing.
+7. Begin with one active worker to conserve usage. Each task has one owner and worktree. Parallelize independent tasks only after end-to-end orchestration works; serialize shared contracts/migration ownership. Use locks and atomic state updates in the router.
+Application architecture, security and delivery
+Use a modular FastAPI backend rather than splitting business logic across unrelated services. Apply strict input/output validation where appropriate, separate Pydantic transport models from ORM/domain models, avoid blocking calls in async request paths and generate the authoritative OpenAPI contract reproducibly. Automatic schema generation does not replace business contracts or integration tests.
+
+Implement expiring checkout holds, prevention of overlapping appointments, travel buffers, America/Mexico_City business time with explicit timestamp conventions, verified/idempotent payment webhooks, precise money representation, audit trails and deterministic recurrence/settlement logic. Make reservation concurrency safe in MySQL through explicit locking/constraints and tests; availability displayed by the client is not authoritative. Keep secrets out of Git, enforce server-side access controls, secure session/token storage and document backup/restore procedures.
+
+Docker Compose must support isolated worktree environments and a production configuration. Use Nginx for TLS/origin routing as designed, Cloudflare with verified origin TLS and correct trusted-proxy configuration, and avoid exposing MySQL publicly. Record environment-specific secrets outside Git. Protect logs, database volumes and backups; demonstrate restoration. Containers and a proxy alone do not make a deployment production-ready.
+
+GitHub Actions must run linting, type checks, relevant API/unit/integration tests against MySQL, migrations, contract export/client generation checks, token generation checks and frontend builds. Use immutable build artifacts, health checks, migration discipline and a rollback/recovery plan. Automate CI and staging delivery; production promotion requires the owner's explicit approval until a standing deployment policy is approved. Mobile store releases and native builds have separate release steps.
+Sprints and acceptance
+Every sprint ends with an integrated, runnable and demonstrable product increment. Sprint 1 must provide a usable vertical slice: administrator provisions staff, customer authenticates and browses availability, books a single visit and pays in sandbox, and staff/admin see the assignment. Include staff check-in/check-out with foreground GPS and the manual exception path, completion and the resulting weekly earnings entry in the MVP acceptance. Clearly distinguish earned, approved and paid amounts.
+
+Size or sequence work realistically rather than hiding unfinished acceptance criteria. Subscriptions remain part of the product roadmap, with recurring billing implemented after unresolved commercial terms are settled. Differentiate local demo, staging, pilot, store distribution and live payments. Do not call a mocked or isolated screen an end-to-end functional MVP.
+
+For each task: explicit acceptance, implementation, meaningful verification, review and integration. Prioritize tests for authorization, concurrent bookings, webhook replay, cancellation, recurring dates, MySQL migrations, earnings calculations and GPS exceptions. Use a second agent to review risk-sensitive changes when warranted; avoid duplicating every task. Report what ran, failed or was not run. Never invent test results.
+
+You may create documents, code, tests and reversible local changes and prepare draft PRs for batch review. Obtain authorization for merge, publication, deployment, spending, destructive changes and unresolved commercial decisions. Silence or an agent-question timeout is not approval for those actions; verify tools cannot autoapprove them through another path.
+Token economy and first delivery
+Use summaries, deltas and filtered logs. Back off while monitoring active workers instead of polling repeatedly. Do not load secrets, actual customer records or complete histories into prompts. Research only to resolve a concrete compatibility/version/capability decision, using official sources.
+
+Start by inspecting the repository and installed tooling without overwriting existing work. Create the shared documents from this specification and resolve the latest LTS/stable version matrix before bootstrapping dependencies. Implement the selected architecture, not another comparison of backend frameworks. Provide a sprint plan and an honest Shep/CLI capability report identifying what failover already works and what must be built.
+
+Verify a small Codex task through Shep: worktree/database isolation, shared instructions, contract reading and durable handoff. Test failover with simulated failures. Produce a runnable first increment under the acceptance above, isolating unresolved live billing behind safe sandbox behavior. Keep status and handover files current before ending or switching agents.
+
+Keep your response short: files prepared, checks actually executed, next task and genuinely blocking decisions.
+userQuery: >
+  Role
+Act as the application architect, UX/UI lead, technical coordinator and integration owner. Use Shep to manage features, worktrees, execution status and review. Claude Code is the preferred coordinator; Codex CLI is the primary worker; Gemini CLI and Claude Code are alternatives. Cursor CLI is optional only if installed, authenticated and authorized. Keep this specification and technical project instructions in English; communicate with the owner and write customer-facing product copy in Spanish unless requested otherwise. Minimize token consumption. Do not repeat the business discovery below.
+Mandatory version policy: USE THE LATEST OFFICIAL LTS VERSIONS
+Explicit requirement: use the latest officially released Long-Term Support (LTS) release line of every selected technology that provides an official LTS channel, including its latest supported patch release. Verify this using official release and support documentation at implementation time. Do not select versions from memory or preserve the old illustrative numbers Python 3.12, Expo SDK 54, Expo Router v4, NativeWind v4 or MySQL 8.4 as constraints.
+
+Not every project publishes an LTS line. When no official LTS channel exists, explicitly record “No official LTS channel” and select the latest stable, supported release compatible with the selected stack. Never invent an LTS label. Do not select alpha, beta, release candidate, nightly, canary, end-of-life or MySQL Innovation releases as substitutes for LTS.
+
+Resolve versions as a compatible set. In particular, use the React Native, React, Expo Router and native dependency versions supported by the selected Expo SDK. Verify the NativeWind/Tailwind compatibility matrix; mobile and dashboard styling toolchains need not use identical dependency versions. If the latest required LTS/stable components cannot work together, document the exact conflict and request a focused decision instead of silently downgrading or forcing installation.
+
+Before implementation, create docs/VERSIONS.md with technology, exact selected version, official LTS status or stable-only policy, release/support evidence URL, verification date, compatibility constraints and known support end date when published. Pin resolved versions in lockfiles and reproducible container tags/digests; never deploy a floating latest image. “Latest” means verified at selection time, followed by reviewed upgrades, not uncontrolled upgrades on every deployment.
+Required stack and monorepo
+The technology families below are selected by the owner. Do not reopen the stack comparison or substitute Laravel, PostgreSQL or a React dashboard without explicit approval. Apply the mandatory version policy to all components.
+Layer	Required technology and responsibility
+Backend API	Python, FastAPI, Pydantic, asynchronous SQLAlchemy and Alembic migrations. Use the current supported APIs corresponding to the selected versions.
+API contract	FastAPI-generated OpenAPI 3.1 contract with stable operation IDs and explicit request, response and error schemas; generated TypeScript client/types shared by web and mobile.
+Internal dashboard	Vue, Vite, TypeScript, Pinia and Tailwind CSS. Staff administration, service pricing, versioned subscription terms, scheduling, review moderation and weekly settlement.
+Mobile	React Native with Expo, Expo Router and NativeWind; use the latest supported compatible release set under the version policy. One application per target OS with customer and staff role-based experiences.
+Design system	Shared semantic Vanilla design tokens, Apple Human Interface Guidelines and appropriate Android platform conventions. Neutral visual identity ready for branding.
+Database	MySQL ONLY for the application: local development, every worktree, automated persistence/integration tests, staging and production. Use the latest official MySQL LTS line and its latest patch.
+Infrastructure	Docker Compose, Nginx reverse proxy, Cloudflare and GitHub Actions. Reproducible local/production environments, automated CI and controlled continuous delivery.
+Repository and agents	One monorepo managed through Shep worktrees. Claude Code coordination, Codex implementation, Gemini fallback; optional Cursor only when available and authorized.
+
+
+Required repository layout:
+/apps/api
+/apps/web-dashboard
+/apps/mobile-client
+/packages/api-client
+/packages/design-tokens
+/docs/contracts
+/docs/tasks
+The mobile folder serves BOTH customers and staff despite its name. Use a package workspace for JavaScript/TypeScript packages and a reproducibly locked Python environment for the API. Generate the shared API client from the backend contract; do not hand-maintain duplicate transport types in Vue and React Native. Keep frontend view models separate from generated DTOs. Verify the generator supports the actual OpenAPI 3.1/JSON Schema features emitted by FastAPI. CI must detect contract/client drift and type-check both consumers.
+Database parity and worktree isolation
+Do not use SQLite, PostgreSQL or an in-memory SQLite substitute for any application database environment or persistence test. Shep's own internal database is outside this restriction; do not modify it.
+
+Provision MySQL through Docker Compose from the start. Each worktree needs a unique Compose project name, network/ports as applicable, credentials, database and persistent volume. A dedicated MySQL container per worktree is the default isolation strategy. Parallel CI jobs also need isolated databases and must run real MySQL migrations and integration tests. Never point a worktree or test job at production or a shared mutable development schema. A replacement worker reuses the same worktree database/volume instead of resetting it.
+
+Keep the MySQL release line, migration path, engine, character set, collation, SQL mode and relevant transaction settings consistent across environments. Use InnoDB, foreign keys and deterministic transaction boundaries. Select a supported asynchronous MySQL driver and a session lifecycle safe for concurrent requests. Test reservation locking, race conditions, money calculations and webhook idempotency against MySQL. Mock external services when appropriate; do not replace the database dialect in those tests.
+Confirmed product and operating model
+- One cleaning company employing and managing its own cleaning staff. One brand with future multi-city operation. Launch in Veracruz and its metropolitan area; exact municipalities and service boundaries remain pending.
+- Initial operation: approximately two services per day and four cleaners. The owner maintains code and infrastructure with agents and knows PHP/Laravel, SQL and JavaScript/TypeScript frameworks. Python is the newly selected backend; document its setup and maintenance commands clearly.
+- Android and iOS from launch, using a single role-aware mobile application per OS; internal administration uses the web dashboard. Enforce roles and resource-level authorization on the server, not only in navigation. Customers see their own records; staff see assigned services and their own earnings. Staff accounts are provisioned/controlled by administration; public registration cannot grant staff or admin privileges.
+- Free customer accounts. Single visits or automatically renewing subscriptions; payments initiated inside the app through a provider suitable for physical services. Confirm current provider capabilities and platform rules before integration.
+- Customers browse staff profiles, availability, ratings and reviews and choose their cleaner. Only completed services enable verified reviews. Include reporting and moderation.
+- Services run Monday through Friday. A subscription reserves a recurring weekday selected by the customer, for example every Tuesday, with the same cleaner. Visits are scheduled rather than left as unscheduled credits. Show the initial scheduled dates before confirming the purchase; renewal must preserve the agreed recurrence.
+- If the selected cleaner cannot attend, the customer chooses a replacement or rescheduling.
+- With at least 24 hours' notice before service start, the customer can move that visit to another available date within the same billing cycle without changing the other visits.
+- A cancellation with less than 24 hours' notice, or inability to perform the visit attributable to the customer, charges the single visit or consumes the subscription visit. Cleaner compensation for those cases remains unresolved.
+- Staff mode: controlled login, assigned schedule, incident reporting, GPS-assisted check-in/check-out and current-week earnings. Offline execution is deferred; administration resolves connectivity incidents in the MVP.
+- Weekly settlement and a fixed amount earned for each completed service. Amounts are pending. Keep service completion, customer payment, cleaner earnings, approved settlement and recorded payout separate.
+- Customers supply cleaning tools/products, with an optional additional kit. Kit content, price and delivery remain pending.
+- Administration configures subscription prices and terms. Version these terms and preserve the agreement accepted for each purchase. Do not retroactively change existing bookings or earnings when updating rates.
+- Initial infrastructure is economical and self-managed by the owner. Use the selected container-based stack; hosting provider and budget remain undecided.
+GPS attendance
+Capture foreground location only when staff check in/out, including timestamp, reported accuracy and service association. Request appropriate permissions and protect access to location data. Do not add continuous/background tracking by default. GPS is supporting evidence, not proof that cannot be spoofed. Handle denied permission, unavailable/poor location and connectivity failures with a documented administrative exception flow and audit trail. Do not silently record a successful GPS check-in when capture failed. Geofence radius, retention and any automatic payment consequences require explicit rules.
+Design and branding
+Build @repo/design-tokens around one canonical, schema-validated branding JSON, with generated web CSS/Tailwind and React Native/NativeWind adapters. Centralize semantic colors, typography, spacing, radii, elevations, component variants and configurable asset references; do not hardcode brand values in screens. Keep generation reproducible and fail CI on token drift.
+
+Changing the JSON must update supported theme values across web and mobile after the appropriate rebuild/update. Do not promise that one JSON file can instantly replace every asset or native setting: icons, splash screens, bundled fonts and store metadata may require asset updates, native builds or store submissions. Document those boundaries.
+
+Create polished neutral UI, accessible contrast and text scaling, keyboard/screen-reader behavior and complete loading, empty, error and disabled states. Follow Apple HIG on iOS and platform-appropriate Android navigation/back behavior while retaining one brand. Check available design skills before claiming any Apple Design skill is installed. Do not use experimental native UI features solely for appearance.
+Unresolved decisions: do not invent agreements
+Service duration and prices are not approved. Four-hour/eight-hour blocks and the previous MXN 600 single visit / MXN 2,280 subscription examples are NOT confirmed business rules. The owner still needs to settle the relationship between “four monthly visits” and “every selected weekday,” because a monthly cycle can contain five occurrences. Do not silently replace monthly billing with a 28-day cycle or skip the fifth weekday. Calendar and sandbox work can proceed; live recurring billing requires resolved, accepted terms.
+
+Other pending items: payment provider, failed payments, subscription pause/cancellation, refunds, exact administrative permissions, staff verification, notification channels, service durations/travel buffers and incident handling. Propose reversible defaults and ask only when a decision blocks the affected flow. Group at most three focused questions. Do not restart a long interview.
+Shared context and contracts
+Create a compact, version-controlled source of truth:
+- AGENTS.md: shared rules, commands and context index without duplicating all documents.
+- CLAUDE.md and GEMINI.md: prefer Git-tracked relative symlinks to AGENTS.md on Mac/Linux. Preserve existing instructions before creating links. If symlinks are not supported, use small files with an explicit supported import. Verify actual instruction discovery for each installed CLI. Provide explicit paths when needed. Configure optional Cursor to read the same rules through its supported mechanism.
+- docs/PRODUCT.md: distinguish confirmed scope, proposals and open decisions.
+- docs/DOMAIN.md: glossary, states and business invariants.
+- docs/ARCHITECTURE.md and docs/adr/: architecture decisions and rationale.
+- docs/VERSIONS.md: verified versions, official LTS/stable status and compatibility evidence.
+- docs/contracts/: exported OpenAPI, event/error/state contracts and generation instructions. Database migrations live with the API.
+- docs/DESIGN.md: tokens, components, accessibility and platform adaptations.
+- docs/SPRINTS.md: vertical releases and acceptance criteria.
+- docs/STATE.md: compact project status, recent decisions and next action.
+- docs/tasks/<id>.md: objective, scope, allowed files, contract versions and acceptance.
+Every agent reads shared rules, the context index and domain summary, then the contracts relevant to its task. Make the full domain available without resending the entire chat on every invocation. Record the task's base SHA and full hashes of the relevant contracts. Reconcile if they change.
+
+After preserving any existing instructions, relative links may be created with:
+ln -s AGENTS.md CLAUDE.md
+ln -s AGENTS.md GEMINI.md
+Check that the tracked links resolve inside every worktree. File presence does not guarantee compliance or shared conversation history. Worktrees contain their branch's commit, not automatically the latest changes from other branches. Share updates through explicit commits/merges or handoffs. Install dependencies and generate clients when required; do not assume Git includes node_modules or untracked generated artifacts. Contracts and shared package changes require coordinated integration and automated verification.
+Mandatory WORKTREE_STATE.md checkpoints
+Include these rules in AGENTS.md. Every worker maintains WORKTREE_STATE.md at the root of its worktree. At the end of each microtask, update the state FIRST and then create a WIP commit containing both the state and relevant code. Aim for recoverable checkpoints every 3–5 minutes when progress exists; an LLM instruction is not a guaranteed timer or protection against abrupt quota exhaustion. Avoid empty commits, secrets and indiscriminate staging.
+
+Write state through an atomic file replacement. Record checkpoint/commit failures and preserve files. The wrapper captures the actual checkpoint commit SHA separately; a tracked file cannot contain the hash of the very commit that includes it.
+
+Minimum template; placeholders and examples are not product decisions:
+# WORKTREE STATE & HANDOFF LOG
+- **Feature:** <feature ID>
+- **Current Agent:** codex-cli
+- **Last Updated:** <UTC ISO 8601 timestamp>
+- **Branch / Worktree:** <branch and path>
+- **Base SHA:** <task base commit>
+- **Contract Version:** <contract path and full SHA-256; repeat as needed>
+- **Database:** <non-secret worktree database/Compose identifier>
+
+## Microtask checklist
+- [x] 1. <completed and verified microtask>
+- [ ] 2. <microtask IN PROGRESS>
+- [ ] 3. <pending verification>
+
+## Immediate context / Handoff notes
+<What exists, decisions taken, constraints and remaining work.>
+
+## Verification
+- Last command executed:
+- Result and timestamp:
+- Pending tests:
+
+## Partial work
+- Modified or new files:
+- Operations in progress:
+- Blockers:
+
+## Exact next action
+- <concrete action the successor can execute>
+Use Git for history and keep current state short. When integrating multiple features, archive handoffs under per-feature paths such as docs/tasks/<id>/handoff.md to avoid overwriting unrelated root state files.
+Wrapper protocol for worker handover
+Implement recovery outside the LLM and persist execution state:
+1. Prefer structured/documented events, process exit status and actual CLI error output for failure classification. A quoted “rate limit” or “quota exceeded” string in source code, tests or ordinary output is not evidence of exhausted quota. Back off on transient limits, bound retries and distinguish authentication, quota and implementation errors.
+2. Suspend new feature retries through Shep's supported interface. Confirm the old worker and its file-writing child processes have terminated. Acquire an exclusive per-worktree lock respected by every launcher. If exclusion cannot also be enforced against Shep's retries, stop automatic handover and explain the required manual step.
+3. Capture branch, worktree, current SHA, git status, staged/unstaged diffs, untracked files, pending operations and database/migration state. Preserve all of them; never run destructive reset, clean, checkout or worktree/volume deletion. Exclude secrets from logs and prompts. Disk state may be newer than the last checkpoint.
+4. Record the cause, outgoing/incoming agents and pending task. Verify successor availability and authentication. Update feature assignment/status through Shep's documented interface, not its internal SQLite or global defaults while concurrent features exist. Start the successor in the SAME worktree and database only when the adapter can preserve a coherent Shep lifecycle. An externally launched CLI is not automatically a registered Shep worker.
+5. Supply the handover prompt below. Hold the lock throughout execution and confirm no file-writing processes remain before releasing it. Validate actual code, base SHA and contract hashes; reconcile discrepancies and refresh the checkpoint.
+6. Save outcomes, verification and next action. Do not repeat completed external effects. If all agents are unavailable, preserve state, pause and provide exact resumption instructions without indefinite retries.
+Handover prompt:
+Work in the specified worktree. Read AGENTS.md, WORKTREE_STATE.md, the assigned task, domain summary and relevant contracts. Inspect git status, staged/unstaged diffs and new files. Check the base SHA, contract hashes and worktree database/migration state. Preserve completed work: briefly verify that it exists and meets acceptance, changing it only if evidence shows a problem. Resume the pending microtask while accounting for changes newer than the checkpoint. Do not discard modifications, reset the database or repeat external operations. Update WORKTREE_STATE.md before the next WIP commit and record actual verification results.
+
+Test with simulated quota exhaustion, termination during an edit, stale checkpoints, ordinary code failures, contract mismatch and concurrent takeover attempts. Automatic handover is complete only after these checks and real Shep integration pass. Do not exhaust real quotas to test recovery.
+Routing, quotas and coordinator recovery
+1. Inspect installed Shep/CLI versions, help and MCP schemas. Do not invent flags or configuration files. Codex can be Shep's default worker while an external Claude Code session coordinates through MCP.
+2. Worker preference: Codex, then Gemini, then Claude when quota is exhausted and alternatives are authenticated and available. Coordinator preference: Claude, then Codex, then Gemini. Optional Cursor may be added only after availability/authorization checks. Never run two coordinators simultaneously.
+3. Infer quota state only from documented signals or observed errors; do not claim access to remaining usage unless an actual supported interface provides it. Respect retry-after where applicable. Never switch to paid API billing without authorization.
+4. Before controlled handover, persist branch/worktree, SHA, pending diff, task, tests, blocker and next action. Abrupt failures must be recovered from actual disk/process state when the outgoing agent could not save. Do not repeat payments, pushes or other completed side effects.
+5. First verify installed Shep's native capabilities. If automatic cross-provider routing is absent, implement a small deterministic supervisor outside the LLM. A coordinator without quota cannot guarantee its own replacement. Until a tested supervisor exists, label coordinator replacement as manual and document exact steps.
+6. Prefer supported per-feature agent selection. If unavailable through the API, describe the manual operation or build an adapter against a documented interface. Never edit Shep's internal database or use concurrent global-default changes as per-feature routing.
+7. Begin with one active worker to conserve usage. Each task has one owner and worktree. Parallelize independent tasks only after end-to-end orchestration works; serialize shared contracts/migration ownership. Use locks and atomic state updates in the router.
+Application architecture, security and delivery
+Use a modular FastAPI backend rather than splitting business logic across unrelated services. Apply strict input/output validation where appropriate, separate Pydantic transport models from ORM/domain models, avoid blocking calls in async request paths and generate the authoritative OpenAPI contract reproducibly. Automatic schema generation does not replace business contracts or integration tests.
+
+Implement expiring checkout holds, prevention of overlapping appointments, travel buffers, America/Mexico_City business time with explicit timestamp conventions, verified/idempotent payment webhooks, precise money representation, audit trails and deterministic recurrence/settlement logic. Make reservation concurrency safe in MySQL through explicit locking/constraints and tests; availability displayed by the client is not authoritative. Keep secrets out of Git, enforce server-side access controls, secure session/token storage and document backup/restore procedures.
+
+Docker Compose must support isolated worktree environments and a production configuration. Use Nginx for TLS/origin routing as designed, Cloudflare with verified origin TLS and correct trusted-proxy configuration, and avoid exposing MySQL publicly. Record environment-specific secrets outside Git. Protect logs, database volumes and backups; demonstrate restoration. Containers and a proxy alone do not make a deployment production-ready.
+
+GitHub Actions must run linting, type checks, relevant API/unit/integration tests against MySQL, migrations, contract export/client generation checks, token generation checks and frontend builds. Use immutable build artifacts, health checks, migration discipline and a rollback/recovery plan. Automate CI and staging delivery; production promotion requires the owner's explicit approval until a standing deployment policy is approved. Mobile store releases and native builds have separate release steps.
+Sprints and acceptance
+Every sprint ends with an integrated, runnable and demonstrable product increment. Sprint 1 must provide a usable vertical slice: administrator provisions staff, customer authenticates and browses availability, books a single visit and pays in sandbox, and staff/admin see the assignment. Include staff check-in/check-out with foreground GPS and the manual exception path, completion and the resulting weekly earnings entry in the MVP acceptance. Clearly distinguish earned, approved and paid amounts.
+
+Size or sequence work realistically rather than hiding unfinished acceptance criteria. Subscriptions remain part of the product roadmap, with recurring billing implemented after unresolved commercial terms are settled. Differentiate local demo, staging, pilot, store distribution and live payments. Do not call a mocked or isolated screen an end-to-end functional MVP.
+
+For each task: explicit acceptance, implementation, meaningful verification, review and integration. Prioritize tests for authorization, concurrent bookings, webhook replay, cancellation, recurring dates, MySQL migrations, earnings calculations and GPS exceptions. Use a second agent to review risk-sensitive changes when warranted; avoid duplicating every task. Report what ran, failed or was not run. Never invent test results.
+
+You may create documents, code, tests and reversible local changes and prepare draft PRs for batch review. Obtain authorization for merge, publication, deployment, spending, destructive changes and unresolved commercial decisions. Silence or an agent-question timeout is not approval for those actions; verify tools cannot autoapprove them through another path.
+Token economy and first delivery
+Use summaries, deltas and filtered logs. Back off while monitoring active workers instead of polling repeatedly. Do not load secrets, actual customer records or complete histories into prompts. Research only to resolve a concrete compatibility/version/capability decision, using official sources.
+
+Start by inspecting the repository and installed tooling without overwriting existing work. Create the shared documents from this specification and resolve the latest LTS/stable version matrix before bootstrapping dependencies. Implement the selected architecture, not another comparison of backend frameworks. Provide a sprint plan and an honest Shep/CLI capability report identifying what failover already works and what must be built.
+
+Verify a small Codex task through Shep: worktree/database isolation, shared instructions, contract reading and durable handoff. Test failover with simulated failures. Produce a runnable first increment under the acceptance above, isolating unresolved live billing behind safe sandbox behavior. Keep status and handover files current before ending or switching agents.
+
+Keep your response short: files prepared, checks actually executed, next task and genuinely blocking decisions.
+summary: >
+  Role
+Act as the application architect, UX/UI lead, technical coordinator and integration owner. Use Shep to manage features, worktrees, execution status and review. Claude Code is the preferred coordinator; Codex CLI is the primary worker; Gemini CLI and Claude Code are alternatives. Cursor CLI is optional only if installed, authenticated and authorized. Keep this specification and technical project instructions in English; communicate with the owner and write customer-facing product copy in Spanish unless requested otherwise. Minimize token consumption. Do not repeat the business discovery below.
+Mandatory version policy: USE THE LATEST OFFICIAL LTS VERSIONS
+Explicit requirement: use the latest officially released Long-Term Support (LTS) release line of every selected technology that provides an official LTS channel, including its latest supported patch release. Verify this using official release and support documentation at implementation time. Do not select versions from memory or preserve the old illustrative numbers Python 3.12, Expo SDK 54, Expo Router v4, NativeWind v4 or MySQL 8.4 as constraints.
+
+Not every project publishes an LTS line. When no official LTS channel exists, explicitly record “No official LTS channel” and select the latest stable, supported release compatible with the selected stack. Never invent an LTS label. Do not select alpha, beta, release candidate, nightly, canary, end-of-life or MySQL Innovation releases as substitutes for LTS.
+
+Resolve versions as a compatible set. In particular, use the React Native, React, Expo Router and native dependency versions supported by the selected Expo SDK. Verify the NativeWind/Tailwind compatibility matrix; mobile and dashboard styling toolchains need not use identical dependency versions. If the latest required LTS/stable components cannot work together, document the exact conflict and request a focused decision instead of silently downgrading or forcing installation.
+
+Before implementation, create docs/VERSIONS.md with technology, exact selected version, official LTS status or stable-only policy, release/support evidence URL, verification date, compatibility constraints and known support end date when published. Pin resolved versions in lockfiles and reproducible container tags/digests; never deploy a floating latest image. “Latest” means verified at selection time, followed by reviewed upgrades, not uncontrolled upgrades on every deployment.
+Required stack and monorepo
+The technology families below are selected by the owner. Do not reopen the stack comparison or substitute Laravel, PostgreSQL or a React dashboard without explicit approval. Apply the mandatory version policy to all components.
+Layer	Required technology and responsibility
+Backend API	Python, FastAPI, Pydantic, asynchronous SQLAlchemy and Alembic migrations. Use the current supported APIs corresponding to the selected versions.
+API contract	FastAPI-generated OpenAPI 3.1 contract with stable operation IDs and explicit request, response and error schemas; generated TypeScript client/types shared by web and mobile.
+Internal dashboard	Vue, Vite, TypeScript, Pinia and Tailwind CSS. Staff administration, service pricing, versioned subscription terms, scheduling, review moderation and weekly settlement.
+Mobile	React Native with Expo, Expo Router and NativeWind; use the latest supported compatible release set under the version policy. One application per target OS with customer and staff role-based experiences.
+Design system	Shared semantic Vanilla design tokens, Apple Human Interface Guidelines and appropriate Android platform conventions. Neutral visual identity ready for branding.
+Database	MySQL ONLY for the application: local development, every worktree, automated persistence/integration tests, staging and production. Use the latest official MySQL LTS line and its latest patch.
+Infrastructure	Docker Compose, Nginx reverse proxy, Cloudflare and GitHub Actions. Reproducible local/production environments, automated CI and controlled continuous delivery.
+Repository and agents	One monorepo managed through Shep worktrees. Claude Code coordination, Codex implementation, Gemini fallback; optional Cursor only when available and authorized.
+
+
+Required repository layout:
+/apps/api
+/apps/web-dashboard
+/apps/mobile-client
+/packages/api-client
+/packages/design-tokens
+/docs/contracts
+/docs/tasks
+The mobile folder serves BOTH customers and staff despite its name. Use a package workspace for JavaScript/TypeScript packages and a reproducibly locked Python environment for the API. Generate the shared API client from the backend contract; do not hand-maintain duplicate transport types in Vue and React Native. Keep frontend view models separate from generated DTOs. Verify the generator supports the actual OpenAPI 3.1/JSON Schema features emitted by FastAPI. CI must detect contract/client drift and type-check both consumers.
+Database parity and worktree isolation
+Do not use SQLite, PostgreSQL or an in-memory SQLite substitute for any application database environment or persistence test. Shep's own internal database is outside this restriction; do not modify it.
+
+Provision MySQL through Docker Compose from the start. Each worktree needs a unique Compose project name, network/ports as applicable, credentials, database and persistent volume. A dedicated MySQL container per worktree is the default isolation strategy. Parallel CI jobs also need isolated databases and must run real MySQL migrations and integration tests. Never point a worktree or test job at production or a shared mutable development schema. A replacement worker reuses the same worktree database/volume instead of resetting it.
+
+Keep the MySQL release line, migration path, engine, character set, collation, SQL mode and relevant transaction settings consistent across environments. Use InnoDB, foreign keys and deterministic transaction boundaries. Select a supported asynchronous MySQL driver and a session lifecycle safe for concurrent requests. Test reservation locking, race conditions, money calculations and webhook idempotency against MySQL. Mock external services when appropriate; do not replace the database dialect in those tests.
+Confirmed product and operating model
+- One cleaning company employing and managing its own cleaning staff. One brand with future multi-city operation. Launch in Veracruz and its metropolitan area; exact municipalities and service boundaries remain pending.
+- Initial operation: approximately two services per day and four cleaners. The owner maintains code and infrastructure with agents and knows PHP/Laravel, SQL and JavaScript/TypeScript frameworks. Python is the newly selected backend; document its setup and maintenance commands clearly.
+- Android and iOS from launch, using a single role-aware mobile application per OS; internal administration uses the web dashboard. Enforce roles and resource-level authorization on the server, not only in navigation. Customers see their own records; staff see assigned services and their own earnings. Staff accounts are provisioned/controlled by administration; public registration cannot grant staff or admin privileges.
+- Free customer accounts. Single visits or automatically renewing subscriptions; payments initiated inside the app through a provider suitable for physical services. Confirm current provider capabilities and platform rules before integration.
+- Customers browse staff profiles, availability, ratings and reviews and choose their cleaner. Only completed services enable verified reviews. Include reporting and moderation.
+- Services run Monday through Friday. A subscription reserves a recurring weekday selected by the customer, for example every Tuesday, with the same cleaner. Visits are scheduled rather than left as unscheduled credits. Show the initial scheduled dates before confirming the purchase; renewal must preserve the agreed recurrence.
+- If the selected cleaner cannot attend, the customer chooses a replacement or rescheduling.
+- With at least 24 hours' notice before service start, the customer can move that visit to another available date within the same billing cycle without changing the other visits.
+- A cancellation with less than 24 hours' notice, or inability to perform the visit attributable to the customer, charges the single visit or consumes the subscription visit. Cleaner compensation for those cases remains unresolved.
+- Staff mode: controlled login, assigned schedule, incident reporting, GPS-assisted check-in/check-out and current-week earnings. Offline execution is deferred; administration resolves connectivity incidents in the MVP.
+- Weekly settlement and a fixed amount earned for each completed service. Amounts are pending. Keep service completion, customer payment, cleaner earnings, approved settlement and recorded payout separate.
+- Customers supply cleaning tools/products, with an optional additional kit. Kit content, price and delivery remain pending.
+- Administration configures subscription prices and terms. Version these terms and preserve the agreement accepted for each purchase. Do not retroactively change existing bookings or earnings when updating rates.
+- Initial infrastructure is economical and self-managed by the owner. Use the selected container-based stack; hosting provider and budget remain undecided.
+GPS attendance
+Capture foreground location only when staff check in/out, including timestamp, reported accuracy and service association. Request appropriate permissions and protect access to location data. Do not add continuous/background tracking by default. GPS is supporting evidence, not proof that cannot be spoofed. Handle denied permission, unavailable/poor location and connectivity failures with a documented administrative exception flow and audit trail. Do not silently record a successful GPS check-in when capture failed. Geofence radius, retention and any automatic payment consequences require explicit rules.
+Design and branding
+Build @repo/design-tokens around one canonical, schema-validated branding JSON, with generated web CSS/Tailwind and React Native/NativeWind adapters. Centralize semantic colors, typography, spacing, radii, elevations, component variants and configurable asset references; do not hardcode brand values in screens. Keep generation reproducible and fail CI on token drift.
+
+Changing the JSON must update supported theme values across web and mobile after the appropriate rebuild/update. Do not promise that one JSON file can instantly replace every asset or native setting: icons, splash screens, bundled fonts and store metadata may require asset updates, native builds or store submissions. Document those boundaries.
+
+Create polished neutral UI, accessible contrast and text scaling, keyboard/screen-reader behavior and complete loading, empty, error and disabled states. Follow Apple HIG on iOS and platform-appropriate Android navigation/back behavior while retaining one brand. Check available design skills before claiming any Apple Design skill is installed. Do not use experimental native UI features solely for appearance.
+Unresolved decisions: do not invent agreements
+Service duration and prices are not approved. Four-hour/eight-hour blocks and the previous MXN 600 single visit / MXN 2,280 subscription examples are NOT confirmed business rules. The owner still needs to settle the relationship between “four monthly visits” and “every selected weekday,” because a monthly cycle can contain five occurrences. Do not silently replace monthly billing with a 28-day cycle or skip the fifth weekday. Calendar and sandbox work can proceed; live recurring billing requires resolved, accepted terms.
+
+Other pending items: payment provider, failed payments, subscription pause/cancellation, refunds, exact administrative permissions, staff verification, notification channels, service durations/travel buffers and incident handling. Propose reversible defaults and ask only when a decision blocks the affected flow. Group at most three focused questions. Do not restart a long interview.
+Shared context and contracts
+Create a compact, version-controlled source of truth:
+- AGENTS.md: shared rules, commands and context index without duplicating all documents.
+- CLAUDE.md and GEMINI.md: prefer Git-tracked relative symlinks to AGENTS.md on Mac/Linux. Preserve existing instructions before creating links. If symlinks are not supported, use small files with an explicit supported import. Verify actual instruction discovery for each installed CLI. Provide explicit paths when needed. Configure optional Cursor to read the same rules through its supported mechanism.
+- docs/PRODUCT.md: distinguish confirmed scope, proposals and open decisions.
+- docs/DOMAIN.md: glossary, states and business invariants.
+- docs/ARCHITECTURE.md and docs/adr/: architecture decisions and rationale.
+- docs/VERSIONS.md: verified versions, official LTS/stable status and compatibility evidence.
+- docs/contracts/: exported OpenAPI, event/error/state contracts and generation instructions. Database migrations live with the API.
+- docs/DESIGN.md: tokens, components, accessibility and platform adaptations.
+- docs/SPRINTS.md: vertical releases and acceptance criteria.
+- docs/STATE.md: compact project status, recent decisions and next action.
+- docs/tasks/<id>.md: objective, scope, allowed files, contract versions and acceptance.
+Every agent reads shared rules, the context index and domain summary, then the contracts relevant to its task. Make the full domain available without resending the entire chat on every invocation. Record the task's base SHA and full hashes of the relevant contracts. Reconcile if they change.
+
+After preserving any existing instructions, relative links may be created with:
+ln -s AGENTS.md CLAUDE.md
+ln -s AGENTS.md GEMINI.md
+Check that the tracked links resolve inside every worktree. File presence does not guarantee compliance or shared conversation history. Worktrees contain their branch's commit, not automatically the latest changes from other branches. Share updates through explicit commits/merges or handoffs. Install dependencies and generate clients when required; do not assume Git includes node_modules or untracked generated artifacts. Contracts and shared package changes require coordinated integration and automated verification.
+Mandatory WORKTREE_STATE.md checkpoints
+Include these rules in AGENTS.md. Every worker maintains WORKTREE_STATE.md at the root of its worktree. At the end of each microtask, update the state FIRST and then create a WIP commit containing both the state and relevant code. Aim for recoverable checkpoints every 3–5 minutes when progress exists; an LLM instruction is not a guaranteed timer or protection against abrupt quota exhaustion. Avoid empty commits, secrets and indiscriminate staging.
+
+Write state through an atomic file replacement. Record checkpoint/commit failures and preserve files. The wrapper captures the actual checkpoint commit SHA separately; a tracked file cannot contain the hash of the very commit that includes it.
+
+Minimum template; placeholders and examples are not product decisions:
+# WORKTREE STATE & HANDOFF LOG
+- **Feature:** <feature ID>
+- **Current Agent:** codex-cli
+- **Last Updated:** <UTC ISO 8601 timestamp>
+- **Branch / Worktree:** <branch and path>
+- **Base SHA:** <task base commit>
+- **Contract Version:** <contract path and full SHA-256; repeat as needed>
+- **Database:** <non-secret worktree database/Compose identifier>
+
+## Microtask checklist
+- [x] 1. <completed and verified microtask>
+- [ ] 2. <microtask IN PROGRESS>
+- [ ] 3. <pending verification>
+
+## Immediate context / Handoff notes
+<What exists, decisions taken, constraints and remaining work.>
+
+## Verification
+- Last command executed:
+- Result and timestamp:
+- Pending tests:
+
+## Partial work
+- Modified or new files:
+- Operations in progress:
+- Blockers:
+
+## Exact next action
+- <concrete action the successor can execute>
+Use Git for history and keep current state short. When integrating multiple features, archive handoffs under per-feature paths such as docs/tasks/<id>/handoff.md to avoid overwriting unrelated root state files.
+Wrapper protocol for worker handover
+Implement recovery outside the LLM and persist execution state:
+1. Prefer structured/documented events, process exit status and actual CLI error output for failure classification. A quoted “rate limit” or “quota exceeded” string in source code, tests or ordinary output is not evidence of exhausted quota. Back off on transient limits, bound retries and distinguish authentication, quota and implementation errors.
+2. Suspend new feature retries through Shep's supported interface. Confirm the old worker and its file-writing child processes have terminated. Acquire an exclusive per-worktree lock respected by every launcher. If exclusion cannot also be enforced against Shep's retries, stop automatic handover and explain the required manual step.
+3. Capture branch, worktree, current SHA, git status, staged/unstaged diffs, untracked files, pending operations and database/migration state. Preserve all of them; never run destructive reset, clean, checkout or worktree/volume deletion. Exclude secrets from logs and prompts. Disk state may be newer than the last checkpoint.
+4. Record the cause, outgoing/incoming agents and pending task. Verify successor availability and authentication. Update feature assignment/status through Shep's documented interface, not its internal SQLite or global defaults while concurrent features exist. Start the successor in the SAME worktree and database only when the adapter can preserve a coherent Shep lifecycle. An externally launched CLI is not automatically a registered Shep worker.
+5. Supply the handover prompt below. Hold the lock throughout execution and confirm no file-writing processes remain before releasing it. Validate actual code, base SHA and contract hashes; reconcile discrepancies and refresh the checkpoint.
+6. Save outcomes, verification and next action. Do not repeat completed external effects. If all agents are unavailable, preserve state, pause and provide exact resumption instructions without indefinite retries.
+Handover prompt:
+Work in the specified worktree. Read AGENTS.md, WORKTREE_STATE.md, the assigned task, domain summary and relevant contracts. Inspect git status, staged/unstaged diffs and new files. Check the base SHA, contract hashes and worktree database/migration state. Preserve completed work: briefly verify that it exists and meets acceptance, changing it only if evidence shows a problem. Resume the pending microtask while accounting for changes newer than the checkpoint. Do not discard modifications, reset the database or repeat external operations. Update WORKTREE_STATE.md before the next WIP commit and record actual verification results.
+
+Test with simulated quota exhaustion, termination during an edit, stale checkpoints, ordinary code failures, contract mismatch and concurrent takeover attempts. Automatic handover is complete only after these checks and real Shep integration pass. Do not exhaust real quotas to test recovery.
+Routing, quotas and coordinator recovery
+1. Inspect installed Shep/CLI versions, help and MCP schemas. Do not invent flags or configuration files. Codex can be Shep's default worker while an external Claude Code session coordinates through MCP.
+2. Worker preference: Codex, then Gemini, then Claude when quota is exhausted and alternatives are authenticated and available. Coordinator preference: Claude, then Codex, then Gemini. Optional Cursor may be added only after availability/authorization checks. Never run two coordinators simultaneously.
+3. Infer quota state only from documented signals or observed errors; do not claim access to remaining usage unless an actual supported interface provides it. Respect retry-after where applicable. Never switch to paid API billing without authorization.
+4. Before controlled handover, persist branch/worktree, SHA, pending diff, task, tests, blocker and next action. Abrupt failures must be recovered from actual disk/process state when the outgoing agent could not save. Do not repeat payments, pushes or other completed side effects.
+5. First verify installed Shep's native capabilities. If automatic cross-provider routing is absent, implement a small deterministic supervisor outside the LLM. A coordinator without quota cannot guarantee its own replacement. Until a tested supervisor exists, label coordinator replacement as manual and document exact steps.
+6. Prefer supported per-feature agent selection. If unavailable through the API, describe the manual operation or build an adapter against a documented interface. Never edit Shep's internal database or use concurrent global-default changes as per-feature routing.
+7. Begin with one active worker to conserve usage. Each task has one owner and worktree. Parallelize independent tasks only after end-to-end orchestration works; serialize shared contracts/migration ownership. Use locks and atomic state updates in the router.
+Application architecture, security and delivery
+Use a modular FastAPI backend rather than splitting business logic across unrelated services. Apply strict input/output validation where appropriate, separate Pydantic transport models from ORM/domain models, avoid blocking calls in async request paths and generate the authoritative OpenAPI contract reproducibly. Automatic schema generation does not replace business contracts or integration tests.
+
+Implement expiring checkout holds, prevention of overlapping appointments, travel buffers, America/Mexico_City business time with explicit timestamp conventions, verified/idempotent payment webhooks, precise money representation, audit trails and deterministic recurrence/settlement logic. Make reservation concurrency safe in MySQL through explicit locking/constraints and tests; availability displayed by the client is not authoritative. Keep secrets out of Git, enforce server-side access controls, secure session/token storage and document backup/restore procedures.
+
+Docker Compose must support isolated worktree environments and a production configuration. Use Nginx for TLS/origin routing as designed, Cloudflare with verified origin TLS and correct trusted-proxy configuration, and avoid exposing MySQL publicly. Record environment-specific secrets outside Git. Protect logs, database volumes and backups; demonstrate restoration. Containers and a proxy alone do not make a deployment production-ready.
+
+GitHub Actions must run linting, type checks, relevant API/unit/integration tests against MySQL, migrations, contract export/client generation checks, token generation checks and frontend builds. Use immutable build artifacts, health checks, migration discipline and a rollback/recovery plan. Automate CI and staging delivery; production promotion requires the owner's explicit approval until a standing deployment policy is approved. Mobile store releases and native builds have separate release steps.
+Sprints and acceptance
+Every sprint ends with an integrated, runnable and demonstrable product increment. Sprint 1 must provide a usable vertical slice: administrator provisions staff, customer authenticates and browses availability, books a single visit and pays in sandbox, and staff/admin see the assignment. Include staff check-in/check-out with foreground GPS and the manual exception path, completion and the resulting weekly earnings entry in the MVP acceptance. Clearly distinguish earned, approved and paid amounts.
+
+Size or sequence work realistically rather than hiding unfinished acceptance criteria. Subscriptions remain part of the product roadmap, with recurring billing implemented after unresolved commercial terms are settled. Differentiate local demo, staging, pilot, store distribution and live payments. Do not call a mocked or isolated screen an end-to-end functional MVP.
+
+For each task: explicit acceptance, implementation, meaningful verification, review and integration. Prioritize tests for authorization, concurrent bookings, webhook replay, cancellation, recurring dates, MySQL migrations, earnings calculations and GPS exceptions. Use a second agent to review risk-sensitive changes when warranted; avoid duplicating every task. Report what ran, failed or was not run. Never invent test results.
+
+You may create documents, code, tests and reversible local changes and prepare draft PRs for batch review. Obtain authorization for merge, publication, deployment, spending, destructive changes and unresolved commercial decisions. Silence or an agent-question timeout is not approval for those actions; verify tools cannot autoapprove them through another path.
+Token economy and first delivery
+Use summaries, deltas and filtered logs. Back off while monitoring active workers instead of polling repeatedly. Do not load secrets, actual customer records or complete histories into prompts. Research only to resolve a concrete compatibility/version/capability decision, using official sources.
+
+Start by inspecting the repository and installed tooling without overwriting existing work. Create the shared documents from this specification and resolve the latest LTS/stable version matrix before bootstrapping dependencies. Implement the selected architecture, not another comparison of backend frameworks. Provide a sprint plan and an honest Shep/CLI capability report identifying what failover already works and what must be built.
+
+Verify a small Codex task through Shep: worktree/database isolation, shared instructions, contract reading and durable handoff. Test failover with simulated failures. Produce a runnable first increment under the acceptance above, isolating unresolved live billing behind safe sandbox behavior. Keep status and handover files current before ending or switching agents.
+
+Keep your response short: files prepared, checks actually executed, next task and genuinely blocking decisions.
+phase: Analysis
+sizeEstimate: M
+
+# Relationships
+relatedFeatures:
+  []
+
+technologies:
+  []
+
+relatedLinks:
+  []
+
+# Open questions (must be resolved before implementation)
+openQuestions:
+  []
+
+# Markdown content (the actual spec)
+content: |
+  ## Problem Statement
+
+  Role
+Act as the application architect, UX/UI lead, technical coordinator and integration owner. Use Shep to manage features, worktrees, execution status and review. Claude Code is the preferred coordinator; Codex CLI is the primary worker; Gemini CLI and Claude Code are alternatives. Cursor CLI is optional only if installed, authenticated and authorized. Keep this specification and technical project instructions in English; communicate with the owner and write customer-facing product copy in Spanish unless requested otherwise. Minimize token consumption. Do not repeat the business discovery below.
+Mandatory version policy: USE THE LATEST OFFICIAL LTS VERSIONS
+Explicit requirement: use the latest officially released Long-Term Support (LTS) release line of every selected technology that provides an official LTS channel, including its latest supported patch release. Verify this using official release and support documentation at implementation time. Do not select versions from memory or preserve the old illustrative numbers Python 3.12, Expo SDK 54, Expo Router v4, NativeWind v4 or MySQL 8.4 as constraints.
+
+Not every project publishes an LTS line. When no official LTS channel exists, explicitly record “No official LTS channel” and select the latest stable, supported release compatible with the selected stack. Never invent an LTS label. Do not select alpha, beta, release candidate, nightly, canary, end-of-life or MySQL Innovation releases as substitutes for LTS.
+
+Resolve versions as a compatible set. In particular, use the React Native, React, Expo Router and native dependency versions supported by the selected Expo SDK. Verify the NativeWind/Tailwind compatibility matrix; mobile and dashboard styling toolchains need not use identical dependency versions. If the latest required LTS/stable components cannot work together, document the exact conflict and request a focused decision instead of silently downgrading or forcing installation.
+
+Before implementation, create docs/VERSIONS.md with technology, exact selected version, official LTS status or stable-only policy, release/support evidence URL, verification date, compatibility constraints and known support end date when published. Pin resolved versions in lockfiles and reproducible container tags/digests; never deploy a floating latest image. “Latest” means verified at selection time, followed by reviewed upgrades, not uncontrolled upgrades on every deployment.
+Required stack and monorepo
+The technology families below are selected by the owner. Do not reopen the stack comparison or substitute Laravel, PostgreSQL or a React dashboard without explicit approval. Apply the mandatory version policy to all components.
+Layer	Required technology and responsibility
+Backend API	Python, FastAPI, Pydantic, asynchronous SQLAlchemy and Alembic migrations. Use the current supported APIs corresponding to the selected versions.
+API contract	FastAPI-generated OpenAPI 3.1 contract with stable operation IDs and explicit request, response and error schemas; generated TypeScript client/types shared by web and mobile.
+Internal dashboard	Vue, Vite, TypeScript, Pinia and Tailwind CSS. Staff administration, service pricing, versioned subscription terms, scheduling, review moderation and weekly settlement.
+Mobile	React Native with Expo, Expo Router and NativeWind; use the latest supported compatible release set under the version policy. One application per target OS with customer and staff role-based experiences.
+Design system	Shared semantic Vanilla design tokens, Apple Human Interface Guidelines and appropriate Android platform conventions. Neutral visual identity ready for branding.
+Database	MySQL ONLY for the application: local development, every worktree, automated persistence/integration tests, staging and production. Use the latest official MySQL LTS line and its latest patch.
+Infrastructure	Docker Compose, Nginx reverse proxy, Cloudflare and GitHub Actions. Reproducible local/production environments, automated CI and controlled continuous delivery.
+Repository and agents	One monorepo managed through Shep worktrees. Claude Code coordination, Codex implementation, Gemini fallback; optional Cursor only when available and authorized.
+
+
+Required repository layout:
+/apps/api
+/apps/web-dashboard
+/apps/mobile-client
+/packages/api-client
+/packages/design-tokens
+/docs/contracts
+/docs/tasks
+The mobile folder serves BOTH customers and staff despite its name. Use a package workspace for JavaScript/TypeScript packages and a reproducibly locked Python environment for the API. Generate the shared API client from the backend contract; do not hand-maintain duplicate transport types in Vue and React Native. Keep frontend view models separate from generated DTOs. Verify the generator supports the actual OpenAPI 3.1/JSON Schema features emitted by FastAPI. CI must detect contract/client drift and type-check both consumers.
+Database parity and worktree isolation
+Do not use SQLite, PostgreSQL or an in-memory SQLite substitute for any application database environment or persistence test. Shep's own internal database is outside this restriction; do not modify it.
+
+Provision MySQL through Docker Compose from the start. Each worktree needs a unique Compose project name, network/ports as applicable, credentials, database and persistent volume. A dedicated MySQL container per worktree is the default isolation strategy. Parallel CI jobs also need isolated databases and must run real MySQL migrations and integration tests. Never point a worktree or test job at production or a shared mutable development schema. A replacement worker reuses the same worktree database/volume instead of resetting it.
+
+Keep the MySQL release line, migration path, engine, character set, collation, SQL mode and relevant transaction settings consistent across environments. Use InnoDB, foreign keys and deterministic transaction boundaries. Select a supported asynchronous MySQL driver and a session lifecycle safe for concurrent requests. Test reservation locking, race conditions, money calculations and webhook idempotency against MySQL. Mock external services when appropriate; do not replace the database dialect in those tests.
+Confirmed product and operating model
+- One cleaning company employing and managing its own cleaning staff. One brand with future multi-city operation. Launch in Veracruz and its metropolitan area; exact municipalities and service boundaries remain pending.
+- Initial operation: approximately two services per day and four cleaners. The owner maintains code and infrastructure with agents and knows PHP/Laravel, SQL and JavaScript/TypeScript frameworks. Python is the newly selected backend; document its setup and maintenance commands clearly.
+- Android and iOS from launch, using a single role-aware mobile application per OS; internal administration uses the web dashboard. Enforce roles and resource-level authorization on the server, not only in navigation. Customers see their own records; staff see assigned services and their own earnings. Staff accounts are provisioned/controlled by administration; public registration cannot grant staff or admin privileges.
+- Free customer accounts. Single visits or automatically renewing subscriptions; payments initiated inside the app through a provider suitable for physical services. Confirm current provider capabilities and platform rules before integration.
+- Customers browse staff profiles, availability, ratings and reviews and choose their cleaner. Only completed services enable verified reviews. Include reporting and moderation.
+- Services run Monday through Friday. A subscription reserves a recurring weekday selected by the customer, for example every Tuesday, with the same cleaner. Visits are scheduled rather than left as unscheduled credits. Show the initial scheduled dates before confirming the purchase; renewal must preserve the agreed recurrence.
+- If the selected cleaner cannot attend, the customer chooses a replacement or rescheduling.
+- With at least 24 hours' notice before service start, the customer can move that visit to another available date within the same billing cycle without changing the other visits.
+- A cancellation with less than 24 hours' notice, or inability to perform the visit attributable to the customer, charges the single visit or consumes the subscription visit. Cleaner compensation for those cases remains unresolved.
+- Staff mode: controlled login, assigned schedule, incident reporting, GPS-assisted check-in/check-out and current-week earnings. Offline execution is deferred; administration resolves connectivity incidents in the MVP.
+- Weekly settlement and a fixed amount earned for each completed service. Amounts are pending. Keep service completion, customer payment, cleaner earnings, approved settlement and recorded payout separate.
+- Customers supply cleaning tools/products, with an optional additional kit. Kit content, price and delivery remain pending.
+- Administration configures subscription prices and terms. Version these terms and preserve the agreement accepted for each purchase. Do not retroactively change existing bookings or earnings when updating rates.
+- Initial infrastructure is economical and self-managed by the owner. Use the selected container-based stack; hosting provider and budget remain undecided.
+GPS attendance
+Capture foreground location only when staff check in/out, including timestamp, reported accuracy and service association. Request appropriate permissions and protect access to location data. Do not add continuous/background tracking by default. GPS is supporting evidence, not proof that cannot be spoofed. Handle denied permission, unavailable/poor location and connectivity failures with a documented administrative exception flow and audit trail. Do not silently record a successful GPS check-in when capture failed. Geofence radius, retention and any automatic payment consequences require explicit rules.
+Design and branding
+Build @repo/design-tokens around one canonical, schema-validated branding JSON, with generated web CSS/Tailwind and React Native/NativeWind adapters. Centralize semantic colors, typography, spacing, radii, elevations, component variants and configurable asset references; do not hardcode brand values in screens. Keep generation reproducible and fail CI on token drift.
+
+Changing the JSON must update supported theme values across web and mobile after the appropriate rebuild/update. Do not promise that one JSON file can instantly replace every asset or native setting: icons, splash screens, bundled fonts and store metadata may require asset updates, native builds or store submissions. Document those boundaries.
+
+Create polished neutral UI, accessible contrast and text scaling, keyboard/screen-reader behavior and complete loading, empty, error and disabled states. Follow Apple HIG on iOS and platform-appropriate Android navigation/back behavior while retaining one brand. Check available design skills before claiming any Apple Design skill is installed. Do not use experimental native UI features solely for appearance.
+Unresolved decisions: do not invent agreements
+Service duration and prices are not approved. Four-hour/eight-hour blocks and the previous MXN 600 single visit / MXN 2,280 subscription examples are NOT confirmed business rules. The owner still needs to settle the relationship between “four monthly visits” and “every selected weekday,” because a monthly cycle can contain five occurrences. Do not silently replace monthly billing with a 28-day cycle or skip the fifth weekday. Calendar and sandbox work can proceed; live recurring billing requires resolved, accepted terms.
+
+Other pending items: payment provider, failed payments, subscription pause/cancellation, refunds, exact administrative permissions, staff verification, notification channels, service durations/travel buffers and incident handling. Propose reversible defaults and ask only when a decision blocks the affected flow. Group at most three focused questions. Do not restart a long interview.
+Shared context and contracts
+Create a compact, version-controlled source of truth:
+- AGENTS.md: shared rules, commands and context index without duplicating all documents.
+- CLAUDE.md and GEMINI.md: prefer Git-tracked relative symlinks to AGENTS.md on Mac/Linux. Preserve existing instructions before creating links. If symlinks are not supported, use small files with an explicit supported import. Verify actual instruction discovery for each installed CLI. Provide explicit paths when needed. Configure optional Cursor to read the same rules through its supported mechanism.
+- docs/PRODUCT.md: distinguish confirmed scope, proposals and open decisions.
+- docs/DOMAIN.md: glossary, states and business invariants.
+- docs/ARCHITECTURE.md and docs/adr/: architecture decisions and rationale.
+- docs/VERSIONS.md: verified versions, official LTS/stable status and compatibility evidence.
+- docs/contracts/: exported OpenAPI, event/error/state contracts and generation instructions. Database migrations live with the API.
+- docs/DESIGN.md: tokens, components, accessibility and platform adaptations.
+- docs/SPRINTS.md: vertical releases and acceptance criteria.
+- docs/STATE.md: compact project status, recent decisions and next action.
+- docs/tasks/<id>.md: objective, scope, allowed files, contract versions and acceptance.
+Every agent reads shared rules, the context index and domain summary, then the contracts relevant to its task. Make the full domain available without resending the entire chat on every invocation. Record the task's base SHA and full hashes of the relevant contracts. Reconcile if they change.
+
+After preserving any existing instructions, relative links may be created with:
+ln -s AGENTS.md CLAUDE.md
+ln -s AGENTS.md GEMINI.md
+Check that the tracked links resolve inside every worktree. File presence does not guarantee compliance or shared conversation history. Worktrees contain their branch's commit, not automatically the latest changes from other branches. Share updates through explicit commits/merges or handoffs. Install dependencies and generate clients when required; do not assume Git includes node_modules or untracked generated artifacts. Contracts and shared package changes require coordinated integration and automated verification.
+Mandatory WORKTREE_STATE.md checkpoints
+Include these rules in AGENTS.md. Every worker maintains WORKTREE_STATE.md at the root of its worktree. At the end of each microtask, update the state FIRST and then create a WIP commit containing both the state and relevant code. Aim for recoverable checkpoints every 3–5 minutes when progress exists; an LLM instruction is not a guaranteed timer or protection against abrupt quota exhaustion. Avoid empty commits, secrets and indiscriminate staging.
+
+Write state through an atomic file replacement. Record checkpoint/commit failures and preserve files. The wrapper captures the actual checkpoint commit SHA separately; a tracked file cannot contain the hash of the very commit that includes it.
+
+Minimum template; placeholders and examples are not product decisions:
+# WORKTREE STATE & HANDOFF LOG
+- **Feature:** <feature ID>
+- **Current Agent:** codex-cli
+- **Last Updated:** <UTC ISO 8601 timestamp>
+- **Branch / Worktree:** <branch and path>
+- **Base SHA:** <task base commit>
+- **Contract Version:** <contract path and full SHA-256; repeat as needed>
+- **Database:** <non-secret worktree database/Compose identifier>
+
+## Microtask checklist
+- [x] 1. <completed and verified microtask>
+- [ ] 2. <microtask IN PROGRESS>
+- [ ] 3. <pending verification>
+
+## Immediate context / Handoff notes
+<What exists, decisions taken, constraints and remaining work.>
+
+## Verification
+- Last command executed:
+- Result and timestamp:
+- Pending tests:
+
+## Partial work
+- Modified or new files:
+- Operations in progress:
+- Blockers:
+
+## Exact next action
+- <concrete action the successor can execute>
+Use Git for history and keep current state short. When integrating multiple features, archive handoffs under per-feature paths such as docs/tasks/<id>/handoff.md to avoid overwriting unrelated root state files.
+Wrapper protocol for worker handover
+Implement recovery outside the LLM and persist execution state:
+1. Prefer structured/documented events, process exit status and actual CLI error output for failure classification. A quoted “rate limit” or “quota exceeded” string in source code, tests or ordinary output is not evidence of exhausted quota. Back off on transient limits, bound retries and distinguish authentication, quota and implementation errors.
+2. Suspend new feature retries through Shep's supported interface. Confirm the old worker and its file-writing child processes have terminated. Acquire an exclusive per-worktree lock respected by every launcher. If exclusion cannot also be enforced against Shep's retries, stop automatic handover and explain the required manual step.
+3. Capture branch, worktree, current SHA, git status, staged/unstaged diffs, untracked files, pending operations and database/migration state. Preserve all of them; never run destructive reset, clean, checkout or worktree/volume deletion. Exclude secrets from logs and prompts. Disk state may be newer than the last checkpoint.
+4. Record the cause, outgoing/incoming agents and pending task. Verify successor availability and authentication. Update feature assignment/status through Shep's documented interface, not its internal SQLite or global defaults while concurrent features exist. Start the successor in the SAME worktree and database only when the adapter can preserve a coherent Shep lifecycle. An externally launched CLI is not automatically a registered Shep worker.
+5. Supply the handover prompt below. Hold the lock throughout execution and confirm no file-writing processes remain before releasing it. Validate actual code, base SHA and contract hashes; reconcile discrepancies and refresh the checkpoint.
+6. Save outcomes, verification and next action. Do not repeat completed external effects. If all agents are unavailable, preserve state, pause and provide exact resumption instructions without indefinite retries.
+Handover prompt:
+Work in the specified worktree. Read AGENTS.md, WORKTREE_STATE.md, the assigned task, domain summary and relevant contracts. Inspect git status, staged/unstaged diffs and new files. Check the base SHA, contract hashes and worktree database/migration state. Preserve completed work: briefly verify that it exists and meets acceptance, changing it only if evidence shows a problem. Resume the pending microtask while accounting for changes newer than the checkpoint. Do not discard modifications, reset the database or repeat external operations. Update WORKTREE_STATE.md before the next WIP commit and record actual verification results.
+
+Test with simulated quota exhaustion, termination during an edit, stale checkpoints, ordinary code failures, contract mismatch and concurrent takeover attempts. Automatic handover is complete only after these checks and real Shep integration pass. Do not exhaust real quotas to test recovery.
+Routing, quotas and coordinator recovery
+1. Inspect installed Shep/CLI versions, help and MCP schemas. Do not invent flags or configuration files. Codex can be Shep's default worker while an external Claude Code session coordinates through MCP.
+2. Worker preference: Codex, then Gemini, then Claude when quota is exhausted and alternatives are authenticated and available. Coordinator preference: Claude, then Codex, then Gemini. Optional Cursor may be added only after availability/authorization checks. Never run two coordinators simultaneously.
+3. Infer quota state only from documented signals or observed errors; do not claim access to remaining usage unless an actual supported interface provides it. Respect retry-after where applicable. Never switch to paid API billing without authorization.
+4. Before controlled handover, persist branch/worktree, SHA, pending diff, task, tests, blocker and next action. Abrupt failures must be recovered from actual disk/process state when the outgoing agent could not save. Do not repeat payments, pushes or other completed side effects.
+5. First verify installed Shep's native capabilities. If automatic cross-provider routing is absent, implement a small deterministic supervisor outside the LLM. A coordinator without quota cannot guarantee its own replacement. Until a tested supervisor exists, label coordinator replacement as manual and document exact steps.
+6. Prefer supported per-feature agent selection. If unavailable through the API, describe the manual operation or build an adapter against a documented interface. Never edit Shep's internal database or use concurrent global-default changes as per-feature routing.
+7. Begin with one active worker to conserve usage. Each task has one owner and worktree. Parallelize independent tasks only after end-to-end orchestration works; serialize shared contracts/migration ownership. Use locks and atomic state updates in the router.
+Application architecture, security and delivery
+Use a modular FastAPI backend rather than splitting business logic across unrelated services. Apply strict input/output validation where appropriate, separate Pydantic transport models from ORM/domain models, avoid blocking calls in async request paths and generate the authoritative OpenAPI contract reproducibly. Automatic schema generation does not replace business contracts or integration tests.
+
+Implement expiring checkout holds, prevention of overlapping appointments, travel buffers, America/Mexico_City business time with explicit timestamp conventions, verified/idempotent payment webhooks, precise money representation, audit trails and deterministic recurrence/settlement logic. Make reservation concurrency safe in MySQL through explicit locking/constraints and tests; availability displayed by the client is not authoritative. Keep secrets out of Git, enforce server-side access controls, secure session/token storage and document backup/restore procedures.
+
+Docker Compose must support isolated worktree environments and a production configuration. Use Nginx for TLS/origin routing as designed, Cloudflare with verified origin TLS and correct trusted-proxy configuration, and avoid exposing MySQL publicly. Record environment-specific secrets outside Git. Protect logs, database volumes and backups; demonstrate restoration. Containers and a proxy alone do not make a deployment production-ready.
+
+GitHub Actions must run linting, type checks, relevant API/unit/integration tests against MySQL, migrations, contract export/client generation checks, token generation checks and frontend builds. Use immutable build artifacts, health checks, migration discipline and a rollback/recovery plan. Automate CI and staging delivery; production promotion requires the owner's explicit approval until a standing deployment policy is approved. Mobile store releases and native builds have separate release steps.
+Sprints and acceptance
+Every sprint ends with an integrated, runnable and demonstrable product increment. Sprint 1 must provide a usable vertical slice: administrator provisions staff, customer authenticates and browses availability, books a single visit and pays in sandbox, and staff/admin see the assignment. Include staff check-in/check-out with foreground GPS and the manual exception path, completion and the resulting weekly earnings entry in the MVP acceptance. Clearly distinguish earned, approved and paid amounts.
+
+Size or sequence work realistically rather than hiding unfinished acceptance criteria. Subscriptions remain part of the product roadmap, with recurring billing implemented after unresolved commercial terms are settled. Differentiate local demo, staging, pilot, store distribution and live payments. Do not call a mocked or isolated screen an end-to-end functional MVP.
+
+For each task: explicit acceptance, implementation, meaningful verification, review and integration. Prioritize tests for authorization, concurrent bookings, webhook replay, cancellation, recurring dates, MySQL migrations, earnings calculations and GPS exceptions. Use a second agent to review risk-sensitive changes when warranted; avoid duplicating every task. Report what ran, failed or was not run. Never invent test results.
+
+You may create documents, code, tests and reversible local changes and prepare draft PRs for batch review. Obtain authorization for merge, publication, deployment, spending, destructive changes and unresolved commercial decisions. Silence or an agent-question timeout is not approval for those actions; verify tools cannot autoapprove them through another path.
+Token economy and first delivery
+Use summaries, deltas and filtered logs. Back off while monitoring active workers instead of polling repeatedly. Do not load secrets, actual customer records or complete histories into prompts. Research only to resolve a concrete compatibility/version/capability decision, using official sources.
+
+Start by inspecting the repository and installed tooling without overwriting existing work. Create the shared documents from this specification and resolve the latest LTS/stable version matrix before bootstrapping dependencies. Implement the selected architecture, not another comparison of backend frameworks. Provide a sprint plan and an honest Shep/CLI capability report identifying what failover already works and what must be built.
+
+Verify a small Codex task through Shep: worktree/database isolation, shared instructions, contract reading and durable handoff. Test failover with simulated failures. Produce a runnable first increment under the acceptance above, isolating unresolved live billing behind safe sandbox behavior. Keep status and handover files current before ending or switching agents.
+
+Keep your response short: files prepared, checks actually executed, next task and genuinely blocking decisions.
+
+  ## Success Criteria
+
+  - [ ] TBD
+
+  ## Affected Areas
+
+  | Area | Impact | Reasoning |
+  | ---- | ------ | --------- |
+  | TBD  | TBD    | TBD       |
+
+  ## Dependencies
+
+  None identified.
+
+  ## Size Estimate
+
+  **M** - To be refined during research
+
+  ---
+
+  _Generated by feature agent — proceed with research_

@@ -1,0 +1,33 @@
+feature:
+  id: "001-monorepo-platform-foundation"
+  name: "monorepo-platform-foundation"
+  number: 1
+  branch: "feat/001-monorepo-platform-foundation"
+  lifecycle: "research"
+  createdAt: "2026-11-03T07:32:01Z"
+status:
+  phase: "research"
+  progress:
+    completed: 0
+    total: 0
+    percentage: 0
+  currentTask: null
+  lastUpdated: "2026-11-03T07:32:01Z"
+  lastUpdatedBy: "feature-agent"
+  completedPhases:
+    - "fast-implement"
+validation:
+  lastRun: null
+  gatesPassed: []
+  autoFixesApplied: []
+tasks:
+  current: null
+  blocked: []
+  failed: []
+checkpoints:
+  - phase: "feature-created"
+    completedAt: "2026-11-03T07:32:01Z"
+    completedBy: "feature-agent"
+errors:
+  current: null
+  history: []

@@ -29,8 +29,10 @@ Index: `docs/PRODUCT.md` scope · `docs/ARCHITECTURE.md` + `docs/adr/` · `docs/
 npm i -g pnpm@12.16.1 && pnpm install          # JS workspace (Node 26 has no corepack)
 ./scripts/wt-env.sh                             # writes .env.worktree (unique compose project/ports/db)
 docker compose --env-file .env.worktree up -d mysql
+set -a && . ./.env.worktree && set +a          # export DATABASE_URL / TEST_DATABASE_URL
 cd apps/api && uv sync && uv run alembic upgrade head
-uv run pytest                                   # needs worktree MySQL up
+uv run pytest                                   # needs worktree MySQL up + exported env
+uv run --no-project --python 3.15 python -m unittest ../../tools/agent-supervisor/test_supervisor.py
 uv run python -m app.export_openapi             # → docs/contracts/openapi.json
 pnpm --filter @repo/api-client generate         # → schema.d.ts
 pnpm --filter @repo/design-tokens build         # → dist/
