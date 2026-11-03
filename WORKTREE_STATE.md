@@ -1,7 +1,7 @@
 # WORKTREE STATE & HANDOFF LOG
 - **Feature:** 002-retomar-trabajo-pendiente
 - **Current Agent:** codex-cli
-- **Last Updated:** 2026-11-03T08:19:38Z
+- **Last Updated:** 2026-11-03T08:27:15.793153+00:00
 - **Branch / Worktree:** feat/retomar-trabajo-pendiente (current worktree)
 - **Base SHA:** 8b9da052b45ff4810d2a4aff2e194cf21984b1a3
 - **Contract Version:** docs/contracts/openapi.json sha256 99336ffb99c2101aa635337ef156a9720934d642afa0e939a2f62b7bf74d4b20
@@ -33,3 +33,10 @@ Recovered documentation describes the earlier foundation validation; current res
 ## Exact next action
 - Review the completed local Sprint 1 slice; next product work is Sprint 2 in docs/SPRINTS.md.
 - Device QA and staging remain follow-up work; push/deploy requires owner approval.
+
+## Mobile web dependency fix
+- Added exact react-native-web 0.21.4 from the installed Expo SDK compatibility matrix; updated lockfile and version matrix.
+- Verified: Expo web export succeeded (826 modules) to /private/tmp/cleaning-mobile-web-check.
+- Pre-existing untracked apps/mobile-client/.gitignore preserved and excluded from this checkpoint.
+- Next action: restart Expo with --clear and open the web target; browser/device interaction QA remains pending.
+- Validation: git diff --check passed; aislop 100/100, zero errors/warnings; dependency audit timed out (informational).
