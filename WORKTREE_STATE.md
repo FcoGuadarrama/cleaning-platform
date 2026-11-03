@@ -46,3 +46,10 @@ Recovered documentation describes the earlier foundation validation; current res
 - Set Tailwind darkMode to class so the css-interop web MutationObserver can initialize color scheme without throwing.
 - Verified: Expo web export succeeds; generated CSS declares the class dark mode flag; aislop 100/100 with no findings.
 - Browser runtime QA pending; restart Expo with --clear and reload web.
+
+## Mobile web session storage fix
+- Updated: 2026-11-03T08:29:42.919967+00:00
+- Added platform-specific session storage: SecureStore on native, sessionStorage on web (cleared when the tab session ends). Token cache updates after persistence succeeds.
+- Verified: mobile TypeScript check, Expo web export (827 modules), web adapter load/save/clear assertions, aislop 100/100 with no findings.
+- Pending: browser login/logout QA and native device QA.
+- Next action: reload Expo web and verify customer/staff login; admin accounts use the separate dashboard.

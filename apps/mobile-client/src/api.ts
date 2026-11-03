@@ -1,21 +1,21 @@
 import { createApiClient, type ApiError } from "@repo/api-client";
-import * as SecureStore from "expo-secure-store";
+import { deleteSessionToken, getSessionToken, setSessionToken } from "./session-storage";
 
 const TOKEN_KEY = "session.token";
 let cached: string | null = null;
 
 export const tokenStore = {
   async load(): Promise<string | null> {
-    cached = await SecureStore.getItemAsync(TOKEN_KEY);
+    cached = await getSessionToken(TOKEN_KEY);
     return cached;
   },
   async save(token: string): Promise<void> {
+    await setSessionToken(TOKEN_KEY, token);
     cached = token;
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
   },
   async clear(): Promise<void> {
+    await deleteSessionToken(TOKEN_KEY);
     cached = null;
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
   },
 };
 
