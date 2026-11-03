@@ -40,3 +40,9 @@ Recovered documentation describes the earlier foundation validation; current res
 - Pre-existing untracked apps/mobile-client/.gitignore preserved and excluded from this checkpoint.
 - Next action: restart Expo with --clear and open the web target; browser/device interaction QA remains pending.
 - Validation: git diff --check passed; aislop 100/100, zero errors/warnings; dependency audit timed out (informational).
+
+## Mobile web dark mode fix
+- Updated: 2026-11-03T08:28:33.869521+00:00
+- Set Tailwind darkMode to class so the css-interop web MutationObserver can initialize color scheme without throwing.
+- Verified: Expo web export succeeds; generated CSS declares the class dark mode flag; aislop 100/100 with no findings.
+- Browser runtime QA pending; restart Expo with --clear and reload web.
