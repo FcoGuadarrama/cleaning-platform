@@ -53,3 +53,11 @@ Recovered documentation describes the earlier foundation validation; current res
 - Verified: mobile TypeScript check, Expo web export (827 modules), web adapter load/save/clear assertions, aislop 100/100 with no findings.
 - Pending: browser login/logout QA and native device QA.
 - Next action: reload Expo web and verify customer/staff login; admin accounts use the separate dashboard.
+
+## Expo web API connectivity fix
+- Updated: 2026-11-03T08:31:43.856715+00:00
+- Confirmed live local API health returns 200 but Expo-origin preflight returns 405 without CORS.
+- Added explicit comma-separated CORS_ORIGINS allowlist (disabled by default); documented Expo API URL/origin configuration.
+- Login/register now display connection failures instead of an uncaught rejection.
+- Verified: in-process HTTP preflight/health checks accept configured origins and reject untrusted origins; default CORS remains disabled. No persistence operations performed. Mobile typecheck, Ruff lint/format, aislop 100/100 pass.
+- Next action: restart API with CORS_ORIGINS matching Expo browser origin, then verify login in browser.

@@ -7,6 +7,16 @@
 | Design tokens | `packages/design-tokens/src/brand.json` (+ `brand.schema.json`) → `dist/*` | `pnpm --filter @repo/design-tokens build` |
 
 CI fails if regeneration changes any tracked file (`pnpm check:drift`, contract export step).
+
+## Browser access
+
+The API enables CORS only for origins explicitly listed in the comma-separated `CORS_ORIGINS`
+environment variable. For local Expo web development, start Uvicorn with
+`CORS_ORIGINS=http://localhost:8081,http://127.0.0.1:8081`. Match the actual Expo origin,
+including its port. Restart the API after changing this environment variable.
+The mobile client uses `EXPO_PUBLIC_API_URL` (default `http://127.0.0.1:8000`);
+restart Expo after changing it. Native devices need a reachable host address.
+The dashboard uses its Vite `/api` proxy during development.
 Tasks record `sha256sum docs/contracts/openapi.json` in `WORKTREE_STATE.md`; the supervisor flags mismatches.
 
 ## Operation IDs

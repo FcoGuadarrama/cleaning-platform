@@ -36,12 +36,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return null;
   }
 
+  async function authenticate(request: Promise<{ data?: Schemas["TokenOut"]; error?: unknown }>) {
+    try {
+      return await accept(await request);
+    } catch (error) {
+      if (error instanceof TypeError) {
+        return "No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.";
+      }
+      return errorMessage(error);
+    }
+  }
+
   const value: Session = {
     user,
     ready,
-    login: async (email, password) => accept(await api.POST("/auth/login", { body: { email, password } })),
+    login: (email, password) => authenticate(api.POST("/auth/login", { body: { email, password } })),
     register: async (email, password, full_name) =>
-      accept(await api.POST("/auth/register", { body: { email, password, full_name } })),
+      authenticate(api.POST("/auth/register", { body: { email, password, full_name } })),
     logout: async () => {
       await tokenStore.clear();
       setUser(null);
