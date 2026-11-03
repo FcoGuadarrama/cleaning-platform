@@ -1,0 +1,54 @@
+# Production / staging stack. Secrets live OUTSIDE Git in ${SECRETS_DIR:-/etc/cleaning-platform}:
+#   api.env (DATABASE_URL, SANDBOX_WEBHOOK_SECRET, ...), mysql.env (MYSQL_*), tls/ (origin cert, key, CF origin-pull CA).
+# See .env.prod.example at the repo root for the exact variable names expected in each file
+# (template/placeholders only — never real secrets).
+# Images are referenced by immutable tag (git SHA) built in CI; never `latest`.
+#   IMAGE_TAG=<sha> docker compose -f docker-compose.prod.yml up -d
+name: cleaning-platform-${DEPLOY_ENV:?set DEPLOY_ENV=staging|production}
+services:
+  mysql:
+    image: mysql:9.7.4@sha256:df90258da46f6e7ff8574ff84f17618aba0765cac749928299c69fd4e7cb8ad8
+    env_file: ${SECRETS_DIR:-/etc/cleaning-platform}/mysql.env
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./infra/mysql/my.cnf:/etc/mysql/conf.d/app.cnf:ro
+    networks: [backend]  # never published on the host
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      retries: 30
+    restart: unless-stopped
+
+  migrate:
+    image: ${REGISTRY:?}/cleaning-api:${IMAGE_TAG:?}
+    env_file: ${SECRETS_DIR:-/etc/cleaning-platform}/api.env
+    command: ["alembic", "upgrade", "head"]
+    depends_on: { mysql: { condition: service_healthy } }
+    networks: [backend]
+    restart: "no"
+
+  api:
+    image: ${REGISTRY:?}/cleaning-api:${IMAGE_TAG:?}
+    env_file: ${SECRETS_DIR:-/etc/cleaning-platform}/api.env
+    depends_on:
+      mysql: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    networks: [backend, edge]
+    read_only: true
+    tmpfs: [/tmp]
+    restart: unless-stopped
+
+  nginx:
+    image: ${REGISTRY:?}/cleaning-origin:${IMAGE_TAG:?}
+    ports: ["443:443", "80:80"]
+    volumes:
+      - ${SECRETS_DIR:-/etc/cleaning-platform}/tls:/etc/nginx/tls:ro
+    depends_on: { api: { condition: service_healthy } }
+    networks: [edge]
+    restart: unless-stopped
+
+networks:
+  backend: { internal: true }
+  edge: {}
+volumes:
+  mysql-data:

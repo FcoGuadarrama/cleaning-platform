@@ -1,0 +1,13 @@
+{
+  "name": "cleaning-platform",
+  "private": true,
+  "packageManager": "pnpm@12.16.1",
+  "engines": { "node": ">=26.13.0 <27" },
+  "scripts": {
+    "generate": "pnpm --filter @repo/design-tokens build && pnpm --filter @repo/api-client generate",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "check:drift": "pnpm generate && git diff --exit-code -- docs/contracts packages/api-client/src packages/design-tokens/dist"
+  }
+}

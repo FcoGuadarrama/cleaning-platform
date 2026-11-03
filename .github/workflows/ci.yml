@@ -1,0 +1,71 @@
+# CI: lint, types, MySQL migrations + integration tests, contract/client/token drift, builds, supervisor tests.
+# Actions are pinned by commit SHA (tag in comment). Deploys live in deploy.yml and require approval.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: apps/api } }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with: { version: "0.13.7" }
+      - name: Isolated MySQL for this job (same image, my.cnf and init as every worktree)
+        working-directory: .
+        run: |
+          ./scripts/wt-env.sh
+          docker compose --env-file .env.worktree up -d --wait mysql
+      - run: uv sync --frozen
+      - run: uv run ruff check . ../../tools/agent-supervisor && uv run ruff format --check . ../../tools/agent-supervisor
+      - run: uv run mypy app
+      - name: Migrations up/down/up against MySQL
+        run: |
+          set -a; . ../../.env.worktree; set +a
+          uv run alembic upgrade head && uv run alembic downgrade base && uv run alembic upgrade head
+          uv run alembic check
+      - name: Integration tests (MySQL app_test schema)
+        run: set -a; . ../../.env.worktree; set +a; uv run pytest -q
+      - name: Contract export is reproducible
+        run: uv run python -m app.export_openapi && git diff --exit-code -- ../../docs/contracts
+      - name: Supervisor failover tests (simulated failures, no real quota)
+        working-directory: .
+        run: uv run --no-project --python 3.15 python -m unittest tools/agent-supervisor/test_supervisor.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with: { name: openapi, path: docs/contracts/openapi.json }
+
+  web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .nvmrc }
+      - run: npm install -g pnpm@12.16.1 && pnpm install --frozen-lockfile  # Node 26 ships without corepack
+      - name: Contract client + design tokens drift
+        run: pnpm check:drift
+      - run: pnpm --filter @repo/design-tokens test
+      - name: Type-check both consumers (dashboard + mobile) and shared packages
+        run: pnpm -r typecheck
+      - run: pnpm --filter @repo/web-dashboard test
+      - run: pnpm --filter @repo/web-dashboard build
+      - name: Expo SDK dependency compatibility
+        run: pnpm --filter @repo/mobile-client doctor
+
+  images:
+    needs: [api, web]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build immutable images (pushed only by deploy.yml)
+        run: |
+          docker build -t cleaning-api:${{ github.sha }} apps/api
+          docker build -t cleaning-origin:${{ github.sha }} -f infra/nginx/Dockerfile .

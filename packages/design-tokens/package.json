@@ -1,0 +1,19 @@
+{
+  "name": "@repo/design-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tokens.css": "./dist/tokens.css",
+    "./tailwind-theme.css": "./dist/tailwind-theme.css",
+    "./native": { "types": "./dist/native.d.ts", "default": "./dist/native.js" },
+    "./nativewind-preset": "./dist/nativewind-preset.cjs",
+    "./brand.json": "./src/brand.json"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test scripts/build.test.mjs",
+    "typecheck": "node scripts/build.mjs"
+  },
+  "devDependencies": { "ajv": "8.20.0" }
+}

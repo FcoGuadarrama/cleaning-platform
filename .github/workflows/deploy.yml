@@ -1,0 +1,55 @@
+# Staging delivery is automatic after CI on main; production requires the `production` environment
+# approval (configure required reviewers in GitHub → Settings → Environments). No live payments are enabled.
+name: deploy
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag: { description: "Git SHA already built for staging", required: true }
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ github.event.workflow_run.head_sha }}" }
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with: { context: apps/api, push: true, tags: "ghcr.io/${{ github.repository }}/cleaning-api:${{ github.event.workflow_run.head_sha }}" }
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with: { context: ., file: infra/nginx/Dockerfile, push: true, tags: "ghcr.io/${{ github.repository }}/cleaning-origin:${{ github.event.workflow_run.head_sha }}" }
+
+  staging:
+    needs: publish
+    runs-on: ubuntu-24.04
+    environment: staging
+    steps:
+      - name: Deploy by immutable tag over SSH (host not chosen yet)
+        if: vars.STAGING_SSH_HOST != ''
+        env: { SSH_KEY: "${{ secrets.STAGING_SSH_KEY }}", TAG: "${{ github.event.workflow_run.head_sha }}" }
+        run: |
+          install -m 600 /dev/null key && printf '%s\n' "$SSH_KEY" > key
+          ssh -i key -o StrictHostKeyChecking=yes ${{ vars.STAGING_SSH_HOST }} \
+            "cd /srv/cleaning-platform && scripts/deploy.sh staging $TAG"
+      - if: vars.STAGING_SSH_HOST == ''
+        run: echo "STAGING_SSH_HOST not configured; images published, deploy skipped."
+
+  production:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    environment: production   # owner approval gate
+    steps:
+      - env: { SSH_KEY: "${{ secrets.PRODUCTION_SSH_KEY }}", TAG: "${{ inputs.image_tag }}" }
+        run: |
+          install -m 600 /dev/null key && printf '%s\n' "$SSH_KEY" > key
+          ssh -i key -o StrictHostKeyChecking=yes ${{ vars.PRODUCTION_SSH_HOST }} \
+            "cd /srv/cleaning-platform && scripts/deploy.sh production $TAG"

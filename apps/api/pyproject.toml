@@ -1,0 +1,42 @@
+[project]
+name = "cleaning-api"
+version = "0.1.0"
+requires-python = "==3.15.*"
+dependencies = [
+  "fastapi==0.162.0",
+  "pydantic==2.14.2",
+  "sqlalchemy[asyncio]==2.1.6",
+  "alembic==1.20.1",
+  "asyncmy==0.2.17",
+  "uvicorn==0.54.0",
+  "email-validator",
+  "cryptography>=50.0.2",
+]
+
+[dependency-groups]
+dev = ["pytest", "pytest-asyncio", "httpx", "ruff", "mypy"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "S", "SIM"]
+ignore = ["S101", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S603", "S607"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["alembic/"]

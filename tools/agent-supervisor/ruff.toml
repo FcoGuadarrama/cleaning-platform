@@ -1,0 +1,6 @@
+# Supervisor launches fixed, known CLIs (git, uv, codex, claude) by design.
+extend = "../../apps/api/pyproject.toml"
+line-length = 120
+
+[lint]
+extend-ignore = ["S603", "S607"]

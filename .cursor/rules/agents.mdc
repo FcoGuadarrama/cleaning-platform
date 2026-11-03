@@ -1,0 +1,5 @@
+---
+description: Shared project rules (single source of truth is AGENTS.md)
+alwaysApply: true
+---
+Read and follow @AGENTS.md at the repository root before any change.

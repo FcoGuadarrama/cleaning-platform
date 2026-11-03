@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Limpieza",
+    "slug": "cleaning-platform",
+    "scheme": "cleaningplatform",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Usamos tu ubicación solo al registrar tu entrada y salida de un servicio.",
+          "isAndroidBackgroundLocationEnabled": false,
+          "isIosBackgroundLocationEnabled": false
+        }
+      ]
+    ],
+    "ios": { "supportsTablet": false },
+    "android": { "blockedPermissions": ["android.permission.ACCESS_BACKGROUND_LOCATION"] },
+    "experiments": { "typedRoutes": true }
+  }
+}

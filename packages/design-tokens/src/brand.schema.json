@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["name", "version", "color", "contrast", "typography", "spacing", "radius", "elevation", "minTouchTarget", "components", "assets"],
+  "additionalProperties": false,
+  "$defs": {
+    "hex": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+    "palette": {
+      "type": "object",
+      "required": ["background", "surface", "surface-raised", "border", "text", "text-muted", "primary", "on-primary", "success", "on-success", "warning", "on-warning", "danger", "on-danger", "focus", "disabled", "on-disabled"],
+      "additionalProperties": { "$ref": "#/$defs/hex" }
+    },
+    "numMap": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0 } }
+  },
+  "properties": {
+    "$schema": { "type": "string" },
+    "name": { "type": "string", "minLength": 1 },
+    "version": { "type": "integer", "minimum": 1 },
+    "color": {
+      "type": "object", "required": ["light", "dark"], "additionalProperties": false,
+      "properties": { "light": { "$ref": "#/$defs/palette" }, "dark": { "$ref": "#/$defs/palette" } }
+    },
+    "contrast": {
+      "type": "array",
+      "items": { "type": "array", "prefixItems": [{ "type": "string" }, { "type": "string" }], "minItems": 2, "maxItems": 2 }
+    },
+    "typography": {
+      "type": "object", "required": ["family", "size", "lineHeight", "weight"],
+      "properties": {
+        "family": { "type": "object", "additionalProperties": { "type": "string" } },
+        "size": { "$ref": "#/$defs/numMap" },
+        "lineHeight": { "$ref": "#/$defs/numMap" },
+        "weight": { "$ref": "#/$defs/numMap" }
+      }
+    },
+    "spacing": { "$ref": "#/$defs/numMap" },
+    "radius": { "$ref": "#/$defs/numMap" },
+    "elevation": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object", "required": ["y", "blur", "opacity"],
+        "properties": { "y": { "type": "number" }, "blur": { "type": "number" }, "opacity": { "type": "number", "minimum": 0, "maximum": 1 } }
+      }
+    },
+    "minTouchTarget": { "type": "number", "minimum": 44 },
+    "components": { "type": "object" },
+    "assets": { "type": "object", "additionalProperties": { "type": "string" } }
+  }
+}

@@ -1,0 +1,73 @@
+/* GENERATED from src/brand.json by scripts/build.mjs — do not edit. */
+:root {
+  --color-background: #FFFFFF;
+  --color-surface: #F5F5F7;
+  --color-surface-raised: #FFFFFF;
+  --color-border: #D2D2D7;
+  --color-text: #1D1D1F;
+  --color-text-muted: #5C5C63;
+  --color-primary: #2F5D8A;
+  --color-on-primary: #FFFFFF;
+  --color-success: #1E7B3A;
+  --color-on-success: #FFFFFF;
+  --color-warning: #8A5A00;
+  --color-on-warning: #FFFFFF;
+  --color-danger: #B3261E;
+  --color-on-danger: #FFFFFF;
+  --color-focus: #2F5D8A;
+  --color-disabled: #E5E5EA;
+  --color-on-disabled: #55555A;
+  --text-xs: 12px;
+  --text-sm: 15px;
+  --text-md: 17px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+  --text-2xl: 34px;
+  --leading-xs: 16px;
+  --leading-sm: 20px;
+  --leading-md: 22px;
+  --leading-lg: 25px;
+  --leading-xl: 34px;
+  --leading-2xl: 41px;
+  --spacing-0: 0px;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+  --shadow-0: 0 0px 0px rgb(0 0 0 / 0);
+  --shadow-1: 0 1px 3px rgb(0 0 0 / 0.12);
+  --shadow-2: 0 4px 12px rgb(0 0 0 / 0.14);
+  --shadow-3: 0 8px 24px rgb(0 0 0 / 0.18);
+  --touch-target: 44px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #000000;
+    --color-surface: #1C1C1E;
+    --color-surface-raised: #2C2C2E;
+    --color-border: #3A3A3C;
+    --color-text: #F5F5F7;
+    --color-text-muted: #AEAEB2;
+    --color-primary: #8DB4DC;
+    --color-on-primary: #0B1B2B;
+    --color-success: #6FCF8C;
+    --color-on-success: #062010;
+    --color-warning: #F2C46B;
+    --color-on-warning: #2A1C00;
+    --color-danger: #FF8A80;
+    --color-on-danger: #2B0603;
+    --color-focus: #8DB4DC;
+    --color-disabled: #2C2C2E;
+    --color-on-disabled: #A1A1A6;
+  }
+}
