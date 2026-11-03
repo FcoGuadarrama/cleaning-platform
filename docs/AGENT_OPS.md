@@ -59,6 +59,15 @@ on subscription billing (never API-key billing); if none available → `pause_al
 3. It runs `shep feat ls` / `shep feat status <id>` for every feature, then `supervisor.py verify` per worktree.
 4. Never two coordinators at once; never change the global Shep agent while a feature is running.
 
+## Git remote (personal GitHub)
+`origin` = `git@github.com-personal:FcoGuadarrama/cleaning-platform.git` (verified 2026-11-03: repo exists, empty).
+- Use the `github.com-personal` SSH alias from `~/.ssh/config`; plain `git@github.com` is rejected (no default key),
+  and `github.com-trabajo` is the work account. Never point this repo at the work account or org.
+- `FcoGuadarrama-personal/cleaning-platform` does not exist (`api.github.com` → 404); use the owner above.
+- Check access without writing: `git ls-remote origin` (no output + exit 0 = reachable and empty).
+- Pushing is an owner-approved step (AGENTS.md). A push to `main` triggers `ci` and then `deploy` (staging),
+  which fails until the repository secrets and `production` environment are configured.
+
 ## Parallelism
 One active worker until a Shep-routed Codex task passes. Then parallelise only independent tasks; one owner per
 worktree; contract (`docs/contracts`) and migration (`apps/api/alembic/versions`) changes are serialised.
