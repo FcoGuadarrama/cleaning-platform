@@ -1,5 +1,20 @@
 # Per-worktree environment. Run: ./scripts/wt-env.sh && docker compose --env-file .env.worktree up -d mysql
+# Full local stack (MySQL + API + web dashboard + Expo web) lives under the `app` profile:
+#   ./scripts/dev-stack.sh        (see the script for up -d / down / logs / ps)
 name: ${COMPOSE_PROJECT_NAME:?run scripts/wt-env.sh}
+
+x-api-env: &api-env
+  DATABASE_URL: mysql+asyncmy://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?charset=utf8mb4
+  SANDBOX_WEBHOOK_SECRET: ${SANDBOX_WEBHOOK_SECRET:?run scripts/wt-env.sh}
+
+x-api-image: &api-image
+  build: { context: ./apps/api }
+  image: ${COMPOSE_PROJECT_NAME}-api:dev
+
+x-node-image: &node-image
+  build: { context: ., dockerfile: infra/dev/node.Dockerfile }
+  image: ${COMPOSE_PROJECT_NAME}-node:dev
+
 services:
   mysql:
     image: mysql:9.7.4@sha256:df90258da46f6e7ff8574ff84f17618aba0765cac749928299c69fd4e7cb8ad8
@@ -17,5 +32,67 @@ services:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 3s
       retries: 40
+
+  api:
+    <<: *api-image
+    profiles: [app]
+    # Migrations run on every (re)start, so a new Alembic revision applies when the watcher restarts the container.
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app"]
+    environment:
+      <<: *api-env
+      CORS_ORIGINS: http://localhost:${MOBILE_PORT},http://127.0.0.1:${MOBILE_PORT}
+    ports: ["127.0.0.1:${API_PORT}:8000"]
+    depends_on: { mysql: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+    develop:
+      watch:
+        - { action: sync, path: ./apps/api/app, target: /app/app, ignore: [__pycache__/] }
+        - { action: sync+restart, path: ./apps/api/alembic, target: /app/alembic, ignore: [__pycache__/] }
+        - { action: rebuild, path: ./apps/api/uv.lock }
+
+  admin:
+    <<: *api-image
+    profiles: [app]
+    command: ["python", "-m", "app.create_admin", "admin@admin.com"]
+    environment:
+      <<: *api-env
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?run scripts/wt-env.sh}
+    depends_on: { api: { condition: service_healthy } }
+    healthcheck: { disable: true }
+    restart: "no"
+
+  web:
+    <<: *node-image
+    profiles: [app]
+    command: ["pnpm", "--filter", "@repo/web-dashboard", "exec", "vite", "--host", "0.0.0.0", "--port", "${WEB_PORT}", "--strictPort"]
+    environment:
+      API_URL: http://api:8000
+    ports: ["127.0.0.1:${WEB_PORT}:${WEB_PORT}"]
+    depends_on: { api: { condition: service_healthy } }
+    develop:
+      watch:
+        - { action: sync, path: ./apps/web-dashboard, target: /repo/apps/web-dashboard, ignore: [node_modules/, dist/] }
+        - { action: sync, path: ./packages, target: /repo/packages, ignore: [node_modules/] }
+        - { action: rebuild, path: ./pnpm-lock.yaml }
+
+  mobile:
+    <<: *node-image
+    profiles: [app]
+    command: ["pnpm", "--filter", "@repo/mobile-client", "exec", "expo", "start", "--web", "--port", "${MOBILE_PORT}"]
+    environment:
+      EXPO_PUBLIC_API_URL: http://localhost:${API_PORT}
+      EXPO_NO_TELEMETRY: "1"
+    ports: ["127.0.0.1:${MOBILE_PORT}:${MOBILE_PORT}"]
+    depends_on: { api: { condition: service_healthy } }
+    develop:
+      watch:
+        - { action: sync, path: ./apps/mobile-client, target: /repo/apps/mobile-client, ignore: [node_modules/, .expo/] }
+        - { action: sync, path: ./packages, target: /repo/packages, ignore: [node_modules/] }
+        - { action: rebuild, path: ./pnpm-lock.yaml }
+
 volumes:
   mysql-data:

@@ -26,6 +26,17 @@ Routers never touch ORM internals beyond calling services; services own transact
 UTC `DATETIME(6)` in DB; API emits RFC 3339 with `Z`. Weekday/week rules evaluated in `America/Mexico_City`.
 Money = `amount_minor` (BIGINT) + `currency` (CHAR 3).
 
+## Local full stack (`docker-compose.yml`, profile `app`)
+`scripts/dev-stack.sh` (or `pnpm stack`) builds and starts `mysql`, `api` (runs `alembic upgrade head`, then uvicorn
+`--reload`), the one-shot `admin` bootstrap (`admin@admin.com`, idempotent, password in `.env.worktree`), `web`
+(Vite dev server proxying `/api` to `api:8000`) and `mobile` (Expo web; calls the API on the host port, allowed via
+`CORS_ORIGINS`). The default `up` attaches with `docker compose watch`: edits under `apps/` and `packages/` sync into the
+containers; changing `pnpm-lock.yaml` or `uv.lock` rebuilds the image. `up -d` runs detached without sync. JS deps are
+installed inside the Linux image (`infra/dev/node.Dockerfile`), never bind-mounted from the host. Ports come from
+`.env.worktree`, so several worktrees can run their stacks at once. Native Expo Go is not containerised; run
+`pnpm --filter @repo/mobile-client start` on the host for devices.
+Step-by-step guide for the owner (Spanish): `docs/RUNNING.md`.
+
 ## Edge / deploy
 Cloudflare (Full-strict TLS with origin certificate) → Nginx (TLS, `set_real_ip_from` Cloudflare ranges) → api / dashboard static.
 MySQL is only on the internal compose network. Production promotion requires owner approval.

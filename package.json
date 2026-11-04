@@ -8,6 +8,7 @@
     "typecheck": "pnpm -r typecheck",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "check:drift": "pnpm generate && git diff --exit-code -- docs/contracts packages/api-client/src packages/design-tokens/dist"
+    "check:drift": "pnpm generate && git diff --exit-code -- docs/contracts packages/api-client/src packages/design-tokens/dist",
+    "stack": "./scripts/dev-stack.sh"
   }
 }

@@ -1,0 +1,14 @@
+**/node_modules
+**/.expo
+**/.aislop
+**/.DS_Store
+**/*.tsbuildinfo
+apps/web-dashboard/dist
+apps/api
+.git
+.env*
+.agent-supervisor
+backups
+docs
+specs
+tools

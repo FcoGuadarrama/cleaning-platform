@@ -10,6 +10,7 @@ Technical docs, code and this file: English. Owner communication and customer-fa
 4. `docs/DOMAIN.md` (invariants) → 5. only the contracts your task touches in `docs/contracts/`.
 Index: `docs/PRODUCT.md` scope · `docs/ARCHITECTURE.md` + `docs/adr/` · `docs/VERSIONS.md` ·
 `docs/DESIGN.md` · `docs/SPRINTS.md` · `docs/STATE.md` · `docs/AGENT_OPS.md` (Shep, failover, handover).
+`docs/RUNNING.md` (owner guide: run the whole app in Docker).
 
 ## Hard rules
 - Stack is fixed (FastAPI/SQLAlchemy async/Alembic · Vue+Vite+Pinia+Tailwind · Expo+Router+NativeWind · MySQL). No substitutions.
@@ -28,6 +29,7 @@ Index: `docs/PRODUCT.md` scope · `docs/ARCHITECTURE.md` + `docs/adr/` · `docs/
 ```sh
 npm i -g pnpm@12.16.1 && pnpm install          # JS workspace (Node 26 has no corepack)
 ./scripts/wt-env.sh                             # writes .env.worktree (unique compose project/ports/db)
+./scripts/dev-stack.sh                          # whole app in Docker: db + api + web + Expo web (down|logs|ps)
 docker compose --env-file .env.worktree up -d mysql
 set -a && . ./.env.worktree && set +a          # export DATABASE_URL / TEST_DATABASE_URL
 cd apps/api && uv sync && uv run alembic upgrade head
