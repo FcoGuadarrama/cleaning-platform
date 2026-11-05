@@ -1,8 +1,138 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 @import "@repo/design-tokens/tokens.css";
 @import "@repo/design-tokens/tailwind-theme.css";
 
-:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
+/*
+ * shadcn-vue reads its own variable names. Each one aliases a brand token so the
+ * dashboard never carries a color of its own; tints are mixes of a token.
+ */
+@theme inline {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui,
+    sans-serif;
+  --color-foreground: var(--color-text);
+  --color-card: var(--color-surface-raised);
+  --color-card-foreground: var(--color-text);
+  --color-popover: var(--color-surface-raised);
+  --color-popover-foreground: var(--color-text);
+  --color-primary-foreground: var(--color-on-primary);
+  --color-secondary: var(--color-surface);
+  --color-secondary-foreground: var(--color-text);
+  --color-muted: var(--color-surface);
+  --color-muted-foreground: var(--color-text-muted);
+  --color-accent: color-mix(in oklab, var(--color-text) 6%, transparent);
+  --color-accent-foreground: var(--color-text);
+  --color-destructive: var(--color-danger);
+  --color-destructive-foreground: var(--color-on-danger);
+  --color-input: var(--color-border);
+  --color-ring: var(--color-focus);
+  --color-hairline: color-mix(in oklab, var(--color-border) 70%, transparent);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root {
+  --radius: var(--radius-md);
+}
+
+@layer base {
+  * {
+    @apply border-hairline outline-ring/50;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-surface font-sans text-foreground;
+    font-size: var(--text-sm);
+    line-height: var(--leading-sm);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Large title: tight leading and negative tracking as the size grows. */
+  .title-large {
+    font-size: var(--text-xl);
+    line-height: var(--leading-xl);
+    font-weight: 700;
+    letter-spacing: -0.021em;
+  }
+  .title-section {
+    font-size: var(--text-lg);
+    line-height: var(--leading-lg);
+    font-weight: 600;
+    letter-spacing: -0.012em;
+  }
+
+  /* Floating chrome: content scrolls under a translucent bar. */
+  .material-bar {
+    background: color-mix(in oklab, var(--color-surface) 78%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  /* Cards sit on the surface canvas; the shadow only exists in light mode, where it reads as lift. */
+  .panel {
+    @apply rounded-xl bg-surface-raised ring-1 ring-hairline;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 1px rgb(0 0 0 / 0.02);
+  }
+
+  /* Grouped list: one container, hairlines between rows. */
+  .grouped {
+    @apply overflow-hidden rounded-xl bg-surface-raised ring-1 ring-hairline;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 1px rgb(0 0 0 / 0.02);
+  }
+  .grouped > * + * {
+    @apply border-t border-hairline;
+  }
+
+  /* Tentative bookings (payment pending) read as hatched, like a tentative calendar event. */
+  .hatched {
+    background-image: repeating-linear-gradient(
+      135deg,
+      color-mix(in oklab, currentColor 14%, transparent) 0 6px,
+      transparent 6px 12px
+    );
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .panel,
+  .grouped {
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .material-bar {
+    background: var(--color-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .panel,
+  .grouped {
+    @apply ring-border;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Slides and zooms become cross-fades; feedback stays, vestibular motion goes. */
+  [data-state] {
+    --tw-enter-translate-x: 0 !important;
+    --tw-enter-translate-y: 0 !important;
+    --tw-exit-translate-x: 0 !important;
+    --tw-exit-translate-y: 0 !important;
+    --tw-enter-scale: 1 !important;
+    --tw-exit-scale: 1 !important;
+    --tw-enter-opacity: 0 !important;
+    --tw-exit-opacity: 0 !important;
+  }
 }
