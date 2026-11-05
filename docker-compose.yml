@@ -94,5 +94,23 @@ services:
         - { action: sync, path: ./packages, target: /repo/packages, ignore: [node_modules/] }
         - { action: rebuild, path: ./pnpm-lock.yaml }
 
+  # EAS CLI for cloud builds: `scripts/dev-stack.sh eas <args>`. Not started by `up`; only `compose run` targets it.
+  # The project root uploaded to EAS is the image's /repo (already stripped by node.Dockerfile.dockerignore).
+  # apps/mobile-client is bind-mounted so EAS writes (projectId, bundleIdentifier in app.json) land on the host.
+  eas:
+    <<: *node-image
+    profiles: [eas]
+    working_dir: /repo/apps/mobile-client
+    entrypoint: ["pnpm", "exec", "eas"]
+    environment:
+      EAS_NO_VCS: "1"
+      EAS_PROJECT_ROOT: /repo
+      EXPO_NO_TELEMETRY: "1"
+    volumes:
+      - ./apps/mobile-client:/repo/apps/mobile-client
+      - /repo/apps/mobile-client/node_modules
+      - expo-home:/home/node
+
 volumes:
   mysql-data:
+  expo-home:

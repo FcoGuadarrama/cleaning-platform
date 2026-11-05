@@ -27,3 +27,9 @@ minimumReleaseAgeExclude:
 peerDependencyRules:
   allowedVersions:
     openapi-typescript>typescript: "6.0.3"
+
+# eas-cli transitive deps. dtrace-provider is an optional native binding for bunyan and
+# protobufjs' postinstall only checks versions; the CLI works without either.
+allowBuilds:
+  dtrace-provider: false
+  protobufjs: false

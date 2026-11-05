@@ -55,6 +55,8 @@ Si cambias `pnpm-lock.yaml` o `apps/api/uv.lock`, la imagen correspondiente se r
 | Comando | Qué hace |
 | --- | --- |
 | `./scripts/dev-stack.sh up -d` | Levanta todo en segundo plano. No copia cambios en vivo. |
+| `./scripts/dev-stack.sh up --ios` | Manda un build de desarrollo para iPhone a EAS y luego levanta todo. Se combina con `-d`. |
+| `./scripts/dev-stack.sh eas <comando>` | Corre cualquier comando de EAS CLI dentro de Docker, por ejemplo `eas login`. |
 | `./scripts/dev-stack.sh down` | Detiene y borra los contenedores. Los datos de MySQL se conservan. |
 | `./scripts/dev-stack.sh logs` | Muestra los logs de todos los servicios. |
 | `./scripts/dev-stack.sh logs api` | Muestra los logs de un servicio: `api`, `web`, `mobile`, `mysql` o `admin`. |
@@ -74,6 +76,44 @@ EXPO_PUBLIC_API_URL=http://<IP-de-tu-Mac>:<API_PORT> pnpm --filter @repo/mobile-
 
 `API_PORT` está en `.env.worktree`. El puerto de la API solo escucha en `127.0.0.1`, así que para que el
 teléfono lo alcance tendrías que cambiar ese mapeo en `docker-compose.yml`.
+
+## Build de desarrollo para iPhone (EAS)
+
+Un development build es la app compilada con su propio cliente de desarrollo, en lugar de Expo Go. EAS la compila
+en la nube de Expo. El CLI corre dentro de Docker, así que no necesitas instalar `eas-cli`.
+
+Necesitas una membresía activa del Apple Developer Program y una cuenta de Expo. La primera vez:
+
+```sh
+./scripts/dev-stack.sh eas login
+./scripts/dev-stack.sh eas device:create
+./scripts/dev-stack.sh up --ios
+```
+
+1. `eas login` guarda la sesión en el volumen de Docker `expo-home`. No hay que repetirlo.
+2. `eas device:create` muestra un QR. Ábrelo en el iPhone para registrarlo en el perfil ad hoc.
+3. `up --ios` manda el build y después levanta el stack. La primera vez EAS te pregunta si crea el proyecto en tu
+   cuenta de Expo, qué bundle identifier usar y tu Apple ID para generar el certificado y el perfil. El ID del
+   proyecto y el bundle identifier quedan en `apps/mobile-client/app.json`; súbelos a Git.
+
+El script no espera a que el build termine, porque tarda varios minutos. Imprime el link a la página del build en
+expo.dev, y ahí aparece el QR de instalación cuando acaba. Escanéalo con la cámara del iPhone.
+
+Después activa el modo desarrollador en el iPhone: Ajustes > Privacidad y seguridad > Modo de desarrollador.
+Enciéndelo, deja que se reinicie y, al volver, confirma con Activar y tu código.
+
+`--ios` es opcional porque cada build cuenta contra la cuota de tu plan de Expo. Solo necesitas uno nuevo cuando
+cambian dependencias nativas, permisos o `app.json`; los cambios de JavaScript llegan por Metro sin recompilar.
+
+Para mandar solo el build y esperar el QR en la terminal, sin levantar el stack:
+
+```sh
+./scripts/dev-stack.sh eas build --platform ios --profile development
+```
+
+El development build carga el JavaScript desde Metro. Metro y la API en Docker solo escuchan en `127.0.0.1`, así
+que el iPhone todavía no los alcanza; por ahora corre Metro desde tu máquina como en la sección anterior. Con
+`expo-dev-client` instalado, `expo start` abre en modo development build. Presiona `s` para cambiar a Expo Go.
 
 ## Correr los tests de la API
 

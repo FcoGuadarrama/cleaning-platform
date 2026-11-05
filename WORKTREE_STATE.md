@@ -1,37 +1,30 @@
 # WORKTREE STATE & HANDOFF LOG
-- **Feature:** docker-full-stack (one command to run the whole app in Docker)
+- **Feature:** eas-ios-dev-build (EAS cloud iOS development build from the Docker run command)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-04T16:38:52Z
-- **Branch / Worktree:** feature/docker (current worktree)
-- **Base SHA:** 6c57d57024beedb2fe75142e3c6ff949e2fdca4d
-- **Contract Version:** docs/contracts/openapi.json sha256 99336ffb99c2101aa635337ef156a9720934d642afa0e939a2f62b7bf74d4b20 (unchanged)
-- **Database:** compose project cp_29c0b027, volume cp_29c0b027_mysql-data (migrated to head; admin@admin.com id=1)
+- **Last Updated:** 2026-11-05T22:26:45Z
+- **Branch / Worktree:** feature/agregar-expo-services (current worktree)
+- **Base SHA:** 9e3bf4e96816f0fb6e07eaa4d87259815d438b23
+- **Contract Version:** docs/contracts/openapi.json unchanged (no API changes)
+- **Database:** compose project from .env.worktree; stack verified then stopped with `dev-stack.sh down` (volume kept)
 
 ## Microtask checklist
-- [x] 1. scripts/wt-env.sh appends missing keys to an existing .env.worktree (WEB_PORT, MOBILE_PORT, SANDBOX_WEBHOOK_SECRET, ADMIN_PASSWORD) and keeps existing values.
-- [x] 2. app.create_admin is idempotent (skips an existing admin, exits non-zero if the email belongs to another role).
-- [x] 3. docker-compose.yml profile `app`: api (migrate + uvicorn --reload), admin one-shot, web (Vite), mobile (Expo web); infra/dev/node.Dockerfile.
-- [x] 4. scripts/dev-stack.sh [up [-d] | down | logs | ps] + `pnpm stack` alias.
-- [x] 5. Docs: AGENTS.md commands, docs/ARCHITECTURE.md "Local full stack".
-- [x] 6. docs/RUNNING.md: owner run guide in Spanish (owner-facing, per AGENTS.md language rule), linked from AGENTS.md and ARCHITECTURE.md.
+- [x] 1. apps/mobile-client: expo-dev-client ~58.0.18 (SDK 58 bundled), devDependency eas-cli 27.4.1, eas.json profile `development` (developmentClient, internal distribution, node 26.13.0, pnpm 12.16.1). Lockfile regenerated with pnpm 12.16.1 in node:26.13.0.
+- [x] 2. pnpm-workspace.yaml `allowBuilds` denies dtrace-provider and protobufjs (eas-cli transitive; pnpm 12 fails with ERR_PNPM_IGNORED_BUILDS otherwise).
+- [x] 3. docker-compose.yml one-off `eas` service (profile `eas`): EAS_NO_VCS=1, EAS_PROJECT_ROOT=/repo, bind-mount apps/mobile-client, anonymous volume for its node_modules, `expo-home` volume for Expo/Apple sessions. node.Dockerfile copies .gitignore so EAS uses git's ignore rules.
+- [x] 4. scripts/dev-stack.sh: `up [-d] [--ios]` (--ios runs `eas build --platform ios --profile development --no-wait` first and aborts the stack if it fails) and `eas <args>` passthrough.
+- [x] 5. Docs: RUNNING.md (Spanish owner guide), ARCHITECTURE.md, VERSIONS.md, AGENTS.md commands.
 
 ## Immediate context / Handoff notes
-`docker compose up -d mysql` without a profile still starts only MySQL, so the test workflow is unchanged.
-Native Expo Go (devices) is not containerised; only Expo web runs in Docker.
+Not done, needs the owner: `eas login`, `eas device:create` and the first real build (interactive Apple/Expo prompts write extra.eas.projectId and ios.bundleIdentifier into app.json). No cloud build was submitted by the agent (EAS quota = owner spend).
+Open follow-up: the dev build loads JS from Metro, but Docker binds Metro and the API to 127.0.0.1, so a phone cannot reach them yet.
 
 ## Verification
-- `./scripts/dev-stack.sh up -d`: all services healthy; admin created. API /healthz ok; login via Vite proxy /api returns a token;
-  CORS preflight from the Expo origin allowed; Expo web index + bundle 200 and bundle embeds the host API URL.
-- `./scripts/dev-stack.sh` (watch): edits to apps/api/app/main.py and apps/web-dashboard/src/App.vue synced; uvicorn reloaded; admin rerun printed "already exists".
-- `./scripts/dev-stack.sh down`: containers and network removed, MySQL volume kept.
-- apps/api: ruff check/format and mypy on create_admin.py clean; `uv run pytest` 21 passed (2026-11-03T19:59:54Z).
-- shellcheck and aislop are not installed on this machine; not run.
+- `dev-stack.sh eas --version` → eas-cli/27.4.1 linux-arm64 node-v26.13.0.
+- `expo config --type public` resolves inside the eas container.
+- eas-cli 27.4.1 source: NoVcsClient honors absolute EAS_PROJECT_ROOT; node_modules is always ignored.
+- `dev-stack.sh up -d`: api healthy, admin created, web 200, Expo web index 200 and web bundle 200 (4.2 MB) with expo-dev-client installed.
+- `dev-stack.sh up -d --ios` without an Expo session: EAS reports login required, script exits before starting the stack (0 containers).
+- Invalid args (`bogus`, `up --nope`) print usage and exit 2. `bash -n` clean. shellcheck/aislop not installed; not run.
 
 ## Partial work
-- Modified or new files: AGENTS.md, docker-compose.yml, docs/ARCHITECTURE.md, package.json, scripts/wt-env.sh, scripts/dev-stack.sh,
-  apps/api/app/create_admin.py, docs/RUNNING.md, infra/dev/node.Dockerfile, infra/dev/node.Dockerfile.dockerignore, WORKTREE_STATE.md.
-- Operations in progress: none (worktree MySQL container left running for tests).
-- Blockers: none.
-
-## Exact next action
-- Owner review; merge/push only with explicit approval.
+None.

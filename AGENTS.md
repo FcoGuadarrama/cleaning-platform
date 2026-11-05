@@ -30,6 +30,7 @@ Index: `docs/PRODUCT.md` scope · `docs/ARCHITECTURE.md` + `docs/adr/` · `docs/
 npm i -g pnpm@12.16.1 && pnpm install          # JS workspace (Node 26 has no corepack)
 ./scripts/wt-env.sh                             # writes .env.worktree (unique compose project/ports/db)
 ./scripts/dev-stack.sh                          # whole app in Docker: db + api + web + Expo web (down|logs|ps)
+./scripts/dev-stack.sh up --ios                 # same, after queueing an EAS iOS development build (eas <args> for any EAS command)
 docker compose --env-file .env.worktree up -d mysql
 set -a && . ./.env.worktree && set +a          # export DATABASE_URL / TEST_DATABASE_URL
 cd apps/api && uv sync && uv run alembic upgrade head

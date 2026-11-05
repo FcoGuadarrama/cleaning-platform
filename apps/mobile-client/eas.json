@@ -1,0 +1,11 @@
+{
+  "cli": { "version": ">= 27.4.1", "appVersionSource": "remote" },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "node": "26.13.0",
+      "pnpm": "12.16.1"
+    }
+  }
+}
