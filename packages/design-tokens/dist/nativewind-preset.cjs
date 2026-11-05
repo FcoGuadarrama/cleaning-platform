@@ -12,6 +12,9 @@ module.exports = {
         "primary": "#2F5D8A",
         "on-primary": "#FFFFFF",
         "primary-soft": "#E8EFF6",
+        "accent": "#F2A93B",
+        "on-accent": "#2A1C00",
+        "accent-soft": "#FDF1DD",
         "success": "#1E7B3A",
         "on-success": "#FFFFFF",
         "success-soft": "#E6F4EA",
@@ -30,6 +33,7 @@ module.exports = {
         "md": "10px",
         "lg": "14px",
         "xl": "20px",
+        "2xl": "28px",
         "full": "9999px"
       },
       "spacing": {

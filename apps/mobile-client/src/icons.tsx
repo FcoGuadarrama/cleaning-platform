@@ -55,17 +55,45 @@ const PATHS = {
       <Path d="M10.5 12H20M16.5 8.5 20 12l-3.5 3.5" />
     </>
   ),
+  back: <Path d="M15 5.5 8.5 12l6.5 6.5" />,
+  star: <Path d="m12 3.8 2.5 5.1 5.6.8-4 4 .9 5.6L12 16.6l-5 2.7.9-5.6-4-4 5.6-.8z" />,
+  sparkle: (
+    <>
+      <Path d="M10 3.5c.5 3.6 2 5.1 5.5 5.5-3.5.5-5 2-5.5 5.5-.5-3.5-2-5-5.5-5.5 3.5-.4 5-1.9 5.5-5.5z" />
+      <Path d="M17.5 13.5c.3 2 1.1 2.8 3 3-1.9.3-2.7 1.1-3 3-.2-1.9-1-2.7-3-3 2-.2 2.8-1 3-3z" />
+    </>
+  ),
+  drop: <Path d="M12 3.5s-6 6.4-6 10.7a6 6 0 0 0 12 0C18 9.9 12 3.5 12 3.5z" />,
+  broom: (
+    <>
+      <Path d="M19.5 4.5 13 11" />
+      <Path d="M10.8 9.2 15 13.4c-1 3.6-3.6 6.2-8.6 6.6-.6-5 2.2-8.6 4.4-10.8z" />
+      <Path d="M8.5 15.5 6 18" />
+    </>
+  ),
+  shield: (
+    <>
+      <Path d="M12 3.5 5 6.2v5.3c0 4.4 3 7.7 7 9 4-1.3 7-4.6 7-9V6.2z" />
+      <Path d="m9 12 2.2 2.2L15.2 10" />
+    </>
+  ),
+  mail: (
+    <>
+      <Rect x={3.5} y={5.5} width={17} height={13} rx={2.5} />
+      <Path d="m4.5 7 7.5 6 7.5-6" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof PATHS;
 
-export function Icon({ name, size = 24, color, strokeWidth = 1.8 }: { name: IconName; size?: number; color: ColorValue; strokeWidth?: number }) {
+export function Icon({ name, size = 24, color, strokeWidth = 1.8, filled = false }: { name: IconName; size?: number; color: ColorValue; strokeWidth?: number; filled?: boolean }) {
   return (
     <Svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={filled ? color : "none"}
       stroke={color}
       strokeWidth={strokeWidth}
       strokeLinecap="round"

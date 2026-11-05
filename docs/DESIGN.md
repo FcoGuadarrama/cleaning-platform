@@ -34,16 +34,22 @@ pop the stack; minimal back-button label; system font; status bar follows scheme
 Planned: Android `android_ripple` press feedback; sheets for secondary flows. One brand, platform-native navigation;
 no experimental native UI used purely for appearance. Customer/staff copy is Spanish (es-MX); technical identifiers stay English.
 
-## Mobile client visual language (2026-11-05)
-- **Structure:** role-aware bottom tabs (customer: Personal · Reservas · Cuenta; staff: Servicios · Ganancias · Cuenta).
-  Tab roots use an iOS-style large title (`Page` in `src/ui.tsx`); pushed flows (`book`) use the native stack header.
-- **Surfaces:** `surface` is the screen background; content sits in inset grouped containers (`Group` + `Row`,
-  `surface-raised`, `radius.lg`, hairline dividers) instead of one shadowed card per item. One emphasised surface per
-  screen at most (staff "Siguiente servicio" on `primary`, earnings summary).
-- **People first:** cleaners are shown with monogram avatars (`Avatar`, `primary-soft`) until profile photos exist.
-- **Booking:** numbered steps (Servicio → Día → Hora → Dirección) because it is a real sequence; calendar day tiles,
-  a 3-column equal-width time grid and a fixed bottom summary bar with total + CTA.
-- **Status:** `Badge` tones map booking states (`BOOKING_TONES` in `src/format.ts`) to the `*-soft` tokens.
+## Mobile client visual language (2026-11-05, revised)
+Branding is **not decided**: `brand.json` ("Neutral") is a placeholder palette. Screens only use semantic tokens, so the
+final brand is a `brand.json` change + rebuild (plus `public/index.html` theme-color, the static web shell).
+- **No gradients** (owner decision). Solid token colors only.
+- **Structure:** role-aware tabs (customer: Inicio · Reservas · Cuenta; staff: Servicios · Ganancias · Cuenta) in a
+  floating rounded tab bar with a `primary-soft` active pill (`useTabScreenOptions` in `src/navigation.tsx`).
+- **Hero header:** every root screen opens on a solid `primary` header with rounded bottom (`HeroPage`/`Hero`), and the
+  first card overlaps its edge. The only decoration is the soap-bubble motif (`Bubbles`), drawn in `on-primary` alpha.
+- **Surfaces:** raised cards (`Card`, `radius.xl`, `elevation` tokens via `shadow()` in `src/theme.ts`) on `surface`.
+- **Color accents:** items and people get a stable tone (`toneFor`) from primary/accent/success/warning `-soft` tokens:
+  service tiles (`IconTile`), monogram avatars (until profile photos exist), status badges (`BOOKING_TONES`).
+- **Customer home:** next visit card, horizontal service tiles (selection carries into booking), team cards.
+- **Booking:** colored flow header with back button, four step cards (service → day → time → address), day tiles,
+  3-column time grid, raised bottom bar with total; confirmation as a perforated ticket; success screen after payment.
+- **Staff:** hero with counts, "Siguiente servicio" card with full-width check-in button, agenda cards; earnings shows
+  the week total in the hero and Generado → Aprobado → Pagado stages.
 - **Icons:** own 24×24 stroke set in `src/icons.tsx` (react-native-svg); decorative, the control carries the label.
 - **Web target:** `public/index.html` adds `viewport-fit=cover`, `theme-color`, no tap highlight, no overscroll chaining,
   `touch-action: manipulation` and 17 px inputs (no iOS zoom). Wide viewports keep a 480 px phone column.

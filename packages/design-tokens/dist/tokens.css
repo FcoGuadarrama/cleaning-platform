@@ -9,6 +9,9 @@
   --color-primary: #2F5D8A;
   --color-on-primary: #FFFFFF;
   --color-primary-soft: #E8EFF6;
+  --color-accent: #F2A93B;
+  --color-on-accent: #2A1C00;
+  --color-accent-soft: #FDF1DD;
   --color-success: #1E7B3A;
   --color-on-success: #FFFFFF;
   --color-success-soft: #E6F4EA;
@@ -47,6 +50,7 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
+  --radius-2xl: 28px;
   --radius-full: 9999px;
   --shadow-0: 0 0px 0px rgb(0 0 0 / 0);
   --shadow-1: 0 1px 3px rgb(0 0 0 / 0.12);
@@ -65,6 +69,9 @@
     --color-primary: #8DB4DC;
     --color-on-primary: #0B1B2B;
     --color-primary-soft: #16263A;
+    --color-accent: #F5BD62;
+    --color-on-accent: #2A1C00;
+    --color-accent-soft: #33260F;
     --color-success: #6FCF8C;
     --color-on-success: #062010;
     --color-success-soft: #0E2A17;

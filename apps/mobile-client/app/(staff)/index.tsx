@@ -6,8 +6,9 @@ import { DateBlock } from "../../src/DateBlock";
 import { BOOKING_LABELS, BOOKING_TONES, formatLongDay, formatTime, sentenceCase } from "../../src/format";
 import { captureAttendance } from "../../src/gps";
 import { Icon } from "../../src/icons";
-import { color } from "../../src/theme";
-import { Badge, Button, Group, Notice, Page, Section, StateView, type Tone } from "../../src/ui";
+import { useSession } from "../../src/session";
+import { alpha, color } from "../../src/theme";
+import { Badge, Button, Card, HeroPage, HeroText, IconTile, Notice, SectionHeader, StateView, type Tone } from "../../src/ui";
 import { useResource } from "../../src/useResource";
 
 type Booking = Schemas["BookingOut"];
@@ -20,37 +21,46 @@ const CAPTURE_MESSAGES: Record<string, { text: string; tone: Tone }> = {
 
 const actionable = (b: Booking) => b.status === "confirmed" || b.status === "in_progress";
 
+function HeroStat({ value, label }: { value: number; label: string }) {
+  return (
+    <View className="flex-1 gap-0.5 rounded-xl px-4 py-3" style={{ backgroundColor: alpha(color["on-primary"], 0.14) }}>
+      <Text className="text-xl font-extrabold text-on-primary">{value}</Text>
+      <Text className="text-xs font-semibold text-on-primary opacity-80">{label}</Text>
+    </View>
+  );
+}
+
 /** The service to act on now: one in progress, otherwise the earliest confirmed. */
 function NextService({ booking, busy, onAttend }: { booking: Booking; busy: boolean; onAttend: () => void }) {
   const started = booking.status === "in_progress";
   return (
-    <View className="gap-5 rounded-xl bg-primary p-5">
+    <Card className="gap-5 p-5">
       <View className="flex-row items-center justify-between">
-        <Text className="text-sm font-semibold text-on-primary opacity-80">{started ? "En curso" : "Siguiente servicio"}</Text>
-        <Text className="text-sm text-on-primary opacity-80">{sentenceCase(formatLongDay(booking.starts_at))}</Text>
+        <Badge label={started ? "En curso" : "Siguiente servicio"} tone={started ? "primary" : "success"} />
+        <Text className="text-sm font-medium text-text-muted">{sentenceCase(formatLongDay(booking.starts_at))}</Text>
       </View>
-      <View className="gap-1">
-        <Text className="text-2xl font-bold tracking-[-0.6px] text-on-primary">
-          {formatTime(booking.starts_at)} a {formatTime(booking.ends_at)}
+      <View className="gap-3">
+        <Text className="text-2xl font-extrabold tracking-[-0.8px] text-text">
+          {formatTime(booking.starts_at)} <Text className="text-xl font-bold text-text-muted">a {formatTime(booking.ends_at)}</Text>
         </Text>
-        <View className="flex-row items-start gap-2">
-          <Icon name="pin" size={20} color={color["on-primary"]} />
-          <Text className="flex-1 text-md text-on-primary">{booking.address}</Text>
+        <View className="flex-row items-center gap-3 rounded-lg bg-surface p-3">
+          <IconTile icon="pin" size={40} />
+          <Text className="flex-1 text-md font-medium text-text">{booking.address}</Text>
         </View>
       </View>
       <Button
-        variant="secondary"
         icon={started ? "check" : "pin"}
         label={started ? "Registrar salida" : "Registrar entrada"}
         hint="Usa tu ubicación actual una sola vez"
         busy={busy}
         onPress={onAttend}
       />
-    </View>
+    </Card>
   );
 }
 
 export default function StaffHome() {
+  const { user } = useSession();
   const bookings = useResource(() => api.GET("/bookings"));
   const [busyId, setBusyId] = useState<number | null>(null);
   const [notice, setNotice] = useState<{ text: string; tone: Tone } | null>(null);
@@ -70,9 +80,23 @@ export default function StaffHome() {
   const sorted = [...(bookings.data ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const next = sorted.find((b) => b.status === "in_progress") ?? sorted.find((b) => b.status === "confirmed");
   const rest = sorted.filter((b) => b.id !== next?.id);
+  const pending = sorted.filter(actionable).length;
+  const done = sorted.filter((b) => b.status === "completed" || b.status === "pending_review").length;
+  const firstName = user?.full_name.split(/\s+/)[0] ?? "";
 
   return (
-    <Page title="Mis servicios" onRefresh={bookings.refresh}>
+    <HeroPage
+      onRefresh={bookings.refresh}
+      hero={
+        <View className="gap-5">
+          <HeroText kicker={`Hola, ${firstName}`} title="Tus servicios" />
+          <View className="flex-row gap-3">
+            <HeroStat value={pending} label="Por hacer" />
+            <HeroStat value={done} label="Terminados" />
+          </View>
+        </View>
+      }
+    >
       {notice ? <Notice tone={notice.tone} icon={notice.tone === "success" ? "check" : "alert"} text={notice.text} /> : null}
       <StateView
         loading={bookings.loading}
@@ -83,35 +107,39 @@ export default function StaffHome() {
         emptyText="Cuando administración te asigne una visita aparecerá aquí."
         onRetry={bookings.refresh}
       >
-        {next ? <NextService booking={next} busy={busyId === next.id} onAttend={() => attend(next)} /> : null}
-        {rest.length ? (
-          <Section title="Agenda">
-            <Group>
+        <View className="gap-7">
+          {next ? <NextService booking={next} busy={busyId === next.id} onAttend={() => attend(next)} /> : null}
+          {rest.length ? (
+            <View className="gap-3">
+              <SectionHeader title="Agenda" detail={`${rest.length} más`} />
               {rest.map((b) => (
-                <View key={b.id} className="gap-3 px-4 py-3">
+                <Card key={b.id} className="gap-3">
                   <View className="flex-row items-center gap-4">
                     <DateBlock iso={b.starts_at} />
                     <View className="flex-1 gap-1">
-                      <Text className="text-md font-semibold text-text">{formatTime(b.starts_at)} a {formatTime(b.ends_at)}</Text>
-                      <Text numberOfLines={2} className="text-sm text-text-muted">{b.address}</Text>
+                      <Text className="text-md font-bold text-text">{formatTime(b.starts_at)} a {formatTime(b.ends_at)}</Text>
+                      <View className="flex-row items-center gap-1">
+                        <Icon name="pin" size={14} color={color["text-muted"]} />
+                        <Text numberOfLines={1} className="flex-1 text-sm text-text-muted">{b.address}</Text>
+                      </View>
+                      <Badge label={BOOKING_LABELS[b.status]} tone={BOOKING_TONES[b.status]} />
                     </View>
-                    <Badge label={BOOKING_LABELS[b.status]} tone={BOOKING_TONES[b.status]} />
                   </View>
                   {actionable(b) ? (
                     <Button
-                      variant="secondary"
+                      variant="soft"
                       label={b.status === "confirmed" ? "Registrar entrada" : "Registrar salida"}
                       hint="Usa tu ubicación actual una sola vez"
                       busy={busyId === b.id}
                       onPress={() => attend(b)}
                     />
                   ) : null}
-                </View>
+                </Card>
               ))}
-            </Group>
-          </Section>
-        ) : null}
+            </View>
+          ) : null}
+        </View>
       </StateView>
-    </Page>
+    </HeroPage>
   );
 }

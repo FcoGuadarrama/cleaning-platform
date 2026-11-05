@@ -1,32 +1,49 @@
 import { Pressable, Text, View } from "react-native";
-import { Icon } from "./icons";
+import { Icon, type IconName } from "./icons";
 import { useSession } from "./session";
 import { color } from "./theme";
-import { Avatar, Group, Page, Section } from "./ui";
+import { Avatar, Group, HeroPage, IconTile } from "./ui";
 
 const ROLE_LABELS = { customer: "Cliente", staff: "Personal de limpieza", admin: "Administración" } as const;
+
+function InfoRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+  return (
+    <View className="min-h-[64px] flex-row items-center gap-4 px-4 py-3">
+      <IconTile icon={icon} size={40} />
+      <View className="flex-1">
+        <Text className="text-xs font-semibold text-text-muted">{label}</Text>
+        <Text className="text-md font-medium text-text">{value}</Text>
+      </View>
+    </View>
+  );
+}
 
 export function AccountScreen() {
   const { user, logout } = useSession();
   if (!user) return null;
   return (
-    <Page title="Cuenta">
-      <View className="flex-row items-center gap-4 rounded-lg bg-surface-raised p-4">
-        <Avatar name={user.full_name} size="lg" />
-        <View className="flex-1 gap-0.5">
-          <Text className="text-lg font-semibold text-text">{user.full_name}</Text>
-          <Text className="text-sm text-text-muted">{user.email}</Text>
-          <Text className="text-xs text-text-muted">{ROLE_LABELS[user.role]}</Text>
+    <HeroPage
+      hero={
+        <View className="items-center gap-3 pt-2">
+          <Avatar name={user.full_name} size="xl" ring />
+          <View className="items-center gap-0.5">
+            <Text accessibilityRole="header" className="text-xl font-extrabold tracking-[-0.4px] text-on-primary">{user.full_name}</Text>
+            <Text className="text-md text-on-primary opacity-80">{ROLE_LABELS[user.role]}</Text>
+          </View>
         </View>
-      </View>
-      <Section>
-        <Group>
-          <Pressable accessibilityRole="button" onPress={logout} className="min-h-[52px] flex-row items-center gap-3 px-4 active:bg-surface">
-            <Icon name="logout" size={22} color={color.danger} />
-            <Text className="text-md font-medium text-danger">Cerrar sesión</Text>
-          </Pressable>
-        </Group>
-      </Section>
-    </Page>
+      }
+    >
+      <Group>
+        <InfoRow icon="mail" label="Correo electrónico" value={user.email} />
+      </Group>
+      <Group>
+        <Pressable accessibilityRole="button" onPress={logout} className="min-h-[60px] flex-row items-center gap-4 px-4 active:bg-surface">
+          <View className="h-10 w-10 items-center justify-center rounded-lg bg-danger-soft">
+            <Icon name="logout" size={20} color={color.danger} strokeWidth={2} />
+          </View>
+          <Text className="text-md font-bold text-danger">Cerrar sesión</Text>
+        </Pressable>
+      </Group>
+    </HeroPage>
   );
 }

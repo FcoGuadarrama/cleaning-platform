@@ -13,6 +13,9 @@ export const tokens = {
       "primary": "#2F5D8A",
       "on-primary": "#FFFFFF",
       "primary-soft": "#E8EFF6",
+      "accent": "#F2A93B",
+      "on-accent": "#2A1C00",
+      "accent-soft": "#FDF1DD",
       "success": "#1E7B3A",
       "on-success": "#FFFFFF",
       "success-soft": "#E6F4EA",
@@ -36,6 +39,9 @@ export const tokens = {
       "primary": "#8DB4DC",
       "on-primary": "#0B1B2B",
       "primary-soft": "#16263A",
+      "accent": "#F5BD62",
+      "on-accent": "#2A1C00",
+      "accent-soft": "#33260F",
       "success": "#6FCF8C",
       "on-success": "#062010",
       "success-soft": "#0E2A17",
@@ -95,6 +101,7 @@ export const tokens = {
     "md": 10,
     "lg": 14,
     "xl": 20,
+    "2xl": 28,
     "full": 9999
   },
   "elevation": {

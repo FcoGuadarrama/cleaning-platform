@@ -9,6 +9,9 @@
   --color-primary: var(--color-primary);
   --color-on-primary: var(--color-on-primary);
   --color-primary-soft: var(--color-primary-soft);
+  --color-accent: var(--color-accent);
+  --color-on-accent: var(--color-on-accent);
+  --color-accent-soft: var(--color-accent-soft);
   --color-success: var(--color-success);
   --color-on-success: var(--color-on-success);
   --color-success-soft: var(--color-success-soft);
@@ -25,6 +28,7 @@
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
   --radius-full: var(--radius-full);
   --shadow-0: var(--shadow-0);
   --shadow-1: var(--shadow-1);

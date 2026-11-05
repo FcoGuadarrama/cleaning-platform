@@ -7,7 +7,7 @@ export default function CustomerLayout() {
     <RoleGate role="customer">
       <Stack screenOptions={stackScreenOptions}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="book" options={{ title: "Reservar visita" }} />
+        <Stack.Screen name="book" options={{ headerShown: false }} />
       </Stack>
     </RoleGate>
   );
