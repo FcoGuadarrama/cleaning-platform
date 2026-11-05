@@ -1,7 +1,7 @@
 # WORKTREE STATE & HANDOFF LOG
 - **Feature:** docker-full-stack (one command to run the whole app in Docker)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-04T16:38:52Z
+- **Last Updated:** 2026-11-05T15:31:12Z
 - **Branch / Worktree:** feature/docker (current worktree)
 - **Base SHA:** 6c57d57024beedb2fe75142e3c6ff949e2fdca4d
 - **Contract Version:** docs/contracts/openapi.json sha256 99336ffb99c2101aa635337ef156a9720934d642afa0e939a2f62b7bf74d4b20 (unchanged)
@@ -14,6 +14,7 @@
 - [x] 4. scripts/dev-stack.sh [up [-d] | down | logs | ps] + `pnpm stack` alias.
 - [x] 5. Docs: AGENTS.md commands, docs/ARCHITECTURE.md "Local full stack".
 - [x] 6. docs/RUNNING.md: owner run guide in Spanish (owner-facing, per AGENTS.md language rule), linked from AGENTS.md and ARCHITECTURE.md.
+- [x] 7. API healthcheck: start_interval 2s during start_period, then every 300s (was every 3s, flooding logs with GET /healthz). Verified: healthy in 4s, 0 healthz lines in the next 20s.
 
 ## Immediate context / Handoff notes
 `docker compose up -d mysql` without a profile still starts only MySQL, so the test workflow is unchanged.
