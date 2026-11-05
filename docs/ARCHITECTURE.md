@@ -35,11 +35,6 @@ containers; changing `pnpm-lock.yaml` or `uv.lock` rebuilds the image. `up -d` r
 installed inside the Linux image (`infra/dev/node.Dockerfile`), never bind-mounted from the host. Ports come from
 `.env.worktree`, so several worktrees can run their stacks at once. Native Expo Go is not containerised; run
 `pnpm --filter @repo/mobile-client start` on the host for devices.
-`dev-stack.sh eas <args>` runs EAS CLI in the one-off `eas` service (profile `eas`, never started by `up`); `up --ios`
-queues `eas build --platform ios --profile development --no-wait` before starting the stack. The service uploads the
-image's `/repo` as the project root (`EAS_NO_VCS=1`, `EAS_PROJECT_ROOT=/repo`, ignore rules from the copied
-`.gitignore`), bind-mounts `apps/mobile-client` so EAS edits to `app.json` reach the host, and keeps the Expo and Apple
-sessions in the `expo-home` volume.
 Step-by-step guide for the owner (Spanish): `docs/RUNNING.md`.
 
 ## Edge / deploy
