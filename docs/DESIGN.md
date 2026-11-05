@@ -37,6 +37,11 @@ its own; tints are `color-mix()` of a token. Conventions:
 - Grouped lists (`.grouped`) instead of card grids; hairline separators; radius grows with surface size.
 - Translucent header (`.material-bar`) falls back to solid under `prefers-reduced-transparency`; overlays become
   cross-fades under `prefers-reduced-motion`; buttons scale to 0.97 on press and grow to 44 px on coarse pointers.
+- Canvas is `surface`; cards (`.panel`, `.grouped`) are `surface-raised` with a light-mode-only hairline shadow.
+- Charts are hand-built SVG/HTML in `src/components/charts/` (no chart library). One series uses the `chart`
+  token (`#2F6BC4` light, `#5A92DC` dark), validated with the dataviz palette script (lightness band, chroma floor,
+  ≥3:1 vs card surface); `primary` was too low-chroma for a data mark. Text never takes the series colour; every
+  chart has a hover/focus tooltip and an sr-only table. Metrics live in `src/viewmodels/metrics.ts` (tested).
 - Sheets and dialogs that represent a URL state (`?reserva=`, `?nuevo=1`) are driven by the route query.
 
 ## Platform adaptations

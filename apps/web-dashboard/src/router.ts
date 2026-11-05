@@ -5,7 +5,7 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/login", component: () => import("./views/LoginView.vue"), meta: { public: true, title: "Iniciar sesión" } },
-    { path: "/", component: () => import("./views/TodayView.vue"), meta: { title: "Hoy" } },
+    { path: "/", component: () => import("./views/OverviewView.vue"), meta: { title: "Resumen" } },
     { path: "/reservas", component: () => import("./views/BookingsView.vue"), meta: { title: "Reservas" } },
     { path: "/personal", component: () => import("./views/StaffView.vue"), meta: { title: "Personal" } },
     { path: "/servicios", component: () => import("./views/OfferingsView.vue"), meta: { title: "Servicios" } },

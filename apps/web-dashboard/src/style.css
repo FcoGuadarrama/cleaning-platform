@@ -44,7 +44,7 @@
     text-rendering: optimizeLegibility;
   }
   body {
-    @apply bg-background font-sans text-foreground;
+    @apply bg-surface font-sans text-foreground;
     font-size: var(--text-sm);
     line-height: var(--leading-sm);
   }
@@ -71,14 +71,21 @@
 
   /* Floating chrome: content scrolls under a translucent bar. */
   .material-bar {
-    background: color-mix(in oklab, var(--color-background) 78%, transparent);
+    background: color-mix(in oklab, var(--color-surface) 78%, transparent);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     backdrop-filter: blur(20px) saturate(180%);
   }
 
+  /* Cards sit on the surface canvas; the shadow only exists in light mode, where it reads as lift. */
+  .panel {
+    @apply rounded-xl bg-surface-raised ring-1 ring-hairline;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 1px rgb(0 0 0 / 0.02);
+  }
+
   /* Grouped list: one container, hairlines between rows. */
   .grouped {
-    @apply overflow-hidden rounded-lg bg-surface-raised ring-1 ring-hairline;
+    @apply overflow-hidden rounded-xl bg-surface-raised ring-1 ring-hairline;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 1px rgb(0 0 0 / 0.02);
   }
   .grouped > * + * {
     @apply border-t border-hairline;
@@ -94,15 +101,23 @@
   }
 }
 
+@media (prefers-color-scheme: dark) {
+  .panel,
+  .grouped {
+    box-shadow: none;
+  }
+}
+
 @media (prefers-reduced-transparency: reduce) {
   .material-bar {
-    background: var(--color-background);
+    background: var(--color-surface);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
 }
 
 @media (prefers-contrast: more) {
+  .panel,
   .grouped {
     @apply ring-border;
   }

@@ -1,11 +1,11 @@
 # WORKTREE STATE & HANDOFF LOG
 - **Feature:** 003-dashboard-shadcn (shadcn-vue + rebuilt admin views)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-05T16:00:00Z
+- **Last Updated:** 2026-11-05T16:40:00Z
 - **Branch / Worktree:** feature/implementacion-shadcn (current worktree)
 - **Base SHA:** 9e3bf4e
 - **Contract Version:** docs/contracts/openapi.json sha256 99336ffb99c2101aa635337ef156a9720934d642afa0e939a2f62b7bf74d4b20 (unchanged)
-- **Database:** compose project cp_dacc92b8 (fresh volume, migrated to head; admin@admin.com id=1). No other data written.
+- **Database:** compose project cp_dacc92b8 (migrated to head; admin@admin.com id=1; demo seed applied: 196 bookings, 4 staff).
 
 ## Microtask checklist
 - [x] 1. Pinned deps (reka-ui, cva, clsx, tailwind-merge, @vueuse/core, @lucide/vue, vue-sonner, tw-animate-css); `@/` alias; components.json.
@@ -15,14 +15,18 @@
 - [x] 5. Views: Hoy (day agenda + pendientes + próximas), Reservas (filters, search, detail sheet + manual attendance),
       Personal, Servicios, Asistencia, Liquidaciones, Login.
 - [x] 6. Docs: docs/tasks/003-dashboard-shadcn.md, VERSIONS.md, DESIGN.md.
+- [x] 7. Revision 2 (owner: "muy simple"): Resumen with range filter, KPI tiles, sales column chart, ranked bars;
+      card canvas, grouped sidebar, stat strips; `chart` brand token; app.seed_demo; RUNNING.md/AGENTS.md.
 
 ## Immediate context / Handoff notes
-Visual review used a fixture API outside the repo (scratchpad) because seeding staff needs one email per account and
-test emails are limited to admin@admin.com / test@test.com. Docker web container serves the new code (HTTP 200).
+Owner approved `test+<name>@test.com` demo accounts. Revision 2 was reviewed in Chrome against the real API with seeded
+data. Docker stack rebuilt; web proxy login + /bookings (196) verified.
 
 ## Verification
-- web-dashboard: `typecheck` clean, `test` 7 passed, `build` ok; `pnpm check:drift` exit 0 (2026-11-05).
-- Browser (Chrome, dark scheme): Hoy, Reservas + sheet, Asistencia resolve + toast, Liquidaciones, ⌘K search,
+- web-dashboard: `typecheck` clean, `test` 11 passed, `build` ok; design-tokens tests 5 passed; `pnpm -r typecheck` ok.
+- apps/api: `ruff check .` clean, mypy on seed_demo clean, `uv run pytest` 21 passed (2026-11-05).
+- Browser (Chrome, dark scheme, real API + seed): Resumen ranges + tooltip, Reservas, Liquidaciones; mobile 390 px
+  no horizontal page scroll on any route. Revision 1 (fixture API): Hoy, Reservas + sheet, Asistencia resolve + toast, Liquidaciones, ⌘K search,
   mobile 390 px (no horizontal page scroll on any route; nav sheet).
 - Not run: light-scheme screenshot (window follows system dark), aislop (not installed), real-API flows with data.
 

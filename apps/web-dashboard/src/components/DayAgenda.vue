@@ -6,6 +6,8 @@ const props = defineProps<{
   rows: BookingRow[];
   /** Minutes since midnight when the agenda shows today; otherwise null. */
   nowMinutes: number | null;
+  /** Drop the card chrome when the agenda already sits inside a panel. */
+  embedded?: boolean;
 }>();
 defineEmits<{ select: [id: number] }>();
 
@@ -71,7 +73,7 @@ function hourLabel(m: number): string {
 </script>
 
 <template>
-  <div class="grouped">
+  <div :class="embedded ? '' : 'grouped'">
     <div v-if="lanes.length === 0" class="px-6 py-10 text-center text-muted-foreground">
       Sin reservas para este día.
     </div>
@@ -133,5 +135,12 @@ function hourLabel(m: number): string {
         </div>
       </div>
     </div>
+    <p v-if="lanes.length" class="flex flex-wrap gap-x-5 gap-y-1 border-t border-hairline px-4 py-3 text-xs text-text-muted">
+      <span class="inline-flex items-center gap-1.5"><span class="hatched size-3 rounded-sm bg-warning/10 text-warning ring-1 ring-warning/30 ring-inset" />Pago pendiente</span>
+      <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded-sm bg-primary/12 ring-1 ring-primary/25 ring-inset" />Confirmada</span>
+      <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded-sm bg-primary" />En curso</span>
+      <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded-sm bg-warning/14 ring-1 ring-warning/30 ring-inset" />Por revisar</span>
+      <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded-sm bg-success/12 ring-1 ring-success/25 ring-inset" />Completada</span>
+    </p>
   </div>
 </template>

@@ -20,6 +20,7 @@ const partsFormat = new Intl.DateTimeFormat("en-CA", {
 // Calendar days are handled as ISO strings and rendered at UTC noon so no offset can move them.
 const dayLongFormat = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 const dayShortFormat = new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const dayCompactFormat = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short", timeZone: "UTC" });
 const rangeFormat = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "long", timeZone: "UTC" });
 
 export function formatMoney(minor: number, currency: string): string {
@@ -104,6 +105,11 @@ export function formatDayLong(day: string): string {
 
 export function formatDayShort(day: string): string {
   return capitalize(dayShortFormat.format(noonUtc(day)));
+}
+
+/** "7 oct": axis labels where the weekday would not fit. */
+export function formatDayCompact(day: string): string {
+  return dayCompactFormat.format(noonUtc(day)).replace(".", "");
 }
 
 export function formatWeekRange(monday: string): string {

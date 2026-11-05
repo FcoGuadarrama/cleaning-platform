@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Menu, Search } from "@lucide/vue";
+import { BrushCleaning, Menu, Search } from "@lucide/vue";
 import { useWindowScroll } from "@vueuse/core";
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
@@ -28,8 +28,14 @@ onMounted(() => {
 
 <template>
   <div class="min-h-dvh md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
-    <aside class="sticky top-0 hidden h-dvh flex-col border-r border-hairline bg-surface px-3 pt-5 pb-3 md:flex">
-      <p class="mb-6 px-2.5 text-md font-semibold tracking-[-0.01em]">Panel de operación</p>
+    <aside class="sticky top-0 hidden h-dvh flex-col border-r border-hairline bg-surface-raised px-3 pt-4 pb-3 md:flex">
+      <div class="mb-7 flex items-center gap-2.5 px-1.5">
+        <span class="grid size-8 place-items-center rounded-lg bg-primary text-on-primary" aria-hidden="true"><BrushCleaning class="size-4.5" /></span>
+        <span class="leading-tight">
+          <span class="block font-semibold tracking-[-0.01em]">Panel de operación</span>
+          <span class="block text-xs text-text-muted">Servicios de limpieza</span>
+        </span>
+      </div>
       <AppNav />
       <div class="mt-auto"><UserMenu /></div>
     </aside>
@@ -61,14 +67,14 @@ onMounted(() => {
         </Button>
       </header>
 
-      <main id="main" tabindex="-1" class="mx-auto max-w-6xl px-4 pt-4 pb-16 outline-none md:px-8">
+      <main id="main" tabindex="-1" class="mx-auto max-w-[90rem] px-4 pt-4 pb-16 outline-none md:px-8">
         <RouterView />
       </main>
     </div>
   </div>
 
   <Sheet v-model:open="navOpen">
-    <SheetContent side="left" class="w-72 bg-surface px-3 pt-5">
+    <SheetContent side="left" class="w-72 bg-surface-raised px-3 pt-5">
       <SheetHeader class="px-2.5 pb-2">
         <SheetTitle>Panel de operación</SheetTitle>
         <SheetDescription class="sr-only">Secciones del panel</SheetDescription>

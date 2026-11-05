@@ -30,3 +30,10 @@ staff, offerings, attendance exceptions and weekly settlements.
 2. Every data view keeps loading / empty / error-with-retry states (`docs/DESIGN.md`).
 3. New dependencies pinned exactly and recorded in `docs/VERSIONS.md`.
 4. No business rules invented: hour window of the agenda is presentation only; prices stay admin-entered.
+
+## Revision 2 (owner feedback 2026-11-05: "muy simple, no tiene diseño de dashboard")
+Owner chose "métricas + gráficas" and a local demo seed with `test+<name>@test.com` accounts.
+- Overview → **Resumen**: range filter (7/30/90 días) scoping 4 KPI tiles with delta + sparkline, sales column
+  chart, bookings-by-status and sales-by-person ranked bars, then agenda, pendientes, próximas.
+- Card canvas (surface + raised panels), grouped sidebar with brand mark, stat strips on Reservas, Liquidaciones,
+  Personal. New `chart` brand token. `apps/api/app/seed_demo.py` (local hosts only, idempotent).

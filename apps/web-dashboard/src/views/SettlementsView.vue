@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, Table
 import { api, errorMessage } from "../api";
 import AsyncState from "../components/AsyncState.vue";
 import PageHeader from "../components/PageHeader.vue";
+import StatStrip from "../components/StatStrip.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import { useDirectory } from "../stores/directory";
 import { formatMoney, formatWeekRange, mondayOf, shiftDay } from "../viewmodels/format";
@@ -59,6 +60,16 @@ const totals = computed(() =>
   ),
 );
 
+const stats = computed(() => {
+  const pendingPeople = Object.values(summaries.value).filter((s) => s.earned_minor > s.approved_minor).length;
+  return [
+    { label: "Generado", value: formatMoney(totals.value.earned, currency.value), hint: "Servicios completados en la semana" },
+    { label: "Aprobado", value: formatMoney(totals.value.approved, currency.value) },
+    { label: "Pagado", value: formatMoney(totals.value.paid, currency.value) },
+    { label: "Por aprobar", value: String(pendingPeople), hint: pendingPeople === 1 ? "persona con importe abierto" : "personas con importe abierto" },
+  ];
+});
+
 const payingName = computed(() => directory.staffById.get(payingId.value ?? -1)?.display_name ?? "");
 
 function canApprove(id: number): boolean {
@@ -106,6 +117,8 @@ async function pay(): Promise<void> {
       <Button v-if="week !== thisWeek" variant="outline" size="sm" class="ml-1" @click="week = thisWeek">Esta semana</Button>
     </div>
   </PageHeader>
+
+  <StatStrip :items="stats" />
 
   <p v-if="error" role="alert" class="mb-4 rounded-lg bg-danger/8 px-4 py-3 text-danger">{{ error }}</p>
 

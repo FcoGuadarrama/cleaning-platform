@@ -19,7 +19,8 @@ module.exports = {
         "on-danger": "#FFFFFF",
         "focus": "#2F5D8A",
         "disabled": "#E5E5EA",
-        "on-disabled": "#55555A"
+        "on-disabled": "#55555A",
+        "chart": "#2F6BC4"
       },
       "borderRadius": {
         "sm": "6px",

@@ -8,9 +8,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AsyncState from "../components/AsyncState.vue";
 import BookingSheet from "../components/BookingSheet.vue";
 import PageHeader from "../components/PageHeader.vue";
+import StatStrip from "../components/StatStrip.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import { useDirectory } from "../stores/directory";
-import { BOOKING_FILTERS, type BookingFilterId, type BookingRow } from "../viewmodels/format";
+import { BOOKING_FILTERS, type BookingFilterId, type BookingRow, businessDay, formatMoney, shiftDay } from "../viewmodels/format";
 
 const directory = useDirectory();
 const route = useRoute();
@@ -54,6 +55,27 @@ const rows = computed(() => {
   return filter.soonestFirst ? [...list].reverse() : list;
 });
 
+const stats = computed(() => {
+  const all = directory.bookingRows;
+  const today = businessDay(new Date());
+  const weekEnd = shiftDay(today, 6);
+  const active = (r: BookingRow) => r.status === "confirmed" || r.status === "held" || r.status === "in_progress";
+  const todayRows = all.filter((r) => r.day === today && active(r));
+  const week = all.filter((r) => r.day >= today && r.day <= weekEnd && active(r));
+  const weekIds = new Set(week.map((r) => r.id));
+  const raw = directory.bookings.data ?? [];
+  const weekValue = raw.filter((b) => weekIds.has(b.id)).reduce((sum, b) => sum + b.price_minor, 0);
+  const currency = raw[0]?.currency ?? "MXN";
+  const review = all.filter((r) => r.status === "pending_review" || r.status === "disputed").length;
+  const held = all.filter((r) => r.status === "held").length;
+  return [
+    { label: "Hoy", value: String(todayRows.length), hint: `${new Set(todayRows.map((r) => r.staffId)).size} personas trabajando` },
+    { label: "Próximos 7 días", value: String(week.length), hint: `${formatMoney(weekValue, currency)} agendados` },
+    { label: "Por revisar", value: String(review), hint: "Revisión pendiente o en disputa" },
+    { label: "Esperan pago", value: String(held), hint: "Horario apartado sin cobro" },
+  ];
+});
+
 const emptyText = computed(() =>
   search.value.trim() ? "Ninguna reserva coincide con la búsqueda." : "No hay reservas en este estado.",
 );
@@ -61,6 +83,7 @@ const emptyText = computed(() =>
 
 <template>
   <PageHeader title="Reservas" />
+  <StatStrip v-if="directory.bookings.loaded" :items="stats" />
 
   <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
     <Tabs v-model="filterId" class="max-w-full overflow-x-auto">

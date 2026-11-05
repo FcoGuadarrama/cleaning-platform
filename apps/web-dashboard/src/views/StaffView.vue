@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api, errorMessage } from "../api";
 import AsyncState from "../components/AsyncState.vue";
 import PageHeader from "../components/PageHeader.vue";
+import StatStrip from "../components/StatStrip.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import { useDirectory } from "../stores/directory";
 import { initials } from "../viewmodels/format";
@@ -44,6 +45,19 @@ const staff = computed(() =>
   [...(directory.staff.data ?? [])].sort((a, b) => Number(b.is_active) - Number(a.is_active) || a.display_name.localeCompare(b.display_name, "es-MX")),
 );
 
+const stats = computed(() => {
+  const list = directory.staff.data ?? [];
+  const active = list.filter((s) => s.is_active);
+  const booked = active.filter((s) => (upcomingByStaff.value.get(s.id) ?? 0) > 0).length;
+  const upcoming = [...upcomingByStaff.value.values()].reduce((a, b) => a + b, 0);
+  return [
+    { label: "Activas", value: String(active.length), hint: `${list.length - active.length} inactivas` },
+    { label: "Con reservas próximas", value: String(booked) },
+    { label: "Sin reservas próximas", value: String(active.length - booked) },
+    { label: "Reservas próximas", value: String(upcoming), hint: "Confirmadas o esperando pago" },
+  ];
+});
+
 function upcomingLabel(id: number): string {
   const n = upcomingByStaff.value.get(id) ?? 0;
   if (n === 0) return "Sin reservas próximas";
@@ -67,6 +81,8 @@ async function create(): Promise<void> {
   <PageHeader title="Personal" description="Las personas de limpieza que reciben reservas. El nombre visible es el que ven los clientes.">
     <Button @click="formOpen = true"><UserPlus />Dar de alta</Button>
   </PageHeader>
+
+  <StatStrip v-if="directory.staff.loaded" :items="stats" />
 
   <AsyncState
     :loading="directory.staff.loading"
