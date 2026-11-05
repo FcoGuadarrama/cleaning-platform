@@ -1,4 +1,5 @@
 import type { Schemas } from "@repo/api-client";
+import type { Tone } from "./ui";
 
 export const BUSINESS_TZ = "America/Mexico_City";
 
@@ -13,6 +14,31 @@ export const formatDateTime = (iso: string) =>
 export const formatTime = (iso: string) =>
   new Intl.DateTimeFormat("es-MX", { timeStyle: "short", timeZone: BUSINESS_TZ }).format(new Date(iso));
 
+const partsFormat = new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "numeric", month: "short", timeZone: BUSINESS_TZ });
+const longDayFormat = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long", timeZone: BUSINESS_TZ });
+
+const clean = (s: string) => s.replace(".", "");
+
+/** Weekday, day number and month of an instant, in the business time zone. */
+export function dayParts(iso: string) {
+  const parts = Object.fromEntries(partsFormat.formatToParts(new Date(iso)).map((p) => [p.type, p.value]));
+  return { weekday: clean(parts.weekday ?? ""), day: parts.day ?? "", month: clean(parts.month ?? "") };
+}
+
+/** A business-calendar day (YYYY-MM-DD) as an instant at local noon, safe for `dayParts`. */
+export const businessDayInstant = (ymd: string) => `${ymd}T18:00:00Z`;
+
+export const sentenceCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export const formatLongDay = (iso: string) => longDayFormat.format(new Date(iso));
+
+export function formatDuration(minutes: number) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (!h) return `${m} min`;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
 export const BOOKING_LABELS: Record<Schemas["BookingStatus"], string> = {
   held: "Pago pendiente",
   expired: "Expirada",
@@ -22,6 +48,17 @@ export const BOOKING_LABELS: Record<Schemas["BookingStatus"], string> = {
   completed: "Completada",
   disputed: "En revisión por administración",
   cancelled: "Cancelada",
+};
+
+export const BOOKING_TONES: Record<Schemas["BookingStatus"], Tone> = {
+  held: "warning",
+  expired: "neutral",
+  confirmed: "success",
+  in_progress: "primary",
+  pending_review: "warning",
+  completed: "neutral",
+  disputed: "warning",
+  cancelled: "neutral",
 };
 
 /** Next N business days (Mon–Fri) as YYYY-MM-DD in the business time zone. */

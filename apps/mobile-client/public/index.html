@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <!-- #F5F5F7 = brand.json color.light.surface (static shell, cannot read tokens at runtime). -->
+    <meta name="theme-color" content="#F5F5F7" />
+    <meta name="color-scheme" content="light" />
+    <title>%WEB_TITLE%</title>
+    <style id="expo-reset">
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        overflow: hidden;
+        background-color: #f5f5f7;
+      }
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+    <style id="mobile-native">
+      html {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-text-size-adjust: 100%;
+        overscroll-behavior: none;
+      }
+      [role="button"],
+      [role="tab"],
+      a {
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+      }
+      input,
+      textarea,
+      select {
+        font-size: 17px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>Activa JavaScript para usar la app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

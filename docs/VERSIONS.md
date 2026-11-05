@@ -30,6 +30,7 @@ stable. No alpha/beta/rc/nightly/canary/Innovation. Upgrades are reviewed change
 | Expo Router | ~58.0.29 | No official LTS channel | SDK 58 bundledNativeModules | | — |
 | react-native-css-interop | 0.2.7 | No official LTS channel | nativewind@4.2.7 dependency | Direct dependency so Metro resolves it under pnpm isolated installs | — |
 | expo-location / expo-secure-store | ~58.0.20 / ~58.0.2 | No official LTS channel | SDK 58 bundledNativeModules | Foreground location only | — |
+| react-native-svg | 15.16.0 | No official LTS channel | SDK 58 bundledNativeModules (`15.16.0`, exact) | Mobile icon set (`apps/mobile-client/src/icons.tsx`); no icon font dependency | — |
 | NativeWind | 4.2.7 | No official LTS channel; v5 is **rc only** → not eligible | https://www.npmjs.com/package/nativewind (dist-tags) | Requires Tailwind **3.4.x** (`3.4.19`) on mobile; dashboard uses Tailwind 4. Verified 2026-11-03: `expo export` for iOS and Android bundles successfully with RN 0.88.1 / Reanimated 4.7.1; device run still pending. | — |
 | Nginx | 1.30.6 (`nginx:1.30.6-alpine@sha256:0e52bd054126cdc040b1276c0af347aeb02a41b9cfe305d6094767ac30e97949`) | Nginx "stable" branch (not called LTS) | https://nginx.org/en/download.html | | — |
 

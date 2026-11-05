@@ -30,10 +30,25 @@ Categories: color (light/dark), typography (family, size, line height, weight), 
 
 ## Platform adaptations
 Implemented: native stack navigation (Expo Router `Stack`) → iOS swipe-back and Android hardware/system back both
-pop the stack; minimal back-button label; system font; `min-h-11` (44 pt) pressables; status bar follows scheme.
-Planned (Sprint 2 UI pass): iOS large titles on root screens and sheets for secondary flows; Android
-`android_ripple` press feedback. One brand, platform-native navigation; no experimental native UI used purely
-for appearance. Customer/staff copy is Spanish (es-MX); technical identifiers stay English.
+pop the stack; minimal back-button label; system font; status bar follows scheme.
+Planned: Android `android_ripple` press feedback; sheets for secondary flows. One brand, platform-native navigation;
+no experimental native UI used purely for appearance. Customer/staff copy is Spanish (es-MX); technical identifiers stay English.
+
+## Mobile client visual language (2026-11-05)
+- **Structure:** role-aware bottom tabs (customer: Personal · Reservas · Cuenta; staff: Servicios · Ganancias · Cuenta).
+  Tab roots use an iOS-style large title (`Page` in `src/ui.tsx`); pushed flows (`book`) use the native stack header.
+- **Surfaces:** `surface` is the screen background; content sits in inset grouped containers (`Group` + `Row`,
+  `surface-raised`, `radius.lg`, hairline dividers) instead of one shadowed card per item. One emphasised surface per
+  screen at most (staff "Siguiente servicio" on `primary`, earnings summary).
+- **People first:** cleaners are shown with monogram avatars (`Avatar`, `primary-soft`) until profile photos exist.
+- **Booking:** numbered steps (Servicio → Día → Hora → Dirección) because it is a real sequence; calendar day tiles,
+  a 3-column equal-width time grid and a fixed bottom summary bar with total + CTA.
+- **Status:** `Badge` tones map booking states (`BOOKING_TONES` in `src/format.ts`) to the `*-soft` tokens.
+- **Icons:** own 24×24 stroke set in `src/icons.tsx` (react-native-svg); decorative, the control carries the label.
+- **Web target:** `public/index.html` adds `viewport-fit=cover`, `theme-color`, no tap highlight, no overscroll chaining,
+  `touch-action: manipulation` and 17 px inputs (no iOS zoom). Wide viewports keep a 480 px phone column.
+- **Dark mode (pending):** the NativeWind preset is light-only, so the mobile UI is light until the preset emits
+  per-scheme values; `src/theme.ts` exposes the light palette for non-class APIs.
 
 ## Design skills available to agents (checked 2026-11-03)
 `apple-design` (web-oriented Apple motion/interaction guidance), `ui-ux-pro-max`, `emil-design-eng`, `animate-expo`

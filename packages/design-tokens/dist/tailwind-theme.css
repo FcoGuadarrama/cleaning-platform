@@ -8,12 +8,16 @@
   --color-text-muted: var(--color-text-muted);
   --color-primary: var(--color-primary);
   --color-on-primary: var(--color-on-primary);
+  --color-primary-soft: var(--color-primary-soft);
   --color-success: var(--color-success);
   --color-on-success: var(--color-on-success);
+  --color-success-soft: var(--color-success-soft);
   --color-warning: var(--color-warning);
   --color-on-warning: var(--color-on-warning);
+  --color-warning-soft: var(--color-warning-soft);
   --color-danger: var(--color-danger);
   --color-on-danger: var(--color-on-danger);
+  --color-danger-soft: var(--color-danger-soft);
   --color-focus: var(--color-focus);
   --color-disabled: var(--color-disabled);
   --color-on-disabled: var(--color-on-disabled);
