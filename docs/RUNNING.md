@@ -62,6 +62,20 @@ Si cambias `pnpm-lock.yaml` o `apps/api/uv.lock`, la imagen correspondiente se r
 
 Si tienes pnpm instalado, `pnpm stack` es lo mismo que `./scripts/dev-stack.sh`.
 
+## Datos de demostración
+
+La base arranca vacía. Para ver el panel con datos (unas seis semanas de reservas, cuatro personas de limpieza,
+servicios, pagos, asistencias y liquidaciones), con el stack arriba:
+
+```sh
+set -a && . ./.env.worktree && set +a
+cd apps/api && uv run python -m app.seed_demo
+```
+
+Crea a la clienta `test@test.com` y al personal `test+ana@test.com`, `test+luis@test.com`, `test+majo@test.com` y
+`test+rosa@test.com`, todos con la contraseña de `ADMIN_PASSWORD`. Los precios son de ejemplo, no son los
+aprobados. Solo corre contra una base local y no hace nada si `test@test.com` ya existe.
+
 ## Probar en un celular
 
 Docker solo corre la versión web de Expo. Para Expo Go en un teléfono, corre el cliente desde tu máquina
@@ -100,6 +114,9 @@ o un Vite corriendo fuera de Docker. Detenlo o cambia el puerto en `.env.worktre
 ```
 
 El script siempre corre con `--build`, así que basta con reiniciarlo.
+
+**"Invalid email or password" en el panel.** Revisa el puerto: cada worktree tiene su propio stack, base y
+contraseña. Usa la URL que imprime `./scripts/dev-stack.sh` y la contraseña del `.env.worktree` de ese mismo worktree.
 
 **No sé la contraseña del admin.** Está en `.env.worktree`, en `ADMIN_PASSWORD`. Si la cambias ahí después de
 que el admin ya existe, no se actualiza: el arranque deja intacto al admin existente.
