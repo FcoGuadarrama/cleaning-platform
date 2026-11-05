@@ -1,26 +1,131 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
-import { api } from "../api";
+import { Search } from "@lucide/vue";
+import { computed, onMounted, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AsyncState from "../components/AsyncState.vue";
-import { useResource } from "../useResource";
-import { toBookingRow } from "../viewmodels/format";
+import BookingSheet from "../components/BookingSheet.vue";
+import PageHeader from "../components/PageHeader.vue";
+import StatusBadge from "../components/StatusBadge.vue";
+import { useDirectory } from "../stores/directory";
+import { BOOKING_FILTERS, type BookingFilterId, type BookingRow } from "../viewmodels/format";
 
-const bookings = useResource(() => api.GET("/bookings"));
-const rows = computed(() => (bookings.data.value ?? []).map(toBookingRow));
-onMounted(bookings.refresh);
+const directory = useDirectory();
+const route = useRoute();
+const router = useRouter();
+const search = ref("");
+
+onMounted(directory.refreshAll);
+
+const filterId = computed<BookingFilterId>({
+  get: () => BOOKING_FILTERS.find((f) => f.id === route.query.estado)?.id ?? "proximas",
+  set: (estado) => void router.replace({ query: { ...route.query, estado } }),
+});
+
+const selectedId = computed(() => {
+  const id = Number(route.query.reserva);
+  return Number.isInteger(id) && id > 0 ? id : null;
+});
+
+function select(id: number | null): void {
+  const query = { ...route.query, reserva: id === null ? undefined : String(id) };
+  void router.replace({ query });
+}
+
+function matches(row: BookingRow, term: string): boolean {
+  if (!term) return true;
+  const needle = term.replace(/^#/, "").toLocaleLowerCase("es-MX");
+  return [String(row.id), row.address, row.staffName, row.offeringName].some((v) => v.toLocaleLowerCase("es-MX").includes(needle));
+}
+
+const counts = computed(() =>
+  Object.fromEntries(
+    BOOKING_FILTERS.map((f) => [f.id, directory.bookingRows.filter((r) => (f.statuses as readonly string[]).includes(r.status)).length]),
+  ),
+);
+
+const rows = computed(() => {
+  const filter = BOOKING_FILTERS.find((f) => f.id === filterId.value)!;
+  const statuses = filter.statuses as readonly string[];
+  const term = search.value.trim();
+  const list = directory.bookingRows.filter((r) => statuses.includes(r.status) && matches(r, term));
+  return filter.soonestFirst ? [...list].reverse() : list;
+});
+
+const emptyText = computed(() =>
+  search.value.trim() ? "Ninguna reserva coincide con la búsqueda." : "No hay reservas en este estado.",
+);
 </script>
 
 <template>
-  <h1 class="mb-4 text-xl font-bold">Reservas</h1>
-  <AsyncState :loading="bookings.loading.value" :error="bookings.error.value" :empty="rows.length === 0" empty-text="Aún no hay reservas." @retry="bookings.refresh">
-    <table class="w-full text-left text-sm">
-      <caption class="sr-only">Reservas por fecha</caption>
-      <thead><tr class="border-b border-border"><th scope="col" class="py-2">#</th><th scope="col">Fecha</th><th scope="col">Estado</th><th scope="col">Importe</th><th scope="col">Dirección</th></tr></thead>
-      <tbody>
-        <tr v-for="r in rows" :key="r.id" class="border-b border-border">
-          <td class="py-2">{{ r.id }}</td><td>{{ r.when }}</td><td>{{ r.status }}</td><td>{{ r.amount }}</td><td>{{ r.address }}</td>
-        </tr>
-      </tbody>
-    </table>
+  <PageHeader title="Reservas" />
+
+  <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <Tabs v-model="filterId" class="max-w-full overflow-x-auto">
+      <TabsList aria-label="Filtrar por estado">
+        <TabsTrigger v-for="f in BOOKING_FILTERS" :key="f.id" :value="f.id" class="px-3">
+          {{ f.label }}
+          <span class="text-xs text-text-muted tabular-nums">{{ counts[f.id] }}</span>
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
+    <div class="relative lg:w-72">
+      <Search class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
+      <Input v-model="search" type="search" class="pl-9" placeholder="Número, dirección o persona" aria-label="Buscar reservas" />
+    </div>
+  </div>
+
+  <AsyncState
+    :loading="directory.bookings.loading"
+    :error="directory.bookings.error"
+    :empty="rows.length === 0"
+    :empty-text="emptyText"
+    @retry="directory.refreshAll"
+  >
+    <div class="grouped">
+      <Table>
+        <caption class="sr-only">Reservas, selecciona una para ver el detalle</caption>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead class="hidden w-16 pl-4 text-text-muted sm:table-cell">Núm.</TableHead>
+            <TableHead class="pl-4 text-text-muted sm:pl-2">Fecha</TableHead>
+            <TableHead class="text-text-muted">Servicio</TableHead>
+            <TableHead class="hidden text-text-muted xl:table-cell">Dirección</TableHead>
+            <TableHead class="text-text-muted">Estado</TableHead>
+            <TableHead class="pr-4 text-right text-text-muted">Importe</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow
+            v-for="r in rows"
+            :key="r.id"
+            tabindex="0"
+            class="cursor-default border-hairline hover:bg-text/4 focus-visible:bg-text/4 focus-visible:outline-none"
+            :data-state="selectedId === r.id ? 'selected' : undefined"
+            :aria-label="`Ver reserva ${r.id}`"
+            @click="select(r.id)"
+            @keydown.enter.prevent="select(r.id)"
+            @keydown.space.prevent="select(r.id)"
+          >
+            <TableCell class="hidden pl-4 text-text-muted tabular-nums sm:table-cell">{{ r.id }}</TableCell>
+            <TableCell class="pl-4 tabular-nums sm:pl-2">
+              <span class="block font-medium">{{ r.dayLabel }}</span>
+              <span class="block text-muted-foreground">{{ r.timeRange }}</span>
+            </TableCell>
+            <TableCell class="max-w-64">
+              <span class="block truncate">{{ r.offeringName }}</span>
+              <span class="block truncate text-muted-foreground">{{ r.staffName }}</span>
+            </TableCell>
+            <TableCell class="hidden max-w-72 truncate text-muted-foreground xl:table-cell">{{ r.address }}</TableCell>
+            <TableCell><StatusBadge :tone="r.tone" :label="r.statusLabel" /></TableCell>
+            <TableCell class="pr-4 text-right font-medium tabular-nums">{{ r.amount }}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
   </AsyncState>
+
+  <BookingSheet :booking-id="selectedId" @close="select(null)" />
 </template>

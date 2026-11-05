@@ -1,36 +1,33 @@
 # WORKTREE STATE & HANDOFF LOG
-- **Feature:** docker-full-stack (one command to run the whole app in Docker)
+- **Feature:** 003-dashboard-shadcn (shadcn-vue + rebuilt admin views)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-04T16:38:52Z
-- **Branch / Worktree:** feature/docker (current worktree)
-- **Base SHA:** 6c57d57024beedb2fe75142e3c6ff949e2fdca4d
+- **Last Updated:** 2026-11-05T16:00:00Z
+- **Branch / Worktree:** feature/implementacion-shadcn (current worktree)
+- **Base SHA:** 9e3bf4e
 - **Contract Version:** docs/contracts/openapi.json sha256 99336ffb99c2101aa635337ef156a9720934d642afa0e939a2f62b7bf74d4b20 (unchanged)
-- **Database:** compose project cp_29c0b027, volume cp_29c0b027_mysql-data (migrated to head; admin@admin.com id=1)
+- **Database:** compose project cp_dacc92b8 (fresh volume, migrated to head; admin@admin.com id=1). No other data written.
 
 ## Microtask checklist
-- [x] 1. scripts/wt-env.sh appends missing keys to an existing .env.worktree (WEB_PORT, MOBILE_PORT, SANDBOX_WEBHOOK_SECRET, ADMIN_PASSWORD) and keeps existing values.
-- [x] 2. app.create_admin is idempotent (skips an existing admin, exits non-zero if the email belongs to another role).
-- [x] 3. docker-compose.yml profile `app`: api (migrate + uvicorn --reload), admin one-shot, web (Vite), mobile (Expo web); infra/dev/node.Dockerfile.
-- [x] 4. scripts/dev-stack.sh [up [-d] | down | logs | ps] + `pnpm stack` alias.
-- [x] 5. Docs: AGENTS.md commands, docs/ARCHITECTURE.md "Local full stack".
-- [x] 6. docs/RUNNING.md: owner run guide in Spanish (owner-facing, per AGENTS.md language rule), linked from AGENTS.md and ARCHITECTURE.md.
+- [x] 1. Pinned deps (reka-ui, cva, clsx, tailwind-merge, @vueuse/core, @lucide/vue, vue-sonner, tw-animate-css); `@/` alias; components.json.
+- [x] 2. shadcn-vue components added and adapted (Spanish labels, token colours, press feedback, iOS sheet curve).
+- [x] 3. Theme in src/style.css aliasing brand tokens; reduced motion/transparency/contrast handling.
+- [x] 4. Shell: sidebar, translucent header with condensed title, mobile nav sheet, ⌘K palette, toasts.
+- [x] 5. Views: Hoy (day agenda + pendientes + próximas), Reservas (filters, search, detail sheet + manual attendance),
+      Personal, Servicios, Asistencia, Liquidaciones, Login.
+- [x] 6. Docs: docs/tasks/003-dashboard-shadcn.md, VERSIONS.md, DESIGN.md.
 
 ## Immediate context / Handoff notes
-`docker compose up -d mysql` without a profile still starts only MySQL, so the test workflow is unchanged.
-Native Expo Go (devices) is not containerised; only Expo web runs in Docker.
+Visual review used a fixture API outside the repo (scratchpad) because seeding staff needs one email per account and
+test emails are limited to admin@admin.com / test@test.com. Docker web container serves the new code (HTTP 200).
 
 ## Verification
-- `./scripts/dev-stack.sh up -d`: all services healthy; admin created. API /healthz ok; login via Vite proxy /api returns a token;
-  CORS preflight from the Expo origin allowed; Expo web index + bundle 200 and bundle embeds the host API URL.
-- `./scripts/dev-stack.sh` (watch): edits to apps/api/app/main.py and apps/web-dashboard/src/App.vue synced; uvicorn reloaded; admin rerun printed "already exists".
-- `./scripts/dev-stack.sh down`: containers and network removed, MySQL volume kept.
-- apps/api: ruff check/format and mypy on create_admin.py clean; `uv run pytest` 21 passed (2026-11-03T19:59:54Z).
-- shellcheck and aislop are not installed on this machine; not run.
+- web-dashboard: `typecheck` clean, `test` 7 passed, `build` ok; `pnpm check:drift` exit 0 (2026-11-05).
+- Browser (Chrome, dark scheme): Hoy, Reservas + sheet, Asistencia resolve + toast, Liquidaciones, ⌘K search,
+  mobile 390 px (no horizontal page scroll on any route; nav sheet).
+- Not run: light-scheme screenshot (window follows system dark), aislop (not installed), real-API flows with data.
 
 ## Partial work
-- Modified or new files: AGENTS.md, docker-compose.yml, docs/ARCHITECTURE.md, package.json, scripts/wt-env.sh, scripts/dev-stack.sh,
-  apps/api/app/create_admin.py, docs/RUNNING.md, infra/dev/node.Dockerfile, infra/dev/node.Dockerfile.dockerignore, WORKTREE_STATE.md.
-- Operations in progress: none (worktree MySQL container left running for tests).
+- Operations in progress: worktree Docker stack cp_dacc92b8 running.
 - Blockers: none.
 
 ## Exact next action

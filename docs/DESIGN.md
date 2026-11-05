@@ -28,6 +28,17 @@ Categories: color (light/dark), typography (family, size, line height, weight), 
   `aria-label` / `accessibilityLabel`; form errors are announced (`role="alert"` / `accessibilityLiveRegion`).
 - Every data view handles loading, empty, error (with retry) and disabled states (`AsyncState.vue`, mobile equivalents).
 
+## Dashboard components (shadcn-vue)
+`apps/web-dashboard/src/components/ui/` holds shadcn-vue components (Reka UI primitives) copied by the CLI and
+then owned here: edit them freely, do not re-run `add` over local changes. `src/style.css` maps every shadcn
+variable (`--color-foreground`, `--color-muted`, `--color-ring`…) to a brand token, so the dashboard has no colors of
+its own; tints are `color-mix()` of a token. Conventions:
+- Status colour comes from `BOOKING_STATUS` tones in `src/viewmodels/format.ts` (`StatusBadge`, agenda blocks).
+- Grouped lists (`.grouped`) instead of card grids; hairline separators; radius grows with surface size.
+- Translucent header (`.material-bar`) falls back to solid under `prefers-reduced-transparency`; overlays become
+  cross-fades under `prefers-reduced-motion`; buttons scale to 0.97 on press and grow to 44 px on coarse pointers.
+- Sheets and dialogs that represent a URL state (`?reserva=`, `?nuevo=1`) are driven by the route query.
+
 ## Platform adaptations
 Implemented: native stack navigation (Expo Router `Stack`) → iOS swipe-back and Android hardware/system back both
 pop the stack; minimal back-button label; system font; `min-h-11` (44 pt) pressables; status bar follows scheme.
