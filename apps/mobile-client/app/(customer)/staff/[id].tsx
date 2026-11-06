@@ -2,6 +2,7 @@ import type { Schemas } from "@repo/api-client";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import { HorizontalScroll } from "../../../src/HorizontalScroll";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "../../../src/api";
 import { useDaySlots } from "../../../src/availability";
@@ -131,9 +132,9 @@ export default function StaffProfile() {
                 <Text accessibilityRole="header" className="text-lg font-bold text-text">Horarios libres</Text>
                 {offering ? <Text className="text-sm text-text-muted">{offering.name}</Text> : null}
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4" contentContainerClassName="gap-2 px-4">
+              <HorizontalScroll className="-mx-4" contentContainerClassName="gap-2 px-4">
                 {days.map((d) => <DayChip key={d} ymd={d} selected={d === day} onPress={() => setDay(d)} />)}
-              </ScrollView>
+              </HorizontalScroll>
               {slots === null ? (
                 <View className="flex-row gap-2">
                   {[0, 1, 2].map((i) => <Skeleton key={i} className="h-12 flex-1 rounded-full" />)}

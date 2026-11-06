@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 import { Icon, type IconName } from "./icons";
 import { PressableScale, Skeleton } from "./motion";
+import { useTabBarClearance } from "./navigation";
 import { alpha, color, shadow } from "./theme";
 
 export type Tone = "neutral" | "primary" | "accent" | "success" | "warning" | "danger";
@@ -66,19 +67,21 @@ export function HeroText({ kicker, title, subtitle }: { kicker?: string; title: 
 export function HeroPage(props: { title: string; hero: ReactNode; children: ReactNode; onRefresh?: () => void; refreshing?: boolean; overlap?: boolean }) {
   const overlap = props.overlap ?? true;
   const insets = useSafeAreaInsets();
+  const clearance = useTabBarClearance();
   const y = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => {
     y.value = e.contentOffset.y;
   });
   // Compact bar fades in as the hero scrolls away, so the screen keeps its title (iOS large-title behavior).
-  const bar = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [70, 120], [0, 1], Extrapolation.CLAMP) }));
+  const bar = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [56, 84], [0, 1], Extrapolation.CLAMP) }));
   return (
     <View className="flex-1 bg-surface">
       <Animated.ScrollView
         onScroll={onScroll}
         scrollEventThrottle={16}
-        className="flex-1"
-        contentContainerClassName="pb-36"
+        style={{ flex: 1 }}
+        // Animated.ScrollView is not NativeWind-aware, so padding is set as a style.
+        contentContainerStyle={{ paddingBottom: clearance }}
         refreshControl={props.onRefresh ? <RefreshControl refreshing={props.refreshing ?? false} onRefresh={props.onRefresh} tintColor={color["on-primary"]} /> : undefined}
       >
         <Hero overlap={overlap}>{props.hero}</Hero>

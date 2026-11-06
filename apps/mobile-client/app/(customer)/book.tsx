@@ -2,6 +2,7 @@ import type { Schemas } from "@repo/api-client";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { HorizontalScroll } from "../../src/HorizontalScroll";
 import Animated, { ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, errorMessage } from "../../src/api";
@@ -271,9 +272,9 @@ export default function Book() {
           </Step>
 
           <Step n={2} title="¿Qué día?" done={!!slot}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4" contentContainerClassName="gap-2 px-4 py-1" accessibilityLabel="Días disponibles">
+            <HorizontalScroll className="-mx-4" contentContainerClassName="gap-2 px-4 py-1" accessibilityLabel="Días disponibles">
               {days.map((d) => <DayTile key={d} ymd={d} selected={d === day} onPress={() => { setDay(d); setSlot(null); }} />)}
-            </ScrollView>
+            </HorizontalScroll>
           </Step>
 
           <Step n={3} title="¿A qué hora?" done={!!slot}>

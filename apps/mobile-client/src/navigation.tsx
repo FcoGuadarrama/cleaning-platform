@@ -12,6 +12,15 @@ export const stackScreenOptions = {
   contentStyle: { backgroundColor: color.surface },
 };
 
+const TAB_BAR_HEIGHT = 72;
+const tabBarBottom = (insetBottom: number) => Math.max(insetBottom, Platform.OS === "web" ? 16 : 12);
+
+/** Space a tab screen must leave at the end of its scroll content so nothing hides under the floating bar. */
+export function useTabBarClearance() {
+  const insets = useSafeAreaInsets();
+  return TAB_BAR_HEIGHT + tabBarBottom(insets.bottom) + 24;
+}
+
 /** Floating, rounded tab bar that sits above the home indicator; the active icon sits on a soft pill (see `tabIcon`). */
 export function useTabScreenOptions() {
   const insets = useSafeAreaInsets();
@@ -24,8 +33,8 @@ export function useTabScreenOptions() {
     tabBarStyle: {
       position: "absolute" as const,
       marginHorizontal: 16,
-      bottom: Math.max(insets.bottom, Platform.OS === "web" ? 16 : 12),
-      height: 72,
+      bottom: tabBarBottom(insets.bottom),
+      height: TAB_BAR_HEIGHT,
       paddingTop: 0,
       paddingBottom: 0,
       borderRadius: 26,

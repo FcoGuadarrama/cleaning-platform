@@ -1,7 +1,8 @@
 import type { Schemas } from "@repo/api-client";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { HorizontalScroll } from "../../../src/HorizontalScroll";
 import { api } from "../../../src/api";
 import { DateBlock } from "../../../src/DateBlock";
 import { useNextSlots } from "../../../src/availability";
@@ -149,11 +150,11 @@ export default function Home() {
       <View className="gap-3">
         <SectionHeader title="Servicios" detail="Toca para ver horarios" />
         <StateView loading={offerings.loading} error={offerings.error} empty={!offerings.data?.length} emptyIcon="sparkle" emptyTitle="Aún no hay servicios disponibles" onRetry={offerings.refresh}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4" contentContainerClassName="gap-3 px-4 pb-2 pt-1">
+          <HorizontalScroll className="-mx-4" contentContainerClassName="gap-3 px-4 pb-2 pt-1">
             {(offerings.data ?? []).map((o, i) => (
               <ServiceTile key={o.id} offering={o} index={i} selected={offeringId === o.id} onPress={() => setOfferingId(offeringId === o.id ? null : o.id)} />
             ))}
-          </ScrollView>
+          </HorizontalScroll>
         </StateView>
       </View>
 
