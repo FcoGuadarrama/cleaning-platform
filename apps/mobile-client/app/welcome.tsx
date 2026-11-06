@@ -1,10 +1,11 @@
 import { router } from "expo-router";
 import { useRef, useState, type ComponentRef, type ComponentType } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CalendarIllustration, PaymentIllustration, PeopleIllustration } from "../src/illustrations";
 import { prefs } from "../src/prefs";
-import { Button } from "../src/ui";
+import { Text } from "../src/text";
+import { Button, Wordmark } from "../src/ui";
 
 const SLIDES: { art: ComponentType<{ size?: number }>; title: string; text: string }[] = [
   { art: PeopleIllustration, title: "Tú eliges quién te visita", text: "Conoce a cada persona del equipo y reserva con quien prefieras." },
@@ -31,8 +32,9 @@ export default function Welcome() {
   }
 
   return (
-    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top, paddingBottom: insets.bottom + 16 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
-      <View className="h-14 flex-row items-center justify-end px-5">
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top, paddingBottom: insets.bottom + 16 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      <View className="h-14 flex-row items-center justify-between px-6">
+        <Wordmark />
         {!last ? (
           <Pressable accessibilityRole="button" onPress={() => leave("/login")} className="min-h-11 justify-center px-2">
             <Text className="text-md font-semibold text-text-muted">Omitir</Text>
@@ -53,7 +55,7 @@ export default function Welcome() {
           <View key={title} style={{ width, height }} className="items-center justify-center gap-8 px-8">
             <Art size={240} />
             <View className="items-center gap-3">
-              <Text accessibilityRole="header" className="text-center text-2xl font-extrabold tracking-[-0.8px] text-text">{title}</Text>
+              <Text accessibilityRole="header" className="text-center text-2xl font-bold leading-[40px] tracking-[-1px] text-text">{title}</Text>
               <Text className="text-center text-md text-text-muted">{text}</Text>
             </View>
           </View>
@@ -69,7 +71,7 @@ export default function Welcome() {
         {last ? (
           <View className="gap-3">
             <Button label="Crear cuenta" onPress={() => leave("/register")} />
-            <Button label="Ya tengo cuenta" variant="soft" onPress={() => leave("/login")} />
+            <Button label="Ya tengo cuenta" variant="outline" onPress={() => leave("/login")} />
           </View>
         ) : (
           <Button label="Siguiente" onPress={() => goTo(page + 1)} />

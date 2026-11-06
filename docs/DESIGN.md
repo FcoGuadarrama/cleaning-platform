@@ -50,37 +50,37 @@ pop the stack; minimal back-button label; system font; status bar follows scheme
 Planned: Android `android_ripple` press feedback; sheets for secondary flows. One brand, platform-native navigation;
 no experimental native UI used purely for appearance. Customer/staff copy is Spanish (es-MX); technical identifiers stay English.
 
-## Mobile client visual language (2026-11-05, revised)
-Branding is **not decided**: `brand.json` ("Neutral") is a placeholder palette. Screens only use semantic tokens, so the
-final brand is a `brand.json` change + rebuild (plus `public/index.html` theme-color, the static web shell).
-- **No gradients** (owner decision). Solid token colors only.
-- **Structure:** role-aware tabs (customer: Inicio · Reservas · Cuenta; staff: Servicios · Ganancias · Cuenta) in a
-  floating rounded tab bar with a `primary-soft` active pill (`useTabScreenOptions` in `src/navigation.tsx`).
-- **Hero header:** every root screen opens on a solid `primary` header with rounded bottom (`HeroPage`/`Hero`), and the
-  first card overlaps its edge. The only decoration is the soap-bubble motif (`Bubbles`), drawn in `on-primary` alpha.
-- **Surfaces:** raised cards (`Card`, `radius.xl`, `elevation` tokens via `shadow()` in `src/theme.ts`) on `surface`.
-- **Color accents:** items and people get a stable tone (`toneFor`) from primary/accent/success/warning `-soft` tokens:
-  service tiles (`IconTile`), monogram avatars (until profile photos exist), status badges (`BOOKING_TONES`).
-- **Customer home:** next visit card, horizontal service tiles (selection carries into booking), team cards.
-- **Booking:** colored flow header with back button, four step cards (service → day → time → address), day tiles,
-  3-column time grid, raised bottom bar with total; confirmation as a perforated ticket; success screen after payment.
-- **Staff:** hero with counts, "Siguiente servicio" card with full-width check-in button, agenda cards; earnings shows
-  the week total in the hero and Generado → Aprobado → Pagado stages.
-- **Production layer (2026-11-06):** welcome carousel (3 slides, token-drawn illustrations in `src/illustrations.tsx`,
-  shown once via `src/prefs`), cleaner profile (`/(customer)/staff/[id]`: facts, services, real open slots that deep-link
-  into booking), booking detail (`/(customer)/booking/[id]`) and staff job detail (`/(staff)/job/[id]`) with a status
-  timeline (`StatusTimeline`), "Cómo llegar" (device maps), next open slot per cleaner on the home cards
-  (`useNextSlots`), skeleton loading (`SkeletonCards`) instead of spinners.
-- **Motion (`src/motion.tsx`, Reanimated 4):** press feedback on touch-down with a critically damped spring release
-  (`PressableScale`), one staggered entrance per screen (`Rise`), compact header fading in as the hero scrolls away
-  (`HeroPage`), spring-in success check. Reanimated honors the OS reduced-motion setting; skeletons stay static.
-- **Copy rule:** only facts the product has confirmed (Mon–Fri, company staff, customer supplies products); no ratings,
-  earnings estimates or features the API does not back.
-- **Icons:** own 24×24 stroke set in `src/icons.tsx` (react-native-svg); decorative, the control carries the label.
-- **Web target:** `public/index.html` adds `viewport-fit=cover`, `theme-color`, no tap highlight, no overscroll chaining,
-  `touch-action: manipulation` and 17 px inputs (no iOS zoom). Wide viewports keep a 480 px phone column.
-- **Dark mode (pending):** the NativeWind preset is light-only, so the mobile UI is light until the preset emits
-  per-scheme values; `src/theme.ts` exposes the light palette for non-class APIs.
+## Mobile client visual language: "brisa" (2026-11-06, replaces the 2026-11-05 design)
+The owner supplied a "brisa" product concept (6 customer screens) and asked for it 1:1. `brand.json` is now **Brisa**:
+teal `primary` (#0B5E67), aqua `primary-soft` (#D8F4F3) for date blocks, day tiles, avatars and callouts, mint
+`accent`, white `background`, and typography **Outfit** (`@expo-google-fonts/outfit`, loaded in `src/fonts.ts`).
+Screens use semantic tokens only; the token change also restyles the web dashboard.
+- **No gradients, no shadows.** Flat white pages; cards have a 1 px `border`; lists are rows separated by hairlines
+  (`List`/`Row` in `src/ui.tsx`).
+- **Type:** `font-*` classes select a font family per weight (`tailwind.config.js` disables the numeric fontWeight
+  plugin; `src/font-families.cjs`). Use `Text` from `src/text.tsx` (regular by default), not React Native's `Text`.
+  Large titles are `text-2xl font-bold tracking-[-1px]`, kickers are `Overline` (uppercase, wide tracking).
+- **Structure:** flat white tab bar under a hairline (customer: Inicio · Visitas · Cuenta; staff: Servicios ·
+  Ganancias · Cuenta); root screens use `Screen` and pushed screens use `FlowScreen` (back chevron + title, optional
+  pinned footer) from `src/screen.tsx`.
+- **Customer screens:** Inicio (wordmark, address of the latest visit, "Tu {día}, con más tiempo.", interior image,
+  next-visit card, services list); Visitas (month kicker, week arrows, Próximas/Historial underline tabs, week strip
+  with visit dots, visit card with 24 h time range); Cuenta (grouped rows: Tu hogar / Pagos y plan / Ayuda);
+  Reservar in 3 steps (profesional → fecha y hora → "Revisa tu reserva", which is the designed screen) with sandbox
+  payment; Detalle de visita (status chip, big time, cleaner row, indicaciones, prepara tu visita). Staff screens and
+  sign-in use the same pieces.
+- **Not supported yet → "Próximamente":** designed features without backend are visible but cannot be tapped
+  (`Soon`, the `soon` prop on `Row`/`Button`/`TextLink`). The full list, with the RFC/ADR each one needs, is in
+  `docs/rfc/brisa-feature-gaps.md`. Screen 05 (plan mensual) is not built.
+- **Placeholders:** interior photography → `HomeScene` (token-drawn, `src/illustrations.tsx`); people photos → initials
+  `Avatar`; the logo → `Wordmark` set in Outfit until `assets.logo` exists.
+- **Copy rule:** only confirmed facts and rules (Mon–Fri, company staff, customer supplies products, 24 h change
+  notice). The concept's sample values (prices, kit +$80, "4 visitas") are not used.
+- **Motion:** press feedback (`PressableScale`), one entrance per primary card (`Rise`), spring-in success check;
+  Reanimated honors reduced motion.
+- **Web target:** `public/index.html` theme-color = `background` (white tops), 17 px inputs, no tap highlight; wide
+  viewports keep a 480 px column.
+- **Dark mode (pending):** the NativeWind preset is light-only; `src/theme.ts` exposes the light palette.
 
 ## Design skills available to agents (checked 2026-11-03)
 `apple-design` (web-oriented Apple motion/interaction guidance), `ui-ux-pro-max`, `emil-design-eng`, `animate-expo`

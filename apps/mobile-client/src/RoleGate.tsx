@@ -6,6 +6,8 @@ import { useSession } from "./session";
 /** Navigation convenience only — the API enforces roles and ownership. */
 export function RoleGate({ role, children }: { role: Schemas["Role"]; children: ReactNode }) {
   const { user, ready } = useSession();
-  if (ready && user?.role !== role) return <Redirect href="/" />;
+  // Screens wait for the stored session, so a deep link never fires requests without the token.
+  if (!ready) return null;
+  if (user?.role !== role) return <Redirect href="/" />;
   return <>{children}</>;
 }

@@ -1,183 +1,136 @@
 import type { Schemas } from "@repo/api-client";
 import { router } from "expo-router";
-import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { HorizontalScroll } from "../../../src/HorizontalScroll";
+import { View } from "react-native";
 import { api } from "../../../src/api";
 import { DateBlock } from "../../../src/DateBlock";
-import { useNextSlots } from "../../../src/availability";
-import { BOOKING_LABELS, BOOKING_TONES, formatDuration, formatMoney, formatRelativeDay, formatTime } from "../../../src/format";
-import { Icon, type IconName } from "../../../src/icons";
-import { Rise, Skeleton } from "../../../src/motion";
-import { useSession } from "../../../src/session";
-import { color, shadow } from "../../../src/theme";
-import { Avatar, Badge, Card, HeroPage, HeroText, IconTile, SectionHeader, SkeletonCards, StateView, toneFor } from "../../../src/ui";
+import { BOOKING_LABELS, BOOKING_TONES, formatDuration, formatMoney, formatRelativeDay, formatTime, formatWeekday } from "../../../src/format";
+import { Icon } from "../../../src/icons";
+import { HomeScene } from "../../../src/illustrations";
+import { Rise } from "../../../src/motion";
+import { Screen } from "../../../src/screen";
+import { serviceIcon, UPCOMING } from "../../../src/visits";
+import { Text } from "../../../src/text";
+import { color } from "../../../src/theme";
+import { Avatar, Button, Card, Hairline, List, Row, SectionTitle, SkeletonCard, SkeletonRows, StateView, StatusLine, TextLink, Wordmark } from "../../../src/ui";
 import { useResource } from "../../../src/useResource";
 
-const SERVICE_ICONS: IconName[] = ["home", "sparkle", "drop", "broom"];
-const ACTIVE = new Set(["held", "confirmed", "in_progress"]);
+type Booking = Schemas["BookingOut"];
 
-function NextVisit({ booking, staffName }: { booking: Schemas["BookingOut"]; staffName?: string }) {
+function NextVisit({ booking, offering, staffName }: { booking: Booking; offering?: Schemas["OfferingOut"]; staffName?: string }) {
   return (
-    <Card onPress={() => router.push({ pathname: "/(customer)/booking/[id]", params: { id: String(booking.id) } })} accessibilityLabel="Ver tu próxima visita">
+    <Card className="gap-4">
       <View className="flex-row items-center gap-4">
-        <DateBlock iso={booking.starts_at} size="lg" />
+        <DateBlock iso={booking.starts_at} />
         <View className="flex-1 gap-1">
-          <Text className="text-sm font-semibold text-text-muted">Tu próxima visita</Text>
-          <Text className="text-lg font-bold text-text">
-            {formatTime(booking.starts_at)}
-            {staffName ? <Text className="font-medium text-text-muted"> con {staffName}</Text> : null}
+          <Text className="text-lg font-semibold text-text">
+            {formatRelativeDay(booking.starts_at)}, {formatTime(booking.starts_at)}
           </Text>
-          <Badge label={BOOKING_LABELS[booking.status]} tone={BOOKING_TONES[booking.status]} />
+          {offering ? <Text className="text-sm text-text">{offering.name} · {formatDuration(offering.duration_minutes)}</Text> : null}
+          <StatusLine label={BOOKING_LABELS[booking.status]} tone={BOOKING_TONES[booking.status]} />
         </View>
-        <Icon name="chevron" size={20} color={color["text-muted"]} />
       </View>
-    </Card>
-  );
-}
-
-function PlanVisit({ returning }: { returning: boolean }) {
-  return (
-    <Card>
+      <Hairline />
       <View className="flex-row items-center gap-4">
-        <IconTile icon="sparkle" tone="accent" size={56} />
-        <View className="flex-1 gap-1">
-          <Text className="text-lg font-bold text-text">{returning ? "Agenda tu próxima limpieza" : "Agenda tu primera limpieza"}</Text>
-          <Text className="text-sm text-text-muted">Elige un servicio y a la persona que quieres que te visite.</Text>
+        <Avatar name={staffName ?? "?"} size="md" />
+        <View className="flex-1">
+          <Text className="text-md font-semibold text-text">{staffName ?? "Personal asignado"}</Text>
+          <Text className="text-sm text-text-muted">Tu profesional</Text>
         </View>
       </View>
+      <Button label="Ver mi visita" onPress={() => router.push({ pathname: "/(customer)/booking/[id]", params: { id: String(booking.id) } })} />
     </Card>
   );
 }
 
-function ServiceTile({ offering, index, selected, onPress }: { offering: Schemas["OfferingOut"]; index: number; selected: boolean; onPress: () => void }) {
+function FirstVisit({ returning }: { returning: boolean }) {
   return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ checked: selected }}
-      accessibilityLabel={`${offering.name}, ${formatMoney(offering.price_minor, offering.currency)}`}
-      onPress={onPress}
-      style={shadow(selected ? "2" : "1")}
-      className={`w-40 gap-3 rounded-xl border-2 bg-surface-raised p-4 active:opacity-90 ${selected ? "border-primary" : "border-surface-raised"}`}
-    >
-      <View className="flex-row items-start justify-between">
-        <IconTile icon={SERVICE_ICONS[index % SERVICE_ICONS.length]!} tone={toneFor(index)} />
-        {selected ? (
-          <View className="h-6 w-6 items-center justify-center rounded-full bg-primary">
-            <Icon name="check" size={14} color={color["on-primary"]} strokeWidth={3} />
-          </View>
-        ) : null}
-      </View>
-      <View className="gap-0.5">
-        <Text numberOfLines={2} className="min-h-[44px] text-md font-bold leading-[22px] text-text">{offering.name}</Text>
-        <Text className="text-sm text-text-muted">{formatDuration(offering.duration_minutes)}</Text>
-      </View>
-      <Text className="text-lg font-extrabold text-text">{formatMoney(offering.price_minor, offering.currency)}</Text>
-    </Pressable>
-  );
-}
-
-/** Next open slot line: real availability, so the card answers "when could they come?". */
-function NextSlot({ slot }: { slot: { starts_at: string } | null | undefined }) {
-  if (slot === undefined) return <Skeleton className="h-8 w-44 rounded-full" />;
-  if (slot === null) return <Text className="text-sm text-text-muted">Sin horarios libres esta semana</Text>;
-  return (
-    <View className="flex-row items-center gap-1.5 self-start rounded-full bg-success-soft px-3 py-1.5">
-      <Icon name="clock" size={15} color={color.success} strokeWidth={2.2} />
-      <Text className="text-sm font-bold text-success">
-        {formatRelativeDay(slot.starts_at)}, {formatTime(slot.starts_at)}
-      </Text>
-    </View>
-  );
-}
-
-function StaffCard({ staff, slot, onPress }: { staff: Schemas["StaffProfileOut"]; slot: { starts_at: string } | null | undefined; onPress: () => void }) {
-  return (
-    <Card onPress={onPress} accessibilityLabel={`Ver perfil de ${staff.display_name}`}>
-      <View className="flex-row gap-4">
-        <Avatar name={staff.display_name} tone={toneFor(staff.id)} size="lg" />
-        <View className="flex-1 gap-1">
-          <Text className="text-lg font-bold text-text">{staff.display_name}</Text>
-          {staff.bio ? <Text numberOfLines={2} className="text-sm text-text-muted">{staff.bio}</Text> : null}
-          <View className="mt-1 flex-row items-center gap-1.5">
-            <Icon name="star" size={16} color={color.accent} filled strokeWidth={1.5} />
-            <Text className="text-xs font-semibold text-text-muted">Aún sin reseñas</Text>
-          </View>
-        </View>
-      </View>
-      <View className="mt-4 flex-row items-center justify-between border-t border-border/50 pt-3">
-        <View className="gap-1">
-          <Text className="text-xs font-semibold text-text-muted">Próximo horario libre</Text>
-          <NextSlot slot={slot} />
-        </View>
-        <View className="flex-row items-center gap-1 rounded-full bg-primary-soft py-2 pl-4 pr-3">
-          <Text className="text-sm font-bold text-primary">Ver perfil</Text>
-          <Icon name="chevron" size={16} color={color.primary} strokeWidth={2.4} />
-        </View>
-      </View>
+    <Card className="gap-1">
+      <Text className="text-lg font-semibold text-text">{returning ? "No tienes visitas próximas" : "Aún no tienes visitas"}</Text>
+      <Text className="text-sm text-text-muted">Elige un servicio aquí abajo y reserva con la persona que prefieras.</Text>
     </Card>
   );
 }
 
 export default function Home() {
-  const { user } = useSession();
-  const staff = useResource(() => api.GET("/staff"));
-  const offerings = useResource(() => api.GET("/offerings"));
   const bookings = useResource(() => api.GET("/bookings"));
-  const [offeringId, setOfferingId] = useState<number | null>(null);
+  const offerings = useResource(() => api.GET("/offerings"));
+  const staff = useResource(() => api.GET("/staff"));
 
-  const staffName = new Map((staff.data ?? []).map((s) => [s.id, s.display_name]));
-  const next = [...(bookings.data ?? [])].filter((b) => ACTIVE.has(b.status)).sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0];
-  const firstName = user?.full_name.split(/\s+/)[0] ?? "";
+  const sorted = [...(bookings.data ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const next = sorted.find((b) => UPCOMING.has(b.status));
+  const lastAddress = (next ?? sorted.at(-1))?.address;
+  const offeringOf = (id: number) => offerings.data?.find((o) => o.id === id);
+  const staffName = (id: number) => staff.data?.find((s) => s.id === id)?.display_name;
 
   function refresh() {
-    void staff.refresh();
-    void offerings.refresh();
     void bookings.refresh();
-  }
-
-  const slotOffering = offeringId ?? offerings.data?.[0]?.id;
-  const nextSlots = useNextSlots((staff.data ?? []).map((s) => s.id), slotOffering);
-
-  function openStaff(s: Schemas["StaffProfileOut"]) {
-    router.push({ pathname: "/(customer)/staff/[id]", params: { id: String(s.id) } });
+    void offerings.refresh();
+    void staff.refresh();
   }
 
   return (
-    <HeroPage title="Inicio" onRefresh={refresh} hero={<HeroText kicker={`Hola, ${firstName}`} title="¿Quién limpia tu casa esta semana?" />}>
-      <Rise>{bookings.loading ? <SkeletonCards count={1} /> : next ? <NextVisit booking={next} staffName={staffName.get(next.staff_id)} /> : <PlanVisit returning={!!bookings.data?.length} />}</Rise>
-
+    <Screen onRefresh={refresh}>
       <View className="gap-3">
-        <SectionHeader title="Servicios" detail="Toca para ver horarios" />
-        <StateView loading={offerings.loading} error={offerings.error} empty={!offerings.data?.length} emptyIcon="sparkle" emptyTitle="Aún no hay servicios disponibles" onRetry={offerings.refresh}>
-          <HorizontalScroll className="-mx-4" contentContainerClassName="gap-3 px-4 pb-2 pt-1">
-            {(offerings.data ?? []).map((o, i) => (
-              <ServiceTile key={o.id} offering={o} index={i} selected={offeringId === o.id} onPress={() => setOfferingId(offeringId === o.id ? null : o.id)} />
-            ))}
-          </HorizontalScroll>
-        </StateView>
-      </View>
-
-      <View className="gap-3">
-        <SectionHeader title="Nuestro equipo" detail={staff.data?.length ? `${staff.data.length} personas` : undefined} />
-        <StateView
-          loading={staff.loading}
-          error={staff.error}
-          empty={!staff.data?.length}
-          emptyIcon="people"
-          emptyTitle="Por ahora no hay personal disponible"
-          emptyText="Vuelve más tarde o desliza hacia abajo para actualizar."
-          onRetry={staff.refresh}
-        >
-          <View className="gap-3">
-            {(staff.data ?? []).map((s, i) => (
-              <Rise key={s.id} index={i + 2}>
-                <StaffCard staff={s} slot={nextSlots[s.id]} onPress={() => openStaff(s)} />
-              </Rise>
-            ))}
+        <View className="flex-row items-center justify-between">
+          <Wordmark />
+          <View accessibilityLabel="Notificaciones, próximamente" className="h-11 w-11 items-center justify-center opacity-40">
+            <Icon name="bell" size={26} color={color.text} strokeWidth={1.6} />
           </View>
-        </StateView>
+        </View>
+        {lastAddress ? (
+          <View className="flex-row items-center gap-1.5">
+            <Icon name="pin" size={18} color={color.text} strokeWidth={1.6} />
+            <Text numberOfLines={1} className="flex-1 text-sm text-text">{lastAddress}</Text>
+          </View>
+        ) : null}
+        <Text accessibilityRole="header" className="pt-3 text-2xl font-bold leading-[38px] tracking-[-1px] text-text">
+          Tu {formatWeekday(new Date().toISOString())},{"\n"}con más tiempo.
+        </Text>
       </View>
-    </HeroPage>
+
+      <View className="-mx-1 h-[150px] overflow-hidden rounded-lg">
+        <HomeScene />
+      </View>
+
+      <View className="gap-3">
+        <SectionTitle title="Tu próxima visita" />
+        <Rise>
+          {bookings.loading ? (
+            <SkeletonCard />
+          ) : next ? (
+            <NextVisit booking={next} offering={offeringOf(next.offering_id)} staffName={staffName(next.staff_id)} />
+          ) : (
+            <FirstVisit returning={sorted.length > 0} />
+          )}
+        </Rise>
+      </View>
+
+      <View className="gap-1">
+        <SectionTitle title="¿Qué necesita tu casa?" />
+        <StateView
+          loading={offerings.loading}
+          error={offerings.error}
+          empty={!offerings.data?.length}
+          emptyIcon="broom"
+          emptyTitle="Aún no hay servicios disponibles"
+          onRetry={offerings.refresh}
+          skeleton={<SkeletonRows count={2} />}
+        >
+          <List>
+            {(offerings.data ?? []).map((o, i) => (
+              <Row
+                key={o.id}
+                icon={serviceIcon(i)}
+                title={o.name}
+                subtitle={`${formatDuration(o.duration_minutes)} · ${formatMoney(o.price_minor, o.currency)}`}
+                accessibilityLabel={`Reservar ${o.name}`}
+                onPress={() => router.push({ pathname: "/(customer)/book", params: { offeringId: String(o.id) } })}
+              />
+            ))}
+          </List>
+        </StateView>
+        <TextLink label="Conoce el plan mensual" soon />
+      </View>
+    </Screen>
   );
 }

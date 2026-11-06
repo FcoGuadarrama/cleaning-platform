@@ -1,156 +1,78 @@
 import type { Schemas } from "@repo/api-client";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState, type ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
-import { HorizontalScroll } from "../../src/HorizontalScroll";
+import { useEffect, useState } from "react";
+import { Pressable, View } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, errorMessage } from "../../src/api";
-import { businessDayInstant, dayParts, formatDuration, formatLongDay, formatMoney, formatTime, nextBusinessDays, sentenceCase } from "../../src/format";
-import { Icon, type IconName } from "../../src/icons";
-import { color, shadow } from "../../src/theme";
-import { FlowHeader } from "../../src/FlowHeader";
-import { Avatar, Button, Card, Field, IconTile, Notice, StateView, toneFor } from "../../src/ui";
+import { useDaySlots, useNextSlots } from "../../src/availability";
+import { formatAmount, formatClock, formatDuration, formatLongDay, formatMoney, formatRelativeDay, formatShortDay, formatTime, nextBusinessDays } from "../../src/format";
+import { Icon } from "../../src/icons";
+import { HomeScene } from "../../src/illustrations";
+import { Skeleton } from "../../src/motion";
+import { FlowScreen } from "../../src/screen";
+import { DayPicker, SlotGrid } from "../../src/SlotPicker";
+import { Text } from "../../src/text";
+import { color } from "../../src/theme";
+import { Avatar, BRAND_NAME, Button, Callout, Field, Hairline, InfoNote, List, Notice, Overline, Row, SectionTitle, SkeletonRows, Soon, StateView, StatusDot } from "../../src/ui";
 import { useResource } from "../../src/useResource";
+import { serviceIcon } from "../../src/visits";
 
-const SERVICE_ICONS: IconName[] = ["home", "sparkle", "drop", "broom"];
+type Step = 1 | 2 | 3;
+const TITLES: Record<Step, string> = { 1: "Elige profesional", 2: "Elige fecha y hora", 3: "Revisa tu reserva" };
 
-function Step({ n, title, done, children }: { n: number; title: string; done: boolean; children: ReactNode }) {
+function StepHeading({ step, title }: { step: Step; title: string }) {
   return (
-    <Card className="gap-4">
-      <View className="flex-row items-center gap-3">
-        <View className={`h-7 w-7 items-center justify-center rounded-full ${done ? "bg-primary" : "bg-primary-soft"}`}>
-          {done ? <Icon name="check" size={15} color={color["on-primary"]} strokeWidth={3} /> : <Text className="text-sm font-extrabold text-primary">{n}</Text>}
-        </View>
-        <Text accessibilityRole="header" className="text-lg font-bold text-text">{title}</Text>
-      </View>
-      {children}
-    </Card>
-  );
-}
-
-function OfferingOption({ offering, index, selected, onPress }: { offering: Schemas["OfferingOut"]; index: number; selected: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ checked: selected }}
-      onPress={onPress}
-      className={`flex-row items-center gap-3 rounded-lg border-2 p-3 active:opacity-90 ${selected ? "border-primary bg-primary-soft" : "border-border/60 bg-surface-raised"}`}
-    >
-      <IconTile icon={SERVICE_ICONS[index % SERVICE_ICONS.length]!} tone={toneFor(index)} size={44} />
-      <View className="flex-1">
-        <Text className="text-md font-bold text-text">{offering.name}</Text>
-        <Text className="text-sm text-text-muted">{formatDuration(offering.duration_minutes)}</Text>
-      </View>
-      <Text className="text-md font-extrabold text-text">{formatMoney(offering.price_minor, offering.currency)}</Text>
-    </Pressable>
-  );
-}
-
-function DayTile({ ymd, selected, onPress }: { ymd: string; selected: boolean; onPress: () => void }) {
-  const d = dayParts(businessDayInstant(ymd));
-  const ink = selected ? "text-on-primary" : "text-text";
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={formatLongDay(businessDayInstant(ymd))}
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={selected ? shadow("2", color.primary) : undefined}
-      className={`h-[88px] w-[64px] items-center justify-center gap-0.5 rounded-xl active:opacity-85 ${selected ? "bg-primary" : "bg-surface"}`}
-    >
-      <Text className={`text-xs font-bold capitalize ${selected ? "text-on-primary" : "text-text-muted"}`}>{d.weekday}</Text>
-      <Text className={`text-xl font-extrabold ${ink}`}>{d.day}</Text>
-      <Text className={`text-xs font-medium capitalize ${selected ? "text-on-primary" : "text-text-muted"}`}>{d.month}</Text>
-    </Pressable>
-  );
-}
-
-/** Equal-width time grid: fixed rows keep the last row aligned with the ones above. */
-function rowsOf<T>(items: T[], size: number): T[][] {
-  const rows: T[][] = [];
-  for (let i = 0; i < items.length; i += size) rows.push(items.slice(i, i + size));
-  return rows;
-}
-
-function TimePill({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      className={`min-h-12 flex-1 items-center justify-center rounded-full active:opacity-85 ${selected ? "bg-primary" : "bg-surface"}`}
-    >
-      <Text className={`text-sm font-bold ${selected ? "text-on-primary" : "text-text"}`}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function BottomBar({ children }: { children: ReactNode }) {
-  const insets = useSafeAreaInsets();
-  return (
-    <View className="gap-3 rounded-t-2xl bg-surface-raised px-5 pt-4" style={[{ paddingBottom: Math.max(insets.bottom, 16) }, shadow("3")]}>
-      {children}
+    <View className="gap-2">
+      <Overline>Paso {step} de 3</Overline>
+      <Text accessibilityRole="header" className="text-2xl font-bold leading-[38px] tracking-[-1px] text-text">{title}</Text>
     </View>
   );
 }
 
-function TicketRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+function NextSlotText({ slot }: { slot: { starts_at: string } | null | undefined }) {
+  if (slot === undefined) return <Skeleton className="mt-1 h-3.5 w-36" />;
+  if (slot === null) return <Text className="text-sm text-text-muted">Sin horarios esta semana</Text>;
   return (
-    <View className="flex-row items-center gap-3">
-      <IconTile icon={icon} size={40} />
-      <View className="flex-1">
-        <Text className="text-xs font-semibold text-text-muted">{label}</Text>
-        <Text className="text-md font-medium text-text">{value}</Text>
-      </View>
-    </View>
-  );
-}
-
-/** Perforated divider: the confirmation reads as a ticket. */
-function Perforation() {
-  return (
-    <View className="-mx-4 my-1 flex-row items-center">
-      <View className="-ml-3 h-6 w-6 rounded-full bg-surface" />
-      <View className="mx-2 flex-1 border-t-2 border-dashed border-border" />
-      <View className="-mr-3 h-6 w-6 rounded-full bg-surface" />
-    </View>
+    <Text className="text-sm text-text-muted">
+      Próximo horario: {formatRelativeDay(slot.starts_at)}, {formatTime(slot.starts_at)}
+    </Text>
   );
 }
 
 function Confirmed({ name, booking }: { name: string; booking: Schemas["BookingOut"] }) {
   const insets = useSafeAreaInsets();
   return (
-    <View className="flex-1 justify-center gap-8 bg-surface px-6" style={{ paddingTop: insets.top, paddingBottom: insets.bottom + 24 }}>
+    <View className="flex-1 justify-center gap-10 bg-background px-6" style={{ paddingTop: insets.top, paddingBottom: insets.bottom + 24 }}>
       <View className="items-center gap-5">
-        <Animated.View entering={ZoomIn.springify().damping(14).stiffness(180)} className="h-24 w-24 items-center justify-center rounded-full bg-success-soft">
-          <View className="h-16 w-16 items-center justify-center rounded-full bg-success">
-            <Icon name="check" size={34} color={color["on-success"]} strokeWidth={3} />
-          </View>
+        <Animated.View entering={ZoomIn.springify().damping(14).stiffness(180)}>
+          <StatusDot tone="success" size={88} />
         </Animated.View>
         <View className="items-center gap-2">
-          <Text accessibilityRole="header" className="text-2xl font-extrabold tracking-[-0.8px] text-text">Visita confirmada</Text>
+          <Text accessibilityRole="header" className="text-2xl font-bold tracking-[-1px] text-text">Visita confirmada</Text>
           <Text className="text-center text-md text-text-muted">
             {name} te visitará el {formatLongDay(booking.starts_at)}, a las {formatTime(booking.starts_at)}
           </Text>
         </View>
       </View>
       <View className="gap-3">
-        <Button label="Ver mis reservas" onPress={() => router.replace("/(customer)/(tabs)/bookings")} />
-        <Button label="Volver al inicio" variant="soft" onPress={() => router.replace("/(customer)/(tabs)")} />
+        <Button label="Ver mi visita" onPress={() => router.replace({ pathname: "/(customer)/booking/[id]", params: { id: String(booking.id) } })} />
+        <Button label="Volver al inicio" variant="outline" onPress={() => router.replace("/(customer)/(tabs)")} />
       </View>
     </View>
   );
 }
 
 export default function Book() {
-  const params = useLocalSearchParams<{ staffId: string; name: string; offeringId?: string; day?: string; slot?: string }>();
-  const { staffId, name, offeringId } = params;
+  const params = useLocalSearchParams<{ staffId?: string; offeringId?: string; day?: string; slot?: string }>();
   const days = nextBusinessDays(10);
-  const [offering, setOffering] = useState<Schemas["OfferingOut"] | null>(null);
-  const [day, setDay] = useState(params.day && days.includes(params.day) ? params.day : (days[1] ?? days[0]!));
+  const [staffId, setStaffId] = useState<number | null>(params.staffId ? Number(params.staffId) : null);
+  const [offeringId, setOfferingId] = useState<number | null>(params.offeringId ? Number(params.offeringId) : null);
+  const [day, setDay] = useState(params.day && days.includes(params.day) ? params.day : days[0]!);
   const [slot, setSlot] = useState<string | null>(params.slot ?? null);
+  const [step, setStep] = useState<Step>(params.staffId ? (params.slot ? 3 : 2) : 1);
   const [address, setAddress] = useState("");
+  const [editingAddress, setEditingAddress] = useState(false);
   const [booking, setBooking] = useState<Schemas["BookingOut"] | null>(null);
   const [payment, setPayment] = useState<Schemas["PaymentOut"] | null>(null);
   const [paid, setPaid] = useState(false);
@@ -158,160 +80,251 @@ export default function Book() {
   const [error, setError] = useState<string | null>(null);
 
   const offerings = useResource(() => api.GET("/offerings"));
-  const slots = useResource(
-    async () =>
-      offering
-        ? api.GET("/staff/{staff_id}/availability", { params: { path: { staff_id: Number(staffId) }, query: { offering_id: offering.id, day } } })
-        : { data: undefined },
-    [offering?.id, day],
-  );
+  const staff = useResource(() => api.GET("/staff"));
+  const bookings = useResource(() => api.GET("/bookings"));
+  const offering = offerings.data?.find((o) => o.id === offeringId);
+  const person = staff.data?.find((s) => s.id === staffId);
+  const nextSlots = useNextSlots((staff.data ?? []).map((s) => s.id), offeringId ?? undefined);
+  const daySlots = useDaySlots(staffId ?? 0, staffId ? (offeringId ?? undefined) : undefined, day);
 
-  // A service chosen on the home screen arrives preselected.
+  // Without a service from the previous screen, start with the first one offered.
   useEffect(() => {
-    if (offering || !offeringId) return;
-    const match = offerings.data?.find((o) => o.id === Number(offeringId));
-    if (match) setOffering(match);
-  }, [offerings.data, offeringId, offering]);
+    if (!offeringId && offerings.data?.[0]) setOfferingId(offerings.data[0].id);
+  }, [offerings.data, offeringId]);
 
-  async function reserve() {
-    if (!offering || !slot) return;
-    setBusy(true);
-    const held = await api.POST("/bookings", { body: { staff_id: Number(staffId), offering_id: offering.id, starts_at: slot, address } });
-    if (!held.data) {
-      setBusy(false);
-      setError(errorMessage(held.error));
-      void slots.refresh();
-      return;
-    }
-    const pay = await api.POST("/bookings/{booking_id}/checkout", { params: { path: { booking_id: held.data.id } } });
-    setBusy(false);
-    setBooking(held.data);
-    setPayment(pay.data ?? null);
-    setError(pay.data ? null : errorMessage(pay.error));
+  // Prefill the address of the customer's latest visit; there is no address book yet.
+  useEffect(() => {
+    const last = [...(bookings.data ?? [])].sort((a, b) => b.starts_at.localeCompare(a.starts_at))[0];
+    if (last && !address) setAddress(last.address);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookings.data]);
+
+  function go(next: Step) {
+    // Changing an earlier choice drops a pending hold; it expires on its own.
+    setBooking(null);
+    setPayment(null);
+    setError(null);
+    setStep(next);
   }
 
-  async function paySandbox() {
-    if (!payment) return;
+  async function pay() {
+    if (!offering || !slot || !staffId) return;
     setBusy(true);
-    const r = await api.POST("/payments/{payment_id}/sandbox-outcome", { params: { path: { payment_id: payment.id } }, body: { outcome: "succeeded" } });
+    setError(null);
+    let held = booking;
+    if (!held) {
+      const r = await api.POST("/bookings", { body: { staff_id: staffId, offering_id: offering.id, starts_at: slot, address: address.trim() } });
+      if (!r.data) {
+        setBusy(false);
+        setSlot(null);
+        setStep(2);
+        setError(errorMessage(r.error));
+        return;
+      }
+      held = r.data;
+      setBooking(held);
+    }
+    let checkout = payment;
+    if (!checkout) {
+      const r = await api.POST("/bookings/{booking_id}/checkout", { params: { path: { booking_id: held.id } } });
+      if (!r.data) {
+        setBusy(false);
+        setError(errorMessage(r.error));
+        return;
+      }
+      checkout = r.data;
+      setPayment(checkout);
+    }
+    const r = await api.POST("/payments/{payment_id}/sandbox-outcome", { params: { path: { payment_id: checkout.id } }, body: { outcome: "succeeded" } });
     setBusy(false);
     if (r.data?.status === "succeeded") setPaid(true);
     else setError(errorMessage(r.error));
   }
 
-  if (booking && paid) return <Confirmed name={name} booking={booking} />;
+  if (booking && paid) return <Confirmed name={person?.display_name ?? ""} booking={booking} />;
 
-  if (booking && payment) {
+  const back = step > 1 ? () => go((step - 1) as Step) : undefined;
+  const addressOk = address.trim().length >= 5;
+  const total = booking?.price_minor ?? offering?.price_minor;
+  const currency = booking?.currency ?? offering?.currency ?? "MXN";
+
+  if (step === 1)
     return (
-      <View className="flex-1 bg-surface">
-        <ScrollView contentContainerClassName="pb-8">
-          <FlowHeader fallback="/(customer)/(tabs)">
-            <Text accessibilityRole="header" className="text-2xl font-extrabold tracking-[-0.8px] text-on-primary">Confirma tu pago</Text>
-            {booking.hold_expires_at ? (
-              <Text className="mt-1 text-md text-on-primary opacity-80">Apartamos tu horario hasta las {formatTime(booking.hold_expires_at)}</Text>
-            ) : null}
-          </FlowHeader>
-          <View className="-mt-8 gap-4 px-4">
-            <Card className="gap-4">
-              <View className="flex-row items-center gap-3">
-                <Avatar name={name} tone={toneFor(Number(staffId))} />
-                <View className="flex-1">
-                  <Text className="text-xs font-semibold text-text-muted">Te visita</Text>
-                  <Text className="text-lg font-bold text-text">{name}</Text>
-                </View>
-              </View>
-              <Perforation />
-              {offering ? <TicketRow icon="sparkle" label="Servicio" value={`${offering.name}, ${formatDuration(offering.duration_minutes)}`} /> : null}
-              <TicketRow icon="calendar" label="Día" value={sentenceCase(formatLongDay(booking.starts_at))} />
-              <TicketRow icon="clock" label="Hora" value={`${formatTime(booking.starts_at)} a ${formatTime(booking.ends_at)}`} />
-              <TicketRow icon="pin" label="Dirección" value={booking.address} />
-              <Perforation />
-              <View className="flex-row items-baseline justify-between">
-                <Text className="text-md font-semibold text-text-muted">Total</Text>
-                <Text className="text-2xl font-extrabold tracking-[-0.6px] text-text">{formatMoney(payment.amount_minor, payment.currency)}</Text>
-              </View>
-            </Card>
-            <Notice tone="warning" text="Entorno de prueba: no se realiza ningún cobro real." />
-            {error ? <Notice tone="danger" text={error} /> : null}
-          </View>
-        </ScrollView>
-        <BottomBar>
-          <Button label={`Pagar ${formatMoney(payment.amount_minor, payment.currency)} (prueba)`} onPress={paySandbox} busy={busy} />
-        </BottomBar>
-      </View>
+      <FlowScreen title={TITLES[1]} fallback="/(customer)/(tabs)">
+        <StepHeading step={1} title="¿Quién te visita?" />
+        <View className="gap-1">
+          <SectionTitle title="Servicio" />
+          <StateView loading={offerings.loading} error={offerings.error} empty={!offerings.data?.length} emptyIcon="broom" emptyTitle="Aún no hay servicios disponibles" onRetry={offerings.refresh} skeleton={<SkeletonRows />}>
+            <List>
+              {(offerings.data ?? []).map((o, i) => (
+                <Row
+                  key={o.id}
+                  icon={serviceIcon(i)}
+                  title={o.name}
+                  subtitle={`${formatDuration(o.duration_minutes)} · ${formatMoney(o.price_minor, o.currency)}`}
+                  onPress={() => setOfferingId(o.id)}
+                  trailing={<Icon name={o.id === offeringId ? "check" : "circle"} size={22} color={o.id === offeringId ? color.primary : color.border} strokeWidth={2} />}
+                  accessibilityLabel={`${o.name}${o.id === offeringId ? ", elegido" : ""}`}
+                />
+              ))}
+            </List>
+          </StateView>
+        </View>
+        <View className="gap-1">
+          <SectionTitle title="Profesional" />
+          <StateView loading={staff.loading} error={staff.error} empty={!staff.data?.length} emptyIcon="person" emptyTitle="Por ahora no hay personal disponible" onRetry={staff.refresh} skeleton={<SkeletonRows count={3} />}>
+            <List>
+              {(staff.data ?? []).map((s) => (
+                <Pressable
+                  key={s.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Reservar con ${s.display_name}`}
+                  onPress={() => {
+                    setStaffId(s.id);
+                    setSlot(null);
+                    go(2);
+                  }}
+                  className="min-h-[76px] flex-row items-center gap-4 py-3 active:opacity-60"
+                >
+                  <Avatar name={s.display_name} size="md" />
+                  <View className="flex-1 gap-0.5">
+                    <Text className="text-md font-semibold text-text">{s.display_name}</Text>
+                    <NextSlotText slot={nextSlots[s.id]} />
+                  </View>
+                  <Icon name="arrow" size={20} color={color.text} strokeWidth={1.6} />
+                </Pressable>
+              ))}
+            </List>
+          </StateView>
+        </View>
+      </FlowScreen>
     );
-  }
 
-  const ready = !!offering && !!slot && address.trim().length >= 5;
+  if (step === 2)
+    return (
+      <FlowScreen title={TITLES[2]} fallback="/(customer)/(tabs)" onBack={back} footer={<Button label="Continuar" disabled={!slot} onPress={() => go(3)} />}>
+        <StepHeading step={2} title="¿Cuándo te visitamos?" />
+        <List>
+          <Row
+            leading={<Avatar name={person?.display_name ?? "?"} size="sm" />}
+            title={person?.display_name ?? "Profesional"}
+            subtitle={offering ? `${offering.name} · ${formatDuration(offering.duration_minutes)}` : undefined}
+            trailing={
+              <Pressable accessibilityRole="button" onPress={() => go(1)} className="min-h-11 justify-center active:opacity-60">
+                <Text className="text-md font-semibold text-primary">Cambiar</Text>
+              </Pressable>
+            }
+          />
+        </List>
+        {error ? <Notice tone="danger" text={error} /> : null}
+        <DayPicker
+          days={days}
+          selected={day}
+          onSelect={(d) => {
+            setDay(d);
+            setSlot(null);
+          }}
+        />
+        <SlotGrid slots={daySlots} selected={slot} onSelect={setSlot} />
+      </FlowScreen>
+    );
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-surface">
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="pb-8">
-        <FlowHeader fallback="/(customer)/(tabs)">
-          <View className="flex-row items-center gap-4">
-            <Avatar name={name} tone={toneFor(Number(staffId))} size="lg" ring />
-            <View className="flex-1 gap-1">
-              <Text accessibilityRole="header" className="text-2xl font-extrabold tracking-[-0.8px] text-on-primary">{name}</Text>
-              <View className="flex-row items-center gap-1.5">
-                <Icon name="star" size={15} color={color.accent} filled strokeWidth={1.5} />
-                <Text className="text-sm font-medium text-on-primary opacity-80">Aún sin reseñas</Text>
+    <FlowScreen
+      title={TITLES[3]}
+      fallback="/(customer)/(tabs)"
+      onBack={back}
+      footer={<Button label={total !== undefined ? `Pagar ${formatMoney(total, currency)}` : "Pagar"} busy={busy} disabled={!offering || !slot || !addressOk} onPress={pay} />}
+    >
+      <StepHeading step={3} title={`Todo listo para\nrecibir a ${BRAND_NAME}.`} />
+
+      <View className="flex-row items-center gap-4">
+        <View className="h-[92px] w-[44%] overflow-hidden rounded-md">
+          <HomeScene />
+        </View>
+        <View className="flex-1 gap-1">
+          <Text className="text-lg font-semibold leading-[24px] text-text">{offering?.name ?? " "}</Text>
+          {offering ? <Text className="text-sm text-text">{formatDuration(offering.duration_minutes)} · Visita única</Text> : null}
+        </View>
+      </View>
+
+      <View className="gap-2">
+        <Overline>Tu visita</Overline>
+        <List>
+          <Row icon="calendar" title="Fecha" value={slot ? `${formatShortDay(slot)} · ${formatClock(slot)}` : "—"} />
+          <Row
+            icon="person"
+            title="Profesional"
+            trailing={
+              <View className="flex-row items-center gap-2.5">
+                <Avatar name={person?.display_name ?? "?"} size="xs" />
+                <Text className="text-md font-semibold text-text">{person?.display_name ?? ""}</Text>
               </View>
+            }
+          />
+          {editingAddress || !addressOk ? (
+            <View className="py-3">
+              <Field
+                label="Domicilio"
+                icon="home"
+                placeholder="Calle, número y colonia"
+                value={address}
+                onChangeText={setAddress}
+                onBlur={() => addressOk && setEditingAddress(false)}
+                autoComplete="street-address"
+                textContentType="fullStreetAddress"
+              />
             </View>
-          </View>
-        </FlowHeader>
-
-        <View className="-mt-8 gap-4 px-4">
-          <Step n={1} title="¿Qué servicio necesitas?" done={!!offering}>
-            <StateView loading={offerings.loading} error={offerings.error} empty={!offerings.data?.length} emptyIcon="sparkle" emptyTitle="Aún no hay servicios disponibles" onRetry={offerings.refresh}>
-              <View className="gap-2">
-                {(offerings.data ?? []).map((o, i) => (
-                  <OfferingOption key={o.id} offering={o} index={i} selected={offering?.id === o.id} onPress={() => { setOffering(o); setSlot(null); }} />
-                ))}
-              </View>
-            </StateView>
-          </Step>
-
-          <Step n={2} title="¿Qué día?" done={!!slot}>
-            <HorizontalScroll className="-mx-4" contentContainerClassName="gap-2 px-4 py-1" accessibilityLabel="Días disponibles">
-              {days.map((d) => <DayTile key={d} ymd={d} selected={d === day} onPress={() => { setDay(d); setSlot(null); }} />)}
-            </HorizontalScroll>
-          </Step>
-
-          <Step n={3} title="¿A qué hora?" done={!!slot}>
-            {offering ? (
-              <StateView loading={slots.loading} error={slots.error} empty={!slots.data?.slots.length} emptyIcon="clock" emptyTitle="Sin horarios este día" emptyText="Prueba con otro día." onRetry={slots.refresh}>
-                <View className="gap-2">
-                  {rowsOf(slots.data?.slots ?? [], 3).map((row) => (
-                    <View key={row[0]!.starts_at} className="flex-row gap-2">
-                      {row.map((s) => <TimePill key={s.starts_at} label={formatTime(s.starts_at)} selected={slot === s.starts_at} onPress={() => setSlot(s.starts_at)} />)}
-                      {Array.from({ length: 3 - row.length }, (_, i) => <View key={i} className="flex-1" />)}
-                    </View>
-                  ))}
+          ) : (
+            <Row
+              icon="home"
+              title="Domicilio"
+              trailing={
+                <View className="max-w-[60%] flex-row items-center gap-3">
+                  <Text numberOfLines={1} className="shrink text-md text-text">{address}</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Editar domicilio" onPress={() => setEditingAddress(true)} className="min-h-11 justify-center active:opacity-60">
+                    <Text className="border-b border-primary text-md font-semibold text-primary">Editar</Text>
+                  </Pressable>
                 </View>
-              </StateView>
-            ) : (
-              <Text className="text-sm text-text-muted">Elige un servicio para ver los horarios libres.</Text>
-            )}
-          </Step>
+              }
+            />
+          )}
+        </List>
+      </View>
 
-          <Step n={4} title="¿Dónde?" done={address.trim().length >= 5}>
-            <Field label="Calle, número y colonia" icon="pin" placeholder="Ej. Av. Independencia 1200, Centro" value={address} onChangeText={setAddress} autoComplete="street-address" textContentType="fullStreetAddress" />
-          </Step>
-
-          {error ? <Notice tone="danger" text={error} /> : null}
+      <View className="gap-3">
+        <SectionTitle title="Antes de empezar" />
+        <Callout icon="spray">
+          <Text className="text-md font-semibold text-text">Tú proporcionas los productos y herramientas.</Text>
+        </Callout>
+        <View accessibilityLabel="Agregar kit de limpieza, próximamente" className="min-h-11 flex-row items-center gap-3">
+          <Icon name="square" size={24} color={color.border} strokeWidth={1.8} />
+          <Text className="flex-1 text-md text-text-muted">Agregar kit de limpieza</Text>
+          <Soon />
         </View>
-      </ScrollView>
+      </View>
 
-      <BottomBar>
-        <View className="flex-row items-center justify-between gap-3">
-          <View className="flex-1">
-            <Text numberOfLines={1} className="text-md font-bold text-text">{offering?.name ?? "Elige un servicio"}</Text>
-            <Text numberOfLines={1} className="text-sm text-text-muted">{slot ? sentenceCase(`${formatLongDay(slot)}, ${formatTime(slot)}`) : "Sin horario todavía"}</Text>
+      <View className="gap-2">
+        <Hairline />
+        {offering ? (
+          <View className="flex-row justify-between">
+            <Text className="text-md text-text">Servicio</Text>
+            <Text className="text-md text-text">{formatAmount(offering.price_minor, offering.currency)}</Text>
           </View>
-          {offering ? <Text className="text-xl font-extrabold tracking-[-0.4px] text-text">{formatMoney(offering.price_minor, offering.currency)}</Text> : null}
+        ) : null}
+        <View className="flex-row items-baseline justify-between pt-1">
+          <Text className="text-xl font-semibold text-text">Total</Text>
+          <Text className="text-xl font-semibold text-text">{total !== undefined ? formatMoney(total, currency) : "—"}</Text>
         </View>
-        <Button label="Reservar y pagar" onPress={reserve} busy={busy} disabled={!ready} />
-      </BottomBar>
-    </KeyboardAvoidingView>
+      </View>
+
+      <InfoNote text="Puedes cambiar la fecha sin cargo con al menos 24 h de anticipación." />
+
+      <List>
+        <Row icon="card" title="Método de pago" subtitle="Pago de prueba (sandbox): no se hace ningún cobro real" soon />
+      </List>
+
+      {error ? <Notice tone="danger" text={error} /> : null}
+    </FlowScreen>
   );
 }

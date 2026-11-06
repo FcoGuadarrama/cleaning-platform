@@ -11,24 +11,6 @@ function Sparkle({ x, y, s, fill }: { x: number; y: number; s: number; fill: str
   return <Path d={`M${x} ${y - s}c${s * 0.2} ${s * 0.75} ${s * 0.25} ${s * 0.8} ${s} ${s}c-${s * 0.75} ${s * 0.2}-${s * 0.8} ${s * 0.25}-${s} ${s}c-${s * 0.2}-${s * 0.75}-${s * 0.25}-${s * 0.8}-${s}-${s}c${s * 0.75}-${s * 0.2} ${s * 0.8}-${s * 0.25} ${s}-${s}z`} fill={fill} />;
 }
 
-export function HomeIllustration({ size = 200 }: { size?: number }) {
-  const c = ink();
-  return (
-    <Svg width={size} height={size} viewBox="0 0 200 200">
-      <Circle cx={100} cy={104} r={86} fill={c.soft} />
-      <Path d="M48 98 100 56l52 42v56a6 6 0 0 1-6 6H54a6 6 0 0 1-6-6z" fill={c.light} />
-      <Path d="M40 104 100 54l60 50" stroke={c.main} strokeWidth={8} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <Rect x={86} y={118} width={28} height={42} rx={4} fill={c.main} />
-      <Rect x={60} y={108} width={18} height={18} rx={3} fill={alpha(c.main, 0.25)} />
-      <Rect x={122} y={108} width={18} height={18} rx={3} fill={alpha(c.main, 0.25)} />
-      <Sparkle x={154} y={52} s={12} fill={c.accent} />
-      <Sparkle x={40} y={60} s={7} fill={c.accent} />
-      <Circle cx={162} cy={150} r={10} fill="none" stroke={c.main} strokeWidth={2.5} opacity={0.35} />
-      <Circle cx={34} cy={140} r={6} fill="none" stroke={c.main} strokeWidth={2.5} opacity={0.35} />
-    </Svg>
-  );
-}
-
 export function PeopleIllustration({ size = 200 }: { size?: number }) {
   const c = ink();
   return (
@@ -78,6 +60,33 @@ export function PaymentIllustration({ size = 200 }: { size?: number }) {
       <Path d="M135 136l8 8 15-16" stroke={c.main} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
       <Sparkle x={52} y={54} s={10} fill={c.accent} />
       <Circle cx={168} cy={70} r={8} fill="none" stroke={c.main} strokeWidth={2.5} opacity={0.35} />
+    </Svg>
+  );
+}
+
+/**
+ * Stand-in for the brand's interior photography (docs/rfc/brisa-feature-gaps.md): a sunlit corner
+ * with window, table and flowers, drawn in tokens. Stretches to fill its box.
+ */
+export function HomeScene() {
+  const c = ink();
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 380 150" preserveAspectRatio="xMidYMid slice">
+      <Rect width={380} height={150} fill={c.soft} />
+      <Rect x={232} y={0} width={124} height={150} fill={c.light} />
+      <Path d="M232 0v150M294 0v150M232 58h124M356 0v150" stroke={c.main} strokeWidth={6} />
+      <Path d="M246 150c8-30 22-52 40-64M318 150c-4-26 4-46 22-62" stroke={alpha(c.accent, 0.55)} strokeWidth={5} strokeLinecap="round" fill="none" />
+      <Path d="M300 30c10 6 22 6 34-2M246 24c14 4 26 2 36-8" stroke={alpha(c.accent, 0.45)} strokeWidth={4} strokeLinecap="round" fill="none" />
+      <Rect x={20} y={104} width={250} height={10} rx={3} fill={c.main} />
+      <Path d="M38 114v36M252 114v36" stroke={c.main} strokeWidth={6} />
+      <Path d="M20 104h250l-14 22H34z" fill={alpha(c.light, 0.9)} />
+      <Path d="M70 104c-6-14-6-26 4-34h18c10 8 10 20 4 34z" fill={c.light} stroke={c.main} strokeWidth={3} />
+      <Path d="M83 70V40M83 52c-10-4-16-12-16-22M83 46c10-4 16-12 16-22" stroke={c.main} strokeWidth={3} strokeLinecap="round" fill="none" />
+      <Circle cx={83} cy={34} r={10} fill={c.accent} />
+      <Circle cx={66} cy={26} r={8} fill={alpha(c.accent, 0.75)} />
+      <Circle cx={100} cy={22} r={8} fill={alpha(c.accent, 0.75)} />
+      <Path d="M130 104v-14h22v14M152 94h6a4 4 0 0 1 0 8h-6" fill={c.light} stroke={c.main} strokeWidth={3} strokeLinejoin="round" />
+      <Path d="M168 0v60M150 60h36l-6 14h-24z" stroke={c.main} strokeWidth={3} fill={c.light} strokeLinejoin="round" />
     </Svg>
   );
 }

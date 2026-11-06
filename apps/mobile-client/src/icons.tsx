@@ -4,13 +4,6 @@ import Svg, { Circle, Path, Rect } from "react-native-svg";
 /** 24×24 stroke icons drawn for this app. Decorative: the surrounding control carries the label. */
 const PATHS = {
   home: <Path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z" />,
-  people: (
-    <>
-      <Circle cx={9} cy={8} r={3.5} />
-      <Path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5" />
-      <Path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18.5 14.9c1.6.8 2.7 2.5 3 5.1" />
-    </>
-  ),
   calendar: (
     <>
       <Rect x={3.5} y={5} width={17} height={15.5} rx={2.5} />
@@ -29,12 +22,6 @@ const PATHS = {
       <Circle cx={12} cy={10} r={2.3} />
     </>
   ),
-  wallet: (
-    <>
-      <Rect x={3} y={6} width={18} height={13} rx={2.5} />
-      <Path d="M3 10h18M16 14.5h1.5" />
-    </>
-  ),
   person: (
     <>
       <Circle cx={12} cy={8.5} r={4} />
@@ -49,21 +36,8 @@ const PATHS = {
       <Path d="M12 7.5v5.5M12 16.2v.3" />
     </>
   ),
-  logout: (
-    <>
-      <Path d="M14 4.5H6.5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1H14" />
-      <Path d="M10.5 12H20M16.5 8.5 20 12l-3.5 3.5" />
-    </>
-  ),
   back: <Path d="M15 5.5 8.5 12l6.5 6.5" />,
   star: <Path d="m12 3.8 2.5 5.1 5.6.8-4 4 .9 5.6L12 16.6l-5 2.7.9-5.6-4-4 5.6-.8z" />,
-  sparkle: (
-    <>
-      <Path d="M10 3.5c.5 3.6 2 5.1 5.5 5.5-3.5.5-5 2-5.5 5.5-.5-3.5-2-5-5.5-5.5 3.5-.4 5-1.9 5.5-5.5z" />
-      <Path d="M17.5 13.5c.3 2 1.1 2.8 3 3-1.9.3-2.7 1.1-3 3-.2-1.9-1-2.7-3-3 2-.2 2.8-1 3-3z" />
-    </>
-  ),
-  drop: <Path d="M12 3.5s-6 6.4-6 10.7a6 6 0 0 0 12 0C18 9.9 12 3.5 12 3.5z" />,
   broom: (
     <>
       <Path d="M19.5 4.5 13 11" />
@@ -83,6 +57,80 @@ const PATHS = {
       <Path d="m4.5 7 7.5 6 7.5-6" />
     </>
   ),
+  bell: (
+    <>
+      <Path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z" />
+      <Path d="M10 20.5a2 2 0 0 0 4 0" />
+    </>
+  ),
+  chevronDown: <Path d="m6 9.5 6 6 6-6" />,
+  arrow: <Path d="M4.5 12h15M13.5 6l6 6-6 6" />,
+  bucket: (
+    <>
+      <Path d="M4 8.5h16" />
+      <Path d="M5.5 8.5 7 19.5a1.5 1.5 0 0 0 1.5 1h7a1.5 1.5 0 0 0 1.5-1l1.5-11" />
+      <Path d="M6.5 8.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
+    </>
+  ),
+  sliders: (
+    <>
+      <Path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1" />
+      <Circle cx={15} cy={7} r={2} />
+      <Circle cx={9} cy={12} r={2} />
+      <Circle cx={17} cy={17} r={2} />
+    </>
+  ),
+  layers: (
+    <>
+      <Path d="m12 4 8.5 4.5L12 13 3.5 8.5z" />
+      <Path d="m3.5 12.5 8.5 4.5 8.5-4.5M3.5 16.5l8.5 4.5 8.5-4.5" />
+    </>
+  ),
+  card: (
+    <>
+      <Rect x={3} y={5.5} width={18} height={13} rx={2} />
+      <Path d="M3 10h18" />
+    </>
+  ),
+  receipt: (
+    <>
+      <Path d="M6 3.5h9l3.5 3.5v13.5H6z" />
+      <Path d="M15 3.5V7h3.5M9 11h6M9 14.5h6M9 18h3" />
+    </>
+  ),
+  headset: (
+    <>
+      <Path d="M4.5 14v-2a7.5 7.5 0 0 1 15 0v2" />
+      <Rect x={3.5} y={13} width={4} height={6} rx={1.5} />
+      <Rect x={16.5} y={13} width={4} height={6} rx={1.5} />
+      <Path d="M18.5 19c0 1.2-1.5 2-4 2H13" />
+    </>
+  ),
+  info: (
+    <>
+      <Circle cx={12} cy={12} r={8.5} />
+      <Path d="M12 11v5M12 7.8v.2" />
+    </>
+  ),
+  spray: (
+    <>
+      <Path d="M7.5 21h7a1 1 0 0 0 1-1v-6.5a4 4 0 0 0-2-3.5V8h-4v2a4 4 0 0 0-2 3.5V20a1 1 0 0 0 1 1z" />
+      <Path d="M9.5 8V5h5l2.5 2M9.5 5H7" />
+    </>
+  ),
+  message: <Path d="M20 11.5a7.5 7 0 0 1-11 6.2L4.5 19l1.3-3.8A7 7 0 0 1 4.5 11.5a7.75 7 0 0 1 15.5 0z" />,
+  paw: (
+    <>
+      <Circle cx={8.5} cy={7} r={1.8} />
+      <Circle cx={15.5} cy={7} r={1.8} />
+      <Circle cx={5} cy={11.5} r={1.6} />
+      <Circle cx={19} cy={11.5} r={1.6} />
+      <Path d="M12 11.5c-2.5 0-5 3.5-5 5.5 0 1.6 1.4 2.5 2.7 2.2.9-.2 1.5-.6 2.3-.6s1.4.4 2.3.6c1.3.3 2.7-.6 2.7-2.2 0-2-2.5-5.5-5-5.5z" />
+    </>
+  ),
+  flag: <Path d="M5.5 21V4M5.5 4.5h11l-2 4 2 4h-11" />,
+  circle: <Circle cx={12} cy={12} r={8} />,
+  square: <Rect x={4.5} y={4.5} width={15} height={15} rx={3} />,
 } as const;
 
 export type IconName = keyof typeof PATHS;

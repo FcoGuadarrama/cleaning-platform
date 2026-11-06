@@ -38,6 +38,8 @@ stable. No alpha/beta/rc/nightly/canary/Innovation. Upgrades are reviewed change
 | react-native-css-interop | 0.2.7 | No official LTS channel | nativewind@4.2.7 dependency | Direct dependency so Metro resolves it under pnpm isolated installs | — |
 | expo-location / expo-secure-store | ~58.0.20 / ~58.0.2 | No official LTS channel | SDK 58 bundledNativeModules | Foreground location only | — |
 | react-native-svg | 15.16.0 | No official LTS channel | SDK 58 bundledNativeModules (`15.16.0`, exact) | Mobile icon set (`apps/mobile-client/src/icons.tsx`); no icon font dependency | — |
+| expo-font | ~58.0.11 | No official LTS channel | SDK 58 bundledNativeModules (`~58.0.11`) | Loads the brand typeface (`apps/mobile-client/src/fonts.ts`) | — |
+| @expo-google-fonts/outfit | 0.4.2 | No official LTS channel | https://www.npmjs.com/package/@expo-google-fonts/outfit (published 2025-06-06; 0.4.3 exists, 0.4.2 kept as the older verified build) | Outfit 400–800, the "brisa" brand typeface (owner choice 2026-11-06); **needs review** | — |
 | NativeWind | 4.2.7 | No official LTS channel; v5 is **rc only** → not eligible | https://www.npmjs.com/package/nativewind (dist-tags) | Requires Tailwind **3.4.x** (`3.4.19`) on mobile; dashboard uses Tailwind 4. Verified 2026-11-03: `expo export` for iOS and Android bundles successfully with RN 0.88.1 / Reanimated 4.7.1; device run still pending. | — |
 | Nginx | 1.30.6 (`nginx:1.30.6-alpine@sha256:0e52bd054126cdc040b1276c0af347aeb02a41b9cfe305d6094767ac30e97949`) | Nginx "stable" branch (not called LTS) | https://nginx.org/en/download.html | | — |
 

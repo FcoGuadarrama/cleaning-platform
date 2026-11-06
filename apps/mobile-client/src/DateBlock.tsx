@@ -1,15 +1,16 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { dayParts } from "./format";
+import { Text } from "./text";
 
-/** Calendar-leaf date: weekday over a large day number. */
-export function DateBlock({ iso, size = "md" }: { iso: string; size?: "md" | "lg" }) {
+/** Calendar leaf on the soft brand surface: weekday, day number, month. */
+export function DateBlock({ iso, size = "md" }: { iso: string; size?: "sm" | "md" }) {
   const d = dayParts(iso);
-  const lg = size === "lg";
+  const sm = size === "sm";
   return (
-    <View className={`items-center rounded-lg bg-primary-soft ${lg ? "w-16 py-2" : "w-14 py-1.5"}`}>
-      <Text className="text-xs font-bold capitalize text-primary">{d.weekday}</Text>
-      <Text className={`${lg ? "text-xl" : "text-lg"} font-extrabold text-primary`}>{d.day}</Text>
-      <Text className="text-xs font-medium capitalize text-primary">{d.month}</Text>
+    <View className={`items-center justify-center rounded-md bg-primary-soft ${sm ? "w-[60px] py-1.5" : "w-[78px] py-2.5"}`}>
+      <Text className="text-xs font-semibold uppercase text-text">{d.weekday}</Text>
+      <Text className={`${sm ? "text-xl" : "text-2xl"} font-semibold leading-[34px] text-text`}>{d.day}</Text>
+      {sm ? null : <Text className="text-xs font-semibold uppercase text-text">{d.month}</Text>}
     </View>
   );
 }

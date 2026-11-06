@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text } from "../src/text";
 import { AuthLayout } from "../src/AuthLayout";
 import { useSession } from "../src/session";
 import { Button, Field, Notice } from "../src/ui";

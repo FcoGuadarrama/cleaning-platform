@@ -1,56 +1,37 @@
-import { Platform, View, type ColorValue } from "react-native";
+import { Platform, type ColorValue } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FONT_FAMILIES } from "./font-families.cjs";
 import { Icon, type IconName } from "./icons";
-import { color, shadow } from "./theme";
+import { color } from "./theme";
 
 export const stackScreenOptions = {
-  headerBackButtonDisplayMode: "minimal" as const,
-  headerShadowVisible: false,
-  headerTintColor: color.primary,
-  headerStyle: { backgroundColor: color.surface },
-  headerTitleStyle: { color: color.text, fontWeight: "700" as const },
-  contentStyle: { backgroundColor: color.surface },
+  headerShown: false,
+  contentStyle: { backgroundColor: color.background },
 };
 
-const TAB_BAR_HEIGHT = 72;
-const tabBarBottom = (insetBottom: number) => Math.max(insetBottom, Platform.OS === "web" ? 16 : 12);
-
-/** Space a tab screen must leave at the end of its scroll content so nothing hides under the floating bar. */
-export function useTabBarClearance() {
-  const insets = useSafeAreaInsets();
-  return TAB_BAR_HEIGHT + tabBarBottom(insets.bottom) + 24;
-}
-
-/** Floating, rounded tab bar that sits above the home indicator; the active icon sits on a soft pill (see `tabIcon`). */
+/** Flat white tab bar under a hairline; the active tab turns brand color (and solid where the glyph allows). */
 export function useTabScreenOptions() {
   const insets = useSafeAreaInsets();
+  const bottom = Math.max(insets.bottom, Platform.OS === "web" ? 10 : 8);
   return {
     headerShown: false,
     tabBarActiveTintColor: color.primary,
-    tabBarInactiveTintColor: color["text-muted"],
-    tabBarLabelStyle: { fontSize: 11, fontWeight: "700" as const, marginTop: 2 },
-    tabBarItemStyle: { paddingVertical: 8 },
+    tabBarInactiveTintColor: color.text,
+    tabBarLabelStyle: { fontSize: 13, fontFamily: FONT_FAMILIES.medium, marginTop: 2 },
     tabBarStyle: {
-      position: "absolute" as const,
-      marginHorizontal: 16,
-      bottom: tabBarBottom(insets.bottom),
-      height: TAB_BAR_HEIGHT,
-      paddingTop: 0,
-      paddingBottom: 0,
-      borderRadius: 26,
-      borderTopWidth: 0,
-      backgroundColor: color["surface-raised"],
-      ...shadow("3"),
+      height: 68 + bottom,
+      paddingTop: 8,
+      paddingBottom: bottom,
+      borderTopWidth: 1,
+      borderTopColor: color.border,
+      backgroundColor: color.background,
+      elevation: 0,
     },
-    sceneStyle: { backgroundColor: color.surface },
+    sceneStyle: { backgroundColor: color.background },
   };
 }
 
-/** Active indicator drawn here (not via item background) so it stays a rounded pill on every platform. */
+/** `solid` fills the glyph when focused (house, person); outline-only glyphs just change color. */
 export const tabIcon =
-  (name: IconName) =>
-  ({ color: tint, focused }: { color: ColorValue; focused: boolean }) => (
-    <View className={`h-8 w-16 items-center justify-center rounded-full ${focused ? "bg-primary-soft" : ""}`}>
-      <Icon name={name} size={22} color={tint} strokeWidth={2} />
-    </View>
-  );
+  (name: IconName, solid = false) =>
+  ({ color: tint, focused }: { color: ColorValue; focused: boolean }) => <Icon name={name} size={26} color={tint} strokeWidth={1.6} filled={solid && focused} />;

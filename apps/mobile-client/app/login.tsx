@@ -1,6 +1,7 @@
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text } from "../src/text";
 import { AuthLayout } from "../src/AuthLayout";
 import { useSession } from "../src/session";
 import { Button, Field, Notice } from "../src/ui";
@@ -28,7 +29,7 @@ export default function Login() {
       <Button label="Entrar" onPress={submit} busy={busy} disabled={!email || !password} />
       <View className="flex-row items-center justify-center gap-1">
         <Text className="text-md text-text-muted">¿Aún no tienes cuenta?</Text>
-        <Link href="/register" className="py-3 text-md font-bold text-primary">Crear cuenta</Link>
+        <Link href="/register" className="py-3 font-semibold text-md text-primary">Crear cuenta</Link>
       </View>
     </AuthLayout>
   );

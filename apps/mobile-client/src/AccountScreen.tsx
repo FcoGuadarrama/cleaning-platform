@@ -1,50 +1,43 @@
-import { Pressable, Text, View } from "react-native";
-import { Icon, type IconName } from "./icons";
+import type { ReactNode } from "react";
+import { Pressable, View } from "react-native";
+import { Screen } from "./screen";
 import { useSession } from "./session";
-import { color } from "./theme";
-import { Avatar, Group, HeroPage, IconTile } from "./ui";
+import { Text } from "./text";
+import { Avatar, LargeTitle, Overline, TextLink } from "./ui";
 
-const ROLE_LABELS = { customer: "Cliente", staff: "Personal de limpieza", admin: "Administración" } as const;
-
-function InfoRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+/** "Tu cuenta": profile header, the role's sections, then sign out. */
+export function AccountScreen({ children }: { children?: ReactNode }) {
+  const { user, logout } = useSession();
+  if (!user) return null;
+  const firstName = user.full_name.split(/\s+/)[0] ?? user.full_name;
   return (
-    <View className="min-h-[64px] flex-row items-center gap-4 px-4 py-3">
-      <IconTile icon={icon} size={40} />
-      <View className="flex-1">
-        <Text className="text-xs font-semibold text-text-muted">{label}</Text>
-        <Text className="text-md font-medium text-text">{value}</Text>
+    <Screen>
+      <View className="gap-5">
+        <LargeTitle title="Tu cuenta" />
+        <View className="flex-row items-center gap-5">
+          <Avatar name={user.full_name} size="xl" />
+          <View className="w-px self-stretch bg-border" />
+          <View className="flex-1 gap-0.5">
+            <Text className="text-xl font-semibold tracking-[-0.5px] text-text">{firstName}</Text>
+            <Text numberOfLines={1} className="text-sm text-text-muted">{user.email}</Text>
+            <TextLink label="Editar perfil" soon />
+          </View>
+        </View>
       </View>
-    </View>
+      {children}
+      <Pressable accessibilityRole="button" onPress={logout} className="min-h-11 justify-center self-start active:opacity-60">
+        <Text className="border-b border-text pb-0.5 text-md text-text">Cerrar sesión</Text>
+      </Pressable>
+    </Screen>
   );
 }
 
-export function AccountScreen() {
-  const { user, logout } = useSession();
-  if (!user) return null;
+/** Uppercase group label over a list ("TU HOGAR"). */
+export function AccountSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <HeroPage
-      title="Cuenta"
-      hero={
-        <View className="items-center gap-3 pt-2">
-          <Avatar name={user.full_name} size="xl" ring />
-          <View className="items-center gap-0.5">
-            <Text accessibilityRole="header" className="text-xl font-extrabold tracking-[-0.4px] text-on-primary">{user.full_name}</Text>
-            <Text className="text-md text-on-primary opacity-80">{ROLE_LABELS[user.role]}</Text>
-          </View>
-        </View>
-      }
-    >
-      <Group>
-        <InfoRow icon="mail" label="Correo electrónico" value={user.email} />
-      </Group>
-      <Group>
-        <Pressable accessibilityRole="button" onPress={logout} className="min-h-[60px] flex-row items-center gap-4 px-4 active:bg-surface">
-          <View className="h-10 w-10 items-center justify-center rounded-lg bg-danger-soft">
-            <Icon name="logout" size={20} color={color.danger} strokeWidth={2} />
-          </View>
-          <Text className="text-md font-bold text-danger">Cerrar sesión</Text>
-        </Pressable>
-      </Group>
-    </HeroPage>
+    <View className="gap-2">
+      <Overline>{title}</Overline>
+      {children}
+    </View>
   );
 }
