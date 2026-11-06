@@ -1,12 +1,13 @@
 import { Stack } from "expo-router";
+import { stackScreenOptions } from "../../src/navigation";
 import { RoleGate } from "../../src/RoleGate";
 
 export default function StaffLayout() {
   return (
     <RoleGate role="staff">
-      <Stack screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
-        <Stack.Screen name="index" options={{ title: "Mis servicios" }} />
-        <Stack.Screen name="earnings" options={{ title: "Ganancias de la semana" }} />
+      <Stack screenOptions={{ ...stackScreenOptions, headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="job/[id]" />
       </Stack>
     </RoleGate>
   );

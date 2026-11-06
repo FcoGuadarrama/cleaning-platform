@@ -1,10 +1,10 @@
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Text, TextInput, View } from "react-native";
+import { View } from "react-native";
+import { Text } from "../src/text";
+import { AuthLayout } from "../src/AuthLayout";
 import { useSession } from "../src/session";
-import { Button } from "../src/ui";
-
-export const inputClass = "min-h-11 rounded-md border border-border bg-background px-3 text-md text-text";
+import { Button, Field, Notice } from "../src/ui";
 
 export default function Login() {
   const { login } = useSession();
@@ -22,15 +22,15 @@ export default function Login() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-background">
-      <View className="gap-4 p-6">
-        <Text accessibilityRole="header" className="text-2xl font-bold text-text">Bienvenida</Text>
-        <TextInput accessibilityLabel="Correo electrónico" placeholder="Correo electrónico" autoCapitalize="none" keyboardType="email-address" autoComplete="email" textContentType="username" value={email} onChangeText={setEmail} className={inputClass} />
-        <TextInput accessibilityLabel="Contraseña" placeholder="Contraseña" secureTextEntry autoComplete="password" textContentType="password" value={password} onChangeText={setPassword} className={inputClass} />
-        {error ? <Text accessibilityRole="alert" className="text-md text-danger">{error}</Text> : null}
-        <Button label="Entrar" onPress={submit} busy={busy} disabled={!email || !password} />
-        <Link href="/register" className="py-3 text-center text-md text-primary">¿No tienes cuenta? Regístrate</Link>
+    <AuthLayout title="Inicia sesión" subtitle="Reserva la limpieza de tu casa o revisa tus servicios del día.">
+      <Field label="Correo electrónico" icon="mail" placeholder="tucorreo@ejemplo.com" autoCapitalize="none" autoCorrect={false} keyboardType="email-address" autoComplete="email" textContentType="username" value={email} onChangeText={setEmail} />
+      <Field label="Contraseña" icon="shield" placeholder="Tu contraseña" secureTextEntry autoComplete="password" textContentType="password" value={password} onChangeText={setPassword} onSubmitEditing={submit} enterKeyHint="go" />
+      {error ? <Notice tone="danger" text={error} /> : null}
+      <Button label="Entrar" onPress={submit} busy={busy} disabled={!email || !password} />
+      <View className="flex-row items-center justify-center gap-1">
+        <Text className="text-md text-text-muted">¿Aún no tienes cuenta?</Text>
+        <Link href="/register" className="py-3 font-semibold text-md text-primary">Crear cuenta</Link>
       </View>
-    </KeyboardAvoidingView>
+    </AuthLayout>
   );
 }

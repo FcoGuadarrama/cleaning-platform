@@ -46,10 +46,41 @@ its own; tints are `color-mix()` of a token. Conventions:
 
 ## Platform adaptations
 Implemented: native stack navigation (Expo Router `Stack`) → iOS swipe-back and Android hardware/system back both
-pop the stack; minimal back-button label; system font; `min-h-11` (44 pt) pressables; status bar follows scheme.
-Planned (Sprint 2 UI pass): iOS large titles on root screens and sheets for secondary flows; Android
-`android_ripple` press feedback. One brand, platform-native navigation; no experimental native UI used purely
-for appearance. Customer/staff copy is Spanish (es-MX); technical identifiers stay English.
+pop the stack; minimal back-button label; system font; status bar follows scheme.
+Planned: Android `android_ripple` press feedback; sheets for secondary flows. One brand, platform-native navigation;
+no experimental native UI used purely for appearance. Customer/staff copy is Spanish (es-MX); technical identifiers stay English.
+
+## Mobile client visual language: "brisa" (2026-11-06, replaces the 2026-11-05 design)
+The owner supplied a "brisa" product concept (6 customer screens) and asked for it 1:1. `brand.json` is now **Brisa**:
+teal `primary` (#0B5E67), aqua `primary-soft` (#D8F4F3) for date blocks, day tiles, avatars and callouts, mint
+`accent`, white `background`, and typography **Outfit** (`@expo-google-fonts/outfit`, loaded in `src/fonts.ts`).
+Screens use semantic tokens only; the token change also restyles the web dashboard.
+- **No gradients, no shadows.** Flat white pages; cards have a 1 px `border`; lists are rows separated by hairlines
+  (`List`/`Row` in `src/ui.tsx`).
+- **Type:** `font-*` classes select a font family per weight (`tailwind.config.js` disables the numeric fontWeight
+  plugin; `src/font-families.cjs`). Use `Text` from `src/text.tsx` (regular by default), not React Native's `Text`.
+  Large titles are `text-2xl font-bold tracking-[-1px]`, kickers are `Overline` (uppercase, wide tracking).
+- **Structure:** flat white tab bar under a hairline (customer: Inicio · Visitas · Cuenta; staff: Servicios ·
+  Ganancias · Cuenta); root screens use `Screen` and pushed screens use `FlowScreen` (back chevron + title, optional
+  pinned footer) from `src/screen.tsx`.
+- **Customer screens:** Inicio (wordmark, address of the latest visit, "Tu {día}, con más tiempo.", interior image,
+  next-visit card, services list); Visitas (month kicker, week arrows, Próximas/Historial underline tabs, week strip
+  with visit dots, visit card with 24 h time range); Cuenta (grouped rows: Tu hogar / Pagos y plan / Ayuda);
+  Reservar in 3 steps (profesional → fecha y hora → "Revisa tu reserva", which is the designed screen) with sandbox
+  payment; Detalle de visita (status chip, big time, cleaner row, indicaciones, prepara tu visita). Staff screens and
+  sign-in use the same pieces.
+- **Not supported yet → "Próximamente":** designed features without backend are visible but cannot be tapped
+  (`Soon`, the `soon` prop on `Row`/`Button`/`TextLink`). The full list, with the RFC/ADR each one needs, is in
+  `docs/rfc/brisa-feature-gaps.md`. Screen 05 (plan mensual) is not built.
+- **Placeholders:** interior photography → `HomeScene` (token-drawn, `src/illustrations.tsx`); people photos → initials
+  `Avatar`; the logo → `Wordmark` set in Outfit until `assets.logo` exists.
+- **Copy rule:** only confirmed facts and rules (Mon–Fri, company staff, customer supplies products, 24 h change
+  notice). The concept's sample values (prices, kit +$80, "4 visitas") are not used.
+- **Motion:** press feedback (`PressableScale`), one entrance per primary card (`Rise`), spring-in success check;
+  Reanimated honors reduced motion.
+- **Web target:** `public/index.html` theme-color = `background` (white tops), 17 px inputs, no tap highlight; wide
+  viewports keep a 480 px column.
+- **Dark mode (pending):** the NativeWind preset is light-only; `src/theme.ts` exposes the light palette.
 
 ## Design skills available to agents (checked 2026-11-03)
 `apple-design` (web-oriented Apple motion/interaction guidance), `ui-ux-pro-max`, `emil-design-eng`, `animate-expo`
