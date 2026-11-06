@@ -3,11 +3,15 @@ import { useState } from "react";
 import { Text, View } from "react-native";
 import { api } from "../../../src/api";
 import { DateBlock } from "../../../src/DateBlock";
-import { BOOKING_LABELS, BOOKING_TONES, formatMoney, formatTime } from "../../../src/format";
+import { BOOKING_LABELS, BOOKING_TONES, formatLongDay, formatMoney, formatTime } from "../../../src/format";
+import { Icon } from "../../../src/icons";
+import { Rise } from "../../../src/motion";
+import { color } from "../../../src/theme";
 import { Badge, Button, Card, EmptyState, HeroPage, HeroText, Segmented, StateView } from "../../../src/ui";
 import { useResource } from "../../../src/useResource";
 
-const FINISHED = new Set(["completed", "cancelled", "expired"]);
+/** Visits that already happened or ended; everything else is still ahead. */
+const FINISHED = new Set(["completed", "pending_review", "disputed", "cancelled", "expired"]);
 type Tab = "upcoming" | "past";
 
 export default function MyBookings() {
@@ -22,6 +26,7 @@ export default function MyBookings() {
 
   return (
     <HeroPage
+      title="Mis reservas"
       onRefresh={bookings.refresh}
       hero={<HeroText title="Mis reservas" subtitle={upcoming.length ? `${upcoming.length} ${upcoming.length === 1 ? "visita próxima" : "visitas próximas"}` : "Aquí verás tus visitas"} />}
     >
@@ -29,21 +34,26 @@ export default function MyBookings() {
       <StateView loading={bookings.loading} error={bookings.error} empty={false} emptyTitle="" onRetry={bookings.refresh}>
         {shown.length ? (
           <View className="gap-3">
-            {shown.map((b) => (
-              <Card key={b.id}>
-                <View className="flex-row items-center gap-4">
-                  <DateBlock iso={b.starts_at} />
-                  <View className="flex-1 gap-1.5">
-                    <Text className="text-md font-bold text-text">
-                      {formatTime(b.starts_at)}
-                      {staffName.has(b.staff_id) ? <Text className="font-medium text-text-muted"> con {staffName.get(b.staff_id)}</Text> : null}
-                    </Text>
-                    <Text numberOfLines={1} className="text-sm text-text-muted">{b.address}</Text>
-                    <Badge label={BOOKING_LABELS[b.status]} tone={BOOKING_TONES[b.status]} />
+            {shown.map((b, i) => (
+              <Rise key={b.id} index={i}>
+                <Card onPress={() => router.push({ pathname: "/(customer)/booking/[id]", params: { id: String(b.id) } })} accessibilityLabel={`Ver visita del ${formatLongDay(b.starts_at)}`}>
+                  <View className="flex-row items-center gap-4">
+                    <DateBlock iso={b.starts_at} />
+                    <View className="flex-1 gap-1.5">
+                      <Text className="text-md font-bold text-text">
+                        {formatTime(b.starts_at)}
+                        {staffName.has(b.staff_id) ? <Text className="font-medium text-text-muted"> con {staffName.get(b.staff_id)}</Text> : null}
+                      </Text>
+                      <Text numberOfLines={1} className="text-sm text-text-muted">{b.address}</Text>
+                      <Badge label={BOOKING_LABELS[b.status]} tone={BOOKING_TONES[b.status]} />
+                    </View>
+                    <View className="items-end gap-2">
+                      <Text className="text-md font-extrabold text-text">{formatMoney(b.price_minor, b.currency)}</Text>
+                      <Icon name="chevron" size={18} color={color["text-muted"]} />
+                    </View>
                   </View>
-                  <Text className="text-md font-extrabold text-text">{formatMoney(b.price_minor, b.currency)}</Text>
-                </View>
-              </Card>
+                </Card>
+              </Rise>
             ))}
           </View>
         ) : (

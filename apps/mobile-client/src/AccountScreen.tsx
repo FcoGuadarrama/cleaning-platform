@@ -23,6 +23,7 @@ export function AccountScreen() {
   if (!user) return null;
   return (
     <HeroPage
+      title="Cuenta"
       hero={
         <View className="items-center gap-3 pt-2">
           <Avatar name={user.full_name} size="xl" ring />

@@ -50,6 +50,16 @@ final brand is a `brand.json` change + rebuild (plus `public/index.html` theme-c
   3-column time grid, raised bottom bar with total; confirmation as a perforated ticket; success screen after payment.
 - **Staff:** hero with counts, "Siguiente servicio" card with full-width check-in button, agenda cards; earnings shows
   the week total in the hero and Generado → Aprobado → Pagado stages.
+- **Production layer (2026-11-06):** welcome carousel (3 slides, token-drawn illustrations in `src/illustrations.tsx`,
+  shown once via `src/prefs`), cleaner profile (`/(customer)/staff/[id]`: facts, services, real open slots that deep-link
+  into booking), booking detail (`/(customer)/booking/[id]`) and staff job detail (`/(staff)/job/[id]`) with a status
+  timeline (`StatusTimeline`), "Cómo llegar" (device maps), next open slot per cleaner on the home cards
+  (`useNextSlots`), skeleton loading (`SkeletonCards`) instead of spinners.
+- **Motion (`src/motion.tsx`, Reanimated 4):** press feedback on touch-down with a critically damped spring release
+  (`PressableScale`), one staggered entrance per screen (`Rise`), compact header fading in as the hero scrolls away
+  (`HeroPage`), spring-in success check. Reanimated honors the OS reduced-motion setting; skeletons stay static.
+- **Copy rule:** only facts the product has confirmed (Mon–Fri, company staff, customer supplies products); no ratings,
+  earnings estimates or features the API does not back.
 - **Icons:** own 24×24 stroke set in `src/icons.tsx` (react-native-svg); decorative, the control carries the label.
 - **Web target:** `public/index.html` adds `viewport-fit=cover`, `theme-color`, no tap highlight, no overscroll chaining,
   `touch-action: manipulation` and 17 px inputs (no iOS zoom). Wide viewports keep a 480 px phone column.

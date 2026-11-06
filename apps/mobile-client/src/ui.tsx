@@ -1,8 +1,10 @@
 import { Children, useState, type ReactNode } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TextInput, View, type TextInputProps } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, Text, TextInput, View, type TextInputProps } from "react-native";
+import Animated, { interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, Extrapolation } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 import { Icon, type IconName } from "./icons";
+import { PressableScale, Skeleton } from "./motion";
 import { alpha, color, shadow } from "./theme";
 
 export type Tone = "neutral" | "primary" | "accent" | "success" | "warning" | "danger";
@@ -61,17 +63,36 @@ export function HeroText({ kicker, title, subtitle }: { kicker?: string; title: 
 }
 
 /** Root screen of a tab: hero header, overlapping content, room for the floating tab bar. */
-export function HeroPage(props: { hero: ReactNode; children: ReactNode; onRefresh?: () => void; refreshing?: boolean; overlap?: boolean }) {
+export function HeroPage(props: { title: string; hero: ReactNode; children: ReactNode; onRefresh?: () => void; refreshing?: boolean; overlap?: boolean }) {
   const overlap = props.overlap ?? true;
+  const insets = useSafeAreaInsets();
+  const y = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    y.value = e.contentOffset.y;
+  });
+  // Compact bar fades in as the hero scrolls away, so the screen keeps its title (iOS large-title behavior).
+  const bar = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [70, 120], [0, 1], Extrapolation.CLAMP) }));
   return (
-    <ScrollView
-      className="flex-1 bg-surface"
-      contentContainerClassName="pb-36"
-      refreshControl={props.onRefresh ? <RefreshControl refreshing={props.refreshing ?? false} onRefresh={props.onRefresh} tintColor={color["on-primary"]} /> : undefined}
-    >
-      <Hero overlap={overlap}>{props.hero}</Hero>
-      <View className={`gap-7 px-4 ${overlap ? "-mt-10" : "pt-6"}`}>{props.children}</View>
-    </ScrollView>
+    <View className="flex-1 bg-surface">
+      <Animated.ScrollView
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        className="flex-1"
+        contentContainerClassName="pb-36"
+        refreshControl={props.onRefresh ? <RefreshControl refreshing={props.refreshing ?? false} onRefresh={props.onRefresh} tintColor={color["on-primary"]} /> : undefined}
+      >
+        <Hero overlap={overlap}>{props.hero}</Hero>
+        <View className={`gap-7 px-4 ${overlap ? "-mt-10" : "pt-6"}`}>{props.children}</View>
+      </Animated.ScrollView>
+      <Animated.View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[{ position: "absolute", top: 0, left: 0, right: 0, paddingTop: insets.top, backgroundColor: color.primary }, shadow("1"), bar]}
+      >
+        <Text className="py-3.5 text-center text-md font-bold text-on-primary">{props.title}</Text>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -81,9 +102,9 @@ export function Card({ children, className = "", onPress, accessibilityLabel }: 
   const box = `rounded-xl bg-surface-raised p-4 ${className}`;
   if (!onPress) return <View className={box} style={shadow("2")}>{children}</View>;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} className={`${box} active:opacity-90`} style={shadow("2")}>
+    <PressableScale accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} className={box} style={shadow("2")} scaleTo={0.98}>
       {children}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -117,7 +138,7 @@ export function Button(props: {
   const inactive = props.disabled || props.busy;
   const lift = !props.disabled && variant === "primary" ? shadow("2", color.primary) : undefined;
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={props.label}
       accessibilityHint={props.hint}
@@ -125,7 +146,7 @@ export function Button(props: {
       disabled={inactive}
       onPress={props.onPress}
       style={lift}
-      className={`min-h-[54px] flex-row items-center justify-center gap-2 rounded-full px-6 active:opacity-85 ${props.disabled ? "bg-disabled" : v.box}`}
+      className={`min-h-[54px] flex-row items-center justify-center gap-2 rounded-full px-6 ${props.disabled ? "bg-disabled" : v.box}`}
     >
       {props.busy ? (
         <ActivityIndicator color={v.ink} accessibilityLabel="Cargando" />
@@ -135,7 +156,7 @@ export function Button(props: {
           <Text className={`text-md font-bold ${props.disabled ? "text-on-disabled" : v.text}`}>{props.label}</Text>
         </>
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -266,9 +287,10 @@ export function StateView(props: {
   emptyText?: string;
   emptyIcon?: IconName;
   onRetry: () => void;
+  skeleton?: ReactNode;
   children: ReactNode;
 }) {
-  if (props.loading) return <ActivityIndicator className="py-10" color={color.primary} accessibilityLabel="Cargando" />;
+  if (props.loading) return <>{props.skeleton ?? <SkeletonCards />}</>;
   if (props.error)
     return (
       <View className="gap-3">
@@ -278,4 +300,22 @@ export function StateView(props: {
     );
   if (props.empty) return <EmptyState icon={props.emptyIcon ?? "calendar"} title={props.emptyTitle} text={props.emptyText} />;
   return <>{props.children}</>;
+}
+
+/** Placeholder cards shaped like the content that is loading. */
+export function SkeletonCards({ count = 2 }: { count?: number }) {
+  return (
+    <View accessibilityLabel="Cargando" className="gap-3">
+      {Array.from({ length: count }, (_, i) => (
+        <View key={i} className="flex-row items-center gap-4 rounded-xl bg-surface-raised p-4" style={shadow("1")}>
+          <Skeleton className="h-14 w-14 rounded-lg" />
+          <View className="flex-1 gap-2">
+            <Skeleton className="h-4 w-3/5" />
+            <Skeleton className="h-3 w-4/5" />
+            <Skeleton className="h-3 w-2/5" />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
 }

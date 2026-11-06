@@ -5,9 +5,11 @@ import { RoleGate } from "../../src/RoleGate";
 export default function CustomerLayout() {
   return (
     <RoleGate role="customer">
-      <Stack screenOptions={stackScreenOptions}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="book" options={{ headerShown: false }} />
+      <Stack screenOptions={{ ...stackScreenOptions, headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="staff/[id]" />
+        <Stack.Screen name="booking/[id]" />
+        <Stack.Screen name="book" />
       </Stack>
     </RoleGate>
   );

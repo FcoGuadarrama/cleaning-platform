@@ -2,41 +2,17 @@ import type { Schemas } from "@repo/api-client";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import Animated, { ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, errorMessage } from "../../src/api";
 import { businessDayInstant, dayParts, formatDuration, formatLongDay, formatMoney, formatTime, nextBusinessDays, sentenceCase } from "../../src/format";
 import { Icon, type IconName } from "../../src/icons";
-import { alpha, color, shadow } from "../../src/theme";
-import { Avatar, Bubbles, Button, Card, Field, IconTile, Notice, StateView, toneFor } from "../../src/ui";
+import { color, shadow } from "../../src/theme";
+import { FlowHeader } from "../../src/FlowHeader";
+import { Avatar, Button, Card, Field, IconTile, Notice, StateView, toneFor } from "../../src/ui";
 import { useResource } from "../../src/useResource";
 
 const SERVICE_ICONS: IconName[] = ["home", "sparkle", "drop", "broom"];
-
-function BackButton() {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Regresar"
-      onPress={() => (router.canGoBack() ? router.back() : router.replace("/(customer)/(tabs)"))}
-      className="h-11 w-11 items-center justify-center rounded-full active:opacity-70"
-      style={{ backgroundColor: alpha(color["on-primary"], 0.16) }}
-    >
-      <Icon name="back" size={22} color={color["on-primary"]} strokeWidth={2.4} />
-    </Pressable>
-  );
-}
-
-/** Solid brand header for the pushed booking flow. */
-function FlowHeader({ children }: { children: ReactNode }) {
-  const insets = useSafeAreaInsets();
-  return (
-    <View className="overflow-hidden rounded-b-2xl bg-primary px-5 pb-14" style={{ paddingTop: insets.top + 12 }}>
-      <Bubbles />
-      <BackButton />
-      <View className="mt-4">{children}</View>
-    </View>
-  );
-}
 
 function Step({ n, title, done, children }: { n: number; title: string; done: boolean; children: ReactNode }) {
   return (
@@ -146,11 +122,11 @@ function Confirmed({ name, booking }: { name: string; booking: Schemas["BookingO
   return (
     <View className="flex-1 justify-center gap-8 bg-surface px-6" style={{ paddingTop: insets.top, paddingBottom: insets.bottom + 24 }}>
       <View className="items-center gap-5">
-        <View className="h-24 w-24 items-center justify-center rounded-full bg-success-soft">
+        <Animated.View entering={ZoomIn.springify().damping(14).stiffness(180)} className="h-24 w-24 items-center justify-center rounded-full bg-success-soft">
           <View className="h-16 w-16 items-center justify-center rounded-full bg-success">
             <Icon name="check" size={34} color={color["on-success"]} strokeWidth={3} />
           </View>
-        </View>
+        </Animated.View>
         <View className="items-center gap-2">
           <Text accessibilityRole="header" className="text-2xl font-extrabold tracking-[-0.8px] text-text">Visita confirmada</Text>
           <Text className="text-center text-md text-text-muted">
@@ -167,11 +143,12 @@ function Confirmed({ name, booking }: { name: string; booking: Schemas["BookingO
 }
 
 export default function Book() {
-  const { staffId, name, offeringId } = useLocalSearchParams<{ staffId: string; name: string; offeringId?: string }>();
+  const params = useLocalSearchParams<{ staffId: string; name: string; offeringId?: string; day?: string; slot?: string }>();
+  const { staffId, name, offeringId } = params;
   const days = nextBusinessDays(10);
   const [offering, setOffering] = useState<Schemas["OfferingOut"] | null>(null);
-  const [day, setDay] = useState(days[1] ?? days[0]!);
-  const [slot, setSlot] = useState<string | null>(null);
+  const [day, setDay] = useState(params.day && days.includes(params.day) ? params.day : (days[1] ?? days[0]!));
+  const [slot, setSlot] = useState<string | null>(params.slot ?? null);
   const [address, setAddress] = useState("");
   const [booking, setBooking] = useState<Schemas["BookingOut"] | null>(null);
   const [payment, setPayment] = useState<Schemas["PaymentOut"] | null>(null);
@@ -227,7 +204,7 @@ export default function Book() {
     return (
       <View className="flex-1 bg-surface">
         <ScrollView contentContainerClassName="pb-8">
-          <FlowHeader>
+          <FlowHeader fallback="/(customer)/(tabs)">
             <Text accessibilityRole="header" className="text-2xl font-extrabold tracking-[-0.8px] text-on-primary">Confirma tu pago</Text>
             {booking.hold_expires_at ? (
               <Text className="mt-1 text-md text-on-primary opacity-80">Apartamos tu horario hasta las {formatTime(booking.hold_expires_at)}</Text>
@@ -269,7 +246,7 @@ export default function Book() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-surface">
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="pb-8">
-        <FlowHeader>
+        <FlowHeader fallback="/(customer)/(tabs)">
           <View className="flex-row items-center gap-4">
             <Avatar name={name} tone={toneFor(Number(staffId))} size="lg" ring />
             <View className="flex-1 gap-1">

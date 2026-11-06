@@ -4,11 +4,13 @@ import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { api } from "../../../src/api";
 import { DateBlock } from "../../../src/DateBlock";
-import { BOOKING_LABELS, BOOKING_TONES, formatDuration, formatMoney, formatTime } from "../../../src/format";
+import { useNextSlots } from "../../../src/availability";
+import { BOOKING_LABELS, BOOKING_TONES, formatDuration, formatMoney, formatRelativeDay, formatTime } from "../../../src/format";
 import { Icon, type IconName } from "../../../src/icons";
+import { Rise, Skeleton } from "../../../src/motion";
 import { useSession } from "../../../src/session";
 import { color, shadow } from "../../../src/theme";
-import { Avatar, Badge, Card, HeroPage, HeroText, IconTile, SectionHeader, StateView, toneFor } from "../../../src/ui";
+import { Avatar, Badge, Card, HeroPage, HeroText, IconTile, SectionHeader, SkeletonCards, StateView, toneFor } from "../../../src/ui";
 import { useResource } from "../../../src/useResource";
 
 const SERVICE_ICONS: IconName[] = ["home", "sparkle", "drop", "broom"];
@@ -16,7 +18,7 @@ const ACTIVE = new Set(["held", "confirmed", "in_progress"]);
 
 function NextVisit({ booking, staffName }: { booking: Schemas["BookingOut"]; staffName?: string }) {
   return (
-    <Card onPress={() => router.push("/(customer)/(tabs)/bookings")} accessibilityLabel="Ver tu próxima visita">
+    <Card onPress={() => router.push({ pathname: "/(customer)/booking/[id]", params: { id: String(booking.id) } })} accessibilityLabel="Ver tu próxima visita">
       <View className="flex-row items-center gap-4">
         <DateBlock iso={booking.starts_at} size="lg" />
         <View className="flex-1 gap-1">
@@ -33,13 +35,13 @@ function NextVisit({ booking, staffName }: { booking: Schemas["BookingOut"]; sta
   );
 }
 
-function FirstVisit() {
+function PlanVisit({ returning }: { returning: boolean }) {
   return (
     <Card>
       <View className="flex-row items-center gap-4">
         <IconTile icon="sparkle" tone="accent" size={56} />
         <View className="flex-1 gap-1">
-          <Text className="text-lg font-bold text-text">Agenda tu primera limpieza</Text>
+          <Text className="text-lg font-bold text-text">{returning ? "Agenda tu próxima limpieza" : "Agenda tu primera limpieza"}</Text>
           <Text className="text-sm text-text-muted">Elige un servicio y a la persona que quieres que te visite.</Text>
         </View>
       </View>
@@ -74,9 +76,23 @@ function ServiceTile({ offering, index, selected, onPress }: { offering: Schemas
   );
 }
 
-function StaffCard({ staff, onPress }: { staff: Schemas["StaffProfileOut"]; onPress: () => void }) {
+/** Next open slot line: real availability, so the card answers "when could they come?". */
+function NextSlot({ slot }: { slot: { starts_at: string } | null | undefined }) {
+  if (slot === undefined) return <Skeleton className="h-8 w-44 rounded-full" />;
+  if (slot === null) return <Text className="text-sm text-text-muted">Sin horarios libres esta semana</Text>;
   return (
-    <Card onPress={onPress} accessibilityLabel={`Ver horarios de ${staff.display_name}`}>
+    <View className="flex-row items-center gap-1.5 self-start rounded-full bg-success-soft px-3 py-1.5">
+      <Icon name="clock" size={15} color={color.success} strokeWidth={2.2} />
+      <Text className="text-sm font-bold text-success">
+        {formatRelativeDay(slot.starts_at)}, {formatTime(slot.starts_at)}
+      </Text>
+    </View>
+  );
+}
+
+function StaffCard({ staff, slot, onPress }: { staff: Schemas["StaffProfileOut"]; slot: { starts_at: string } | null | undefined; onPress: () => void }) {
+  return (
+    <Card onPress={onPress} accessibilityLabel={`Ver perfil de ${staff.display_name}`}>
       <View className="flex-row gap-4">
         <Avatar name={staff.display_name} tone={toneFor(staff.id)} size="lg" />
         <View className="flex-1 gap-1">
@@ -88,9 +104,15 @@ function StaffCard({ staff, onPress }: { staff: Schemas["StaffProfileOut"]; onPr
           </View>
         </View>
       </View>
-      <View className="mt-4 flex-row items-center justify-between rounded-full bg-primary-soft px-4 py-2.5">
-        <Text className="text-sm font-bold text-primary">Ver horarios</Text>
-        <Icon name="chevron" size={18} color={color.primary} strokeWidth={2.4} />
+      <View className="mt-4 flex-row items-center justify-between border-t border-border/50 pt-3">
+        <View className="gap-1">
+          <Text className="text-xs font-semibold text-text-muted">Próximo horario libre</Text>
+          <NextSlot slot={slot} />
+        </View>
+        <View className="flex-row items-center gap-1 rounded-full bg-primary-soft py-2 pl-4 pr-3">
+          <Text className="text-sm font-bold text-primary">Ver perfil</Text>
+          <Icon name="chevron" size={16} color={color.primary} strokeWidth={2.4} />
+        </View>
       </View>
     </Card>
   );
@@ -113,19 +135,19 @@ export default function Home() {
     void bookings.refresh();
   }
 
+  const slotOffering = offeringId ?? offerings.data?.[0]?.id;
+  const nextSlots = useNextSlots((staff.data ?? []).map((s) => s.id), slotOffering);
+
   function openStaff(s: Schemas["StaffProfileOut"]) {
-    router.push({
-      pathname: "/(customer)/book",
-      params: { staffId: String(s.id), name: s.display_name, ...(offeringId ? { offeringId: String(offeringId) } : {}) },
-    });
+    router.push({ pathname: "/(customer)/staff/[id]", params: { id: String(s.id) } });
   }
 
   return (
-    <HeroPage onRefresh={refresh} hero={<HeroText kicker={`Hola, ${firstName}`} title="¿Quién limpia tu casa esta semana?" />}>
-      {bookings.loading ? <Card><Text className="text-sm text-text-muted">Buscando tus visitas…</Text></Card> : next ? <NextVisit booking={next} staffName={staffName.get(next.staff_id)} /> : <FirstVisit />}
+    <HeroPage title="Inicio" onRefresh={refresh} hero={<HeroText kicker={`Hola, ${firstName}`} title="¿Quién limpia tu casa esta semana?" />}>
+      <Rise>{bookings.loading ? <SkeletonCards count={1} /> : next ? <NextVisit booking={next} staffName={staffName.get(next.staff_id)} /> : <PlanVisit returning={!!bookings.data?.length} />}</Rise>
 
       <View className="gap-3">
-        <SectionHeader title="Servicios" detail="Elige uno" />
+        <SectionHeader title="Servicios" detail="Toca para ver horarios" />
         <StateView loading={offerings.loading} error={offerings.error} empty={!offerings.data?.length} emptyIcon="sparkle" emptyTitle="Aún no hay servicios disponibles" onRetry={offerings.refresh}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4" contentContainerClassName="gap-3 px-4 pb-2 pt-1">
             {(offerings.data ?? []).map((o, i) => (
@@ -147,7 +169,11 @@ export default function Home() {
           onRetry={staff.refresh}
         >
           <View className="gap-3">
-            {(staff.data ?? []).map((s) => <StaffCard key={s.id} staff={s} onPress={() => openStaff(s)} />)}
+            {(staff.data ?? []).map((s, i) => (
+              <Rise key={s.id} index={i + 2}>
+                <StaffCard staff={s} slot={nextSlots[s.id]} onPress={() => openStaff(s)} />
+              </Rise>
+            ))}
           </View>
         </StateView>
       </View>

@@ -30,6 +30,17 @@ export const businessDayInstant = (ymd: string) => `${ymd}T18:00:00Z`;
 
 export const sentenceCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+const ymdFormat = new Intl.DateTimeFormat("en-CA", { timeZone: BUSINESS_TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+const shortDayFormat = new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "numeric", month: "short", timeZone: BUSINESS_TZ });
+
+/** "Hoy", "Mañana" or a short date ("jue 12 nov"), in the business time zone. */
+export function formatRelativeDay(iso: string, now = new Date()) {
+  const target = ymdFormat.format(new Date(iso));
+  if (target === ymdFormat.format(now)) return "Hoy";
+  if (target === ymdFormat.format(new Date(now.getTime() + 86_400_000))) return "Mañana";
+  return shortDayFormat.format(new Date(iso)).replace(/\./g, "");
+}
+
 export const formatLongDay = (iso: string) => longDayFormat.format(new Date(iso));
 
 export function formatDuration(minutes: number) {

@@ -1,8 +1,8 @@
 import { Text, View } from "react-native";
-import { api } from "../../src/api";
-import { businessDayInstant, formatLongDay, formatMoney } from "../../src/format";
-import { Badge, Card, EmptyState, HeroPage, HeroText, IconTile, SectionHeader, StateView, type Tone } from "../../src/ui";
-import { useResource } from "../../src/useResource";
+import { api } from "../../../src/api";
+import { businessDayInstant, formatLongDay, formatMoney } from "../../../src/format";
+import { Badge, Card, EmptyState, HeroPage, HeroText, IconTile, SectionHeader, StateView, type Tone } from "../../../src/ui";
+import { useResource } from "../../../src/useResource";
 
 const STATUS: Record<"earned" | "approved" | "paid", { label: string; tone: Tone }> = {
   earned: { label: "Generado", tone: "neutral" },
@@ -31,6 +31,7 @@ export default function Earnings() {
   const s = summary.data;
   return (
     <HeroPage
+      title="Ganancias"
       onRefresh={summary.refresh}
       hero={
         <HeroText
