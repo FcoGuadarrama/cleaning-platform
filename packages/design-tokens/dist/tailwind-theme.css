@@ -24,6 +24,7 @@
   --color-focus: var(--color-focus);
   --color-disabled: var(--color-disabled);
   --color-on-disabled: var(--color-on-disabled);
+  --color-chart: var(--color-chart);
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);

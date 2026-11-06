@@ -24,6 +24,7 @@
   --color-focus: #2F5D8A;
   --color-disabled: #E5E5EA;
   --color-on-disabled: #55555A;
+  --color-chart: #2F6BC4;
   --text-xs: 12px;
   --text-sm: 15px;
   --text-md: 17px;
@@ -84,5 +85,6 @@
     --color-focus: #8DB4DC;
     --color-disabled: #2C2C2E;
     --color-on-disabled: #A1A1A6;
+    --color-chart: #5A92DC;
   }
 }

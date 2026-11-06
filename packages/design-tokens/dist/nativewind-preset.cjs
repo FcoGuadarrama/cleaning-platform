@@ -26,7 +26,8 @@ module.exports = {
         "danger-soft": "#FBE9E7",
         "focus": "#2F5D8A",
         "disabled": "#E5E5EA",
-        "on-disabled": "#55555A"
+        "on-disabled": "#55555A",
+        "chart": "#2F6BC4"
       },
       "borderRadius": {
         "sm": "6px",

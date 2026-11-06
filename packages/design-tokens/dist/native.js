@@ -27,7 +27,8 @@ export const tokens = {
       "danger-soft": "#FBE9E7",
       "focus": "#2F5D8A",
       "disabled": "#E5E5EA",
-      "on-disabled": "#55555A"
+      "on-disabled": "#55555A",
+      "chart": "#2F6BC4"
     },
     "dark": {
       "background": "#000000",
@@ -53,7 +54,8 @@ export const tokens = {
       "danger-soft": "#3A1210",
       "focus": "#8DB4DC",
       "disabled": "#2C2C2E",
-      "on-disabled": "#A1A1A6"
+      "on-disabled": "#A1A1A6",
+      "chart": "#5A92DC"
     }
   },
   "typography": {

@@ -33,6 +33,7 @@ npm i -g pnpm@12.16.1 && pnpm install          # JS workspace (Node 26 has no co
 docker compose --env-file .env.worktree up -d mysql
 set -a && . ./.env.worktree && set +a          # export DATABASE_URL / TEST_DATABASE_URL
 cd apps/api && uv sync && uv run alembic upgrade head
+uv run python -m app.seed_demo                  # optional local demo data (test+<name>@test.com accounts)
 uv run pytest                                   # needs worktree MySQL up + exported env
 uv run --no-project --python 3.15 python -m unittest ../../tools/agent-supervisor/test_supervisor.py
 uv run python -m app.export_openapi             # → docs/contracts/openapi.json
