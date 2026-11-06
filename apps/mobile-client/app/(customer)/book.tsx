@@ -6,7 +6,7 @@ import Animated, { ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, errorMessage } from "../../src/api";
 import { useDaySlots, useNextSlots } from "../../src/availability";
-import { formatAmount, formatClock, formatDuration, formatLongDay, formatMoney, formatRelativeDay, formatShortDay, formatTime, nextBusinessDays } from "../../src/format";
+import { formatAmount, formatClock, formatDuration, formatLongDay, formatMoney, formatRelativeDay, formatShortDay, nextBusinessDays } from "../../src/format";
 import { Icon } from "../../src/icons";
 import { HomeScene } from "../../src/illustrations";
 import { Skeleton } from "../../src/motion";
@@ -35,7 +35,7 @@ function NextSlotText({ slot }: { slot: { starts_at: string } | null | undefined
   if (slot === null) return <Text className="text-sm text-text-muted">Sin horarios esta semana</Text>;
   return (
     <Text className="text-sm text-text-muted">
-      Próximo horario: {formatRelativeDay(slot.starts_at)}, {formatTime(slot.starts_at)}
+      Próximo horario: {formatRelativeDay(slot.starts_at)}, {formatClock(slot.starts_at)}
     </Text>
   );
 }
@@ -51,7 +51,7 @@ function Confirmed({ name, booking }: { name: string; booking: Schemas["BookingO
         <View className="items-center gap-2">
           <Text accessibilityRole="header" className="text-2xl font-bold tracking-[-1px] text-text">Visita confirmada</Text>
           <Text className="text-center text-md text-text-muted">
-            {name} te visitará el {formatLongDay(booking.starts_at)}, a las {formatTime(booking.starts_at)}
+            {name} te visitará el {formatLongDay(booking.starts_at)}, a las {formatClock(booking.starts_at)}
           </Text>
         </View>
       </View>
@@ -72,7 +72,8 @@ export default function Book() {
   const [slot, setSlot] = useState<string | null>(params.slot ?? null);
   const [step, setStep] = useState<Step>(params.staffId ? (params.slot ? 3 : 2) : 1);
   const [address, setAddress] = useState("");
-  const [editingAddress, setEditingAddress] = useState(false);
+  // The field stays open while the customer types; it collapses to a row only on blur or when prefilled.
+  const [editingAddress, setEditingAddress] = useState(true);
   const [booking, setBooking] = useState<Schemas["BookingOut"] | null>(null);
   const [payment, setPayment] = useState<Schemas["PaymentOut"] | null>(null);
   const [paid, setPaid] = useState(false);
@@ -95,7 +96,10 @@ export default function Book() {
   // Prefill the address of the customer's latest visit; there is no address book yet.
   useEffect(() => {
     const last = [...(bookings.data ?? [])].sort((a, b) => b.starts_at.localeCompare(a.starts_at))[0];
-    if (last && !address) setAddress(last.address);
+    if (last && !address) {
+      setAddress(last.address);
+      setEditingAddress(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookings.data]);
 

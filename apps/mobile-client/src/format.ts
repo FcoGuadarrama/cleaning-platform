@@ -20,12 +20,9 @@ export const formatDateTime = (iso: string) =>
     new Date(iso),
   );
 
-export const formatTime = (iso: string) =>
-  new Intl.DateTimeFormat("es-MX", { timeStyle: "short", timeZone: BUSINESS_TZ }).format(new Date(iso));
-
 const clockFormat = new Intl.DateTimeFormat("es-MX", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: BUSINESS_TZ });
 
-/** 24-hour clock ("14:30"), used for visit time ranges. */
+/** 24-hour clock ("14:30"), the only time format in the app (matches the brisa design). */
 export const formatClock = (iso: string) => clockFormat.format(new Date(iso));
 
 export const formatRange = (startIso: string, endIso: string) => `${formatClock(startIso)} – ${formatClock(endIso)}`;

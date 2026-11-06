@@ -26,6 +26,10 @@
       Detalle de visita, Cuenta groups; staff + auth restyled. Unsupported features shown as "Próximamente";
       backlog in docs/rfc/brisa-feature-gaps.md. Deps: expo-font ~58.0.11, @expo-google-fonts/outfit 0.4.2.
       RoleGate now waits for the stored session (deep links no longer 401).
+- [x] 10. Fixes found while recording the walkthrough: logout looped ("Maximum update depth exceeded") → role groups
+      are Stack.Protected in app/_layout.tsx (RoleGate removed; root waits for the session) and logout leaves the
+      group before clearing the user; booking address field collapsed mid-typing at 5 chars → stays open until blur;
+      times unified to the 24 h clock (formatTime removed).
 
 ## Immediate context / Handoff notes
 Brand is "Brisa" from the owner's concept (palette + Outfit); screens use tokens only (no hex). Owner forbids gradients.
@@ -34,6 +38,10 @@ Customer screens moved to app/(customer)/(tabs)/; book stays in the (customer) s
 (NativeWind preset has no dark values yet). Prices in the local DB are demo placeholders, not decisions.
 
 ## Verification
+- walkthrough pass (2026-11-06): tsc --noEmit (apps/mobile-client) clean. Browser with a fresh test customer: login →
+  Inicio → Reservar (service, Ana Lucía, Tue 10 Nov 10:00, typed address kept in full) → sandbox pay → confirmation
+  (24 h time) → Detalle → Visitas → Cuenta → Cerrar sesión lands on login with no console errors; deep-link reload
+  of /staff/1 still renders. Staff screens still not checked in the browser.
 - brisa pass (2026-11-06T17:56:50Z): pnpm -r typecheck clean; design-tokens tests 5 pass / 0 fail; expo export ios+android bundles OK.
   Browser (Expo web, customer test@test.com): Inicio, Visitas (Próximas + Historial), Detalle, Cuenta, Profesional,
   Reservar steps 1–3 → sandbox pay → "Visita confirmada". Staff screens NOT checked in the browser this pass

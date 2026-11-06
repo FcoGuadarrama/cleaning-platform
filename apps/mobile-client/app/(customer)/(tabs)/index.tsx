@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { View } from "react-native";
 import { api } from "../../../src/api";
 import { DateBlock } from "../../../src/DateBlock";
-import { BOOKING_LABELS, BOOKING_TONES, formatDuration, formatMoney, formatRelativeDay, formatTime, formatWeekday } from "../../../src/format";
+import { BOOKING_LABELS, BOOKING_TONES, formatDuration, formatMoney, formatClock, formatRelativeDay, formatWeekday } from "../../../src/format";
 import { Icon } from "../../../src/icons";
 import { HomeScene } from "../../../src/illustrations";
 import { Rise } from "../../../src/motion";
@@ -23,7 +23,7 @@ function NextVisit({ booking, offering, staffName }: { booking: Booking; offerin
         <DateBlock iso={booking.starts_at} />
         <View className="flex-1 gap-1">
           <Text className="text-lg font-semibold text-text">
-            {formatRelativeDay(booking.starts_at)}, {formatTime(booking.starts_at)}
+            {formatRelativeDay(booking.starts_at)}, {formatClock(booking.starts_at)}
           </Text>
           {offering ? <Text className="text-sm text-text">{offering.name} · {formatDuration(offering.duration_minutes)}</Text> : null}
           <StatusLine label={BOOKING_LABELS[booking.status]} tone={BOOKING_TONES[booking.status]} />

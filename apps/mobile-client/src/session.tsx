@@ -1,4 +1,5 @@
 import type { Schemas } from "@repo/api-client";
+import { router } from "expo-router";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { api, errorMessage, tokenStore } from "./api";
 
@@ -54,6 +55,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     register: async (email, password, full_name) =>
       authenticate(api.POST("/auth/register", { body: { email, password, full_name } })),
     logout: async () => {
+      // Leave the protected group before its guard flips; dropping the user while a role screen is still mounted
+      // makes expo-router's guard fallback and the index redirect bounce forever ("Maximum update depth exceeded").
+      router.replace("/login");
       await tokenStore.clear();
       setUser(null);
     },
