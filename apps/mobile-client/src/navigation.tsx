@@ -1,4 +1,4 @@
-import { Platform, type ColorValue } from "react-native";
+import { Platform, View, type ColorValue } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, type IconName } from "./icons";
 import { color, shadow } from "./theme";
@@ -12,21 +12,20 @@ export const stackScreenOptions = {
   contentStyle: { backgroundColor: color.surface },
 };
 
-/** Floating, rounded tab bar that sits above the home indicator; the active tab gets a soft pill. */
+/** Floating, rounded tab bar that sits above the home indicator; the active icon sits on a soft pill (see `tabIcon`). */
 export function useTabScreenOptions() {
   const insets = useSafeAreaInsets();
   return {
     headerShown: false,
     tabBarActiveTintColor: color.primary,
     tabBarInactiveTintColor: color["text-muted"],
-    tabBarActiveBackgroundColor: color["primary-soft"],
-    tabBarLabelStyle: { fontSize: 11, fontWeight: "700" as const },
-    tabBarItemStyle: { margin: 6, borderRadius: 18 },
+    tabBarLabelStyle: { fontSize: 11, fontWeight: "700" as const, marginTop: 2 },
+    tabBarItemStyle: { paddingVertical: 8 },
     tabBarStyle: {
       position: "absolute" as const,
       marginHorizontal: 16,
       bottom: Math.max(insets.bottom, Platform.OS === "web" ? 16 : 12),
-      height: 68,
+      height: 72,
       paddingTop: 0,
       paddingBottom: 0,
       borderRadius: 26,
@@ -38,6 +37,11 @@ export function useTabScreenOptions() {
   };
 }
 
+/** Active indicator drawn here (not via item background) so it stays a rounded pill on every platform. */
 export const tabIcon =
   (name: IconName) =>
-  ({ color: tint }: { color: ColorValue }) => <Icon name={name} size={24} color={tint} strokeWidth={2} />;
+  ({ color: tint, focused }: { color: ColorValue; focused: boolean }) => (
+    <View className={`h-8 w-16 items-center justify-center rounded-full ${focused ? "bg-primary-soft" : ""}`}>
+      <Icon name={name} size={22} color={tint} strokeWidth={2} />
+    </View>
+  );
