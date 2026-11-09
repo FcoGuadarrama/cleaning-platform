@@ -9,7 +9,7 @@ from app.core.config import get_settings
 from app.core.errors import AppError, conflict, forbidden, not_found
 from app.core.timeutil import utcnow
 from app.models import Booking, BookingStatus, Role, ServiceOffering, StaffProfile, User
-from app.services import audit
+from app.services import addresses, audit
 
 BLOCKING = (BookingStatus.confirmed, BookingStatus.in_progress, BookingStatus.pending_review)
 
@@ -98,7 +98,7 @@ def _validate_window(start: datetime, end: datetime) -> None:
 
 
 async def create_hold(
-    session: AsyncSession, customer: User, staff_id: int, offering_id: int, start: datetime, address: str
+    session: AsyncSession, customer: User, staff_id: int, offering_id: int, start: datetime, address_id: int
 ) -> Booking:
     """Single transaction: lock staff row → check overlaps → insert hold."""
     async with session.begin():
@@ -106,6 +106,7 @@ async def create_hold(
         # locking reads see rows committed by the transaction that held the lock before us.
         await get_active_staff(session, staff_id, lock=True)
         offering = await get_active_offering(session, offering_id)
+        address = await addresses.get_owned(session, customer, address_id)
         start = start.astimezone(UTC)
         end = start + timedelta(minutes=offering.duration_minutes)
         _validate_window(start, end)
@@ -125,7 +126,8 @@ async def create_hold(
             price_minor=offering.price_minor,
             staff_earning_minor=offering.staff_earning_minor,
             currency=offering.currency,
-            address=address,
+            address=address.one_line(),
+            address_id=address.id,
         )
         session.add(booking)
         await session.flush()

@@ -63,10 +63,12 @@ Screens use semantic tokens only; the token change also restyles the web dashboa
 - **Structure:** flat white tab bar under a hairline (customer: Inicio · Visitas · Cuenta; staff: Servicios ·
   Ganancias · Cuenta); root screens use `Screen` and pushed screens use `FlowScreen` (back chevron + title, optional
   pinned footer) from `src/screen.tsx`.
-- **Customer screens:** Inicio (wordmark, address of the latest visit, "Tu {día}, con más tiempo.", interior image,
+- **Customer screens:** Inicio (wordmark, default saved address linking to Mis domicilios, "Tu {día}, con más tiempo.", interior image,
   next-visit card, services list); Visitas (month kicker, week arrows, Próximas/Historial underline tabs, week strip
-  with visit dots, visit card with 24 h time range); Cuenta (grouped rows: Tu hogar / Pagos y plan / Ayuda);
-  Reservar in 3 steps (profesional → fecha y hora → "Revisa tu reserva", which is the designed screen) with sandbox
+  with visit dots, visit card with 24 h time range); Cuenta (grouped rows: Tu hogar / Pagos y plan / Ayuda); Mis domicilios (hairline list with a "Principal"
+  tag, add/edit form, inline delete confirmation in danger tones);
+  Reservar in 3 steps (profesional → fecha y hora → "Revisa tu reserva", which is the designed screen; the default address is preselected and "Cambiar" opens the
+  saved addresses with check marks plus "Agregar domicilio") with sandbox
   payment; Detalle de visita (status chip, big time, cleaner row, indicaciones, prepara tu visita). Staff screens and
   sign-in use the same pieces.
 - **Not supported yet → "Próximamente":** designed features without backend are visible but cannot be tapped

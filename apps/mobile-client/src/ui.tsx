@@ -156,6 +156,7 @@ const BUTTONS = {
   primary: { box: "bg-primary", text: "text-on-primary", ink: color["on-primary"] },
   outline: { box: "border border-border bg-background", text: "text-primary", ink: color.primary },
   outlinePrimary: { box: "border-[1.5px] border-primary bg-background", text: "text-primary", ink: color.primary },
+  danger: { box: "bg-danger", text: "text-on-danger", ink: color["on-danger"] },
 };
 
 export function Button(props: {
@@ -172,7 +173,7 @@ export function Button(props: {
 }) {
   const v = BUTTONS[props.variant ?? "primary"];
   const off = props.disabled || props.soon;
-  const filled = (props.variant ?? "primary") === "primary";
+  const filled = !(props.variant ?? "primary").startsWith("outline");
   const box = off ? (filled ? "bg-disabled" : "border border-border bg-background") : v.box;
   const text = off ? (filled ? "text-on-disabled" : "text-text-muted") : v.text;
   const ink = off ? color["text-muted"] : v.ink;

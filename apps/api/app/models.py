@@ -127,6 +127,27 @@ class ServiceOffering(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class CustomerAddress(TimestampMixin, Base):
+    """A customer's saved service address. Bookings copy it as text, so edits never rewrite past visits."""
+
+    __tablename__ = "customer_addresses"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    label: Mapped[str] = mapped_column(String(40))
+    street: Mapped[str] = mapped_column(String(200))
+    interior: Mapped[str] = mapped_column(String(60), default="")
+    neighbourhood: Mapped[str] = mapped_column(String(120))
+    postal_code: Mapped[str] = mapped_column(String(5))
+    municipality: Mapped[str] = mapped_column(String(120))
+    state: Mapped[str] = mapped_column(String(80))
+    directions: Mapped[str] = mapped_column(String(300), default="")
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    def one_line(self) -> str:
+        street = f"{self.street}, int. {self.interior}" if self.interior else self.street
+        return f"{street}, {self.neighbourhood}, C.P. {self.postal_code}, {self.municipality}, {self.state}"
+
+
 class Booking(TimestampMixin, Base):
     __tablename__ = "bookings"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -141,6 +162,12 @@ class Booking(TimestampMixin, Base):
     staff_earning_minor: Mapped[int] = mapped_column(BigInteger)
     currency: Mapped[str] = mapped_column(String(3))
     address: Mapped[str] = mapped_column(String(500))
+    address_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "customer_addresses.id", ondelete="SET NULL", name="fk_bookings_address_id_customer_addresses"
+        ),
+        nullable=True,
+    )
 
 
 class Payment(TimestampMixin, Base):

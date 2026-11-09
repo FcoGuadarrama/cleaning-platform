@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
 from app.core.errors import AppError, app_error_handler
-from app.routers import admin, auth, bookings, catalog, staff_self
+from app.routers import addresses, admin, auth, bookings, catalog, staff_self
 
 
 def _operation_id(route: APIRoute) -> str:
@@ -23,7 +23,14 @@ def create_app() -> FastAPI:
             allow_headers=["Authorization", "Content-Type"],
         )
     app.add_exception_handler(AppError, app_error_handler)
-    for r in (auth.router, catalog.router, bookings.router, staff_self.router, admin.router):
+    for r in (
+        auth.router,
+        catalog.router,
+        addresses.router,
+        bookings.router,
+        staff_self.router,
+        admin.router,
+    ):
         app.include_router(r)
 
     @app.get("/healthz", tags=["ops"], name="ops_health")

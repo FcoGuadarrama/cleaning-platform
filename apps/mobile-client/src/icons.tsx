@@ -131,6 +131,8 @@ const PATHS = {
   flag: <Path d="M5.5 21V4M5.5 4.5h11l-2 4 2 4h-11" />,
   circle: <Circle cx={12} cy={12} r={8} />,
   square: <Rect x={4.5} y={4.5} width={15} height={15} rx={3} />,
+  plus: <Path d="M12 5v14M5 12h14" />,
+  trash: <Path d="M4.5 7h15M10 4h4M6.5 7l.9 12a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12M10 11v5.5M14 11v5.5" />,
 } as const;
 
 export type IconName = keyof typeof PATHS;

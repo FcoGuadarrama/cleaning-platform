@@ -1,8 +1,9 @@
 """Fill a local dev database with demo data for the dashboard: uv run python -m app.seed_demo
 
-Creates one customer (test@test.com), four cleaners (test+<name>@test.com), offerings and about six weeks of
-bookings with payments, attendance, earnings and settlements. Every account uses ADMIN_PASSWORD from
-.env.worktree. Prices and pay are placeholders for the demo, not approved business values.
+Creates one customer (test@test.com) with two saved addresses, four cleaners (test+<name>@test.com),
+offerings and about six weeks of bookings with payments, attendance, earnings and settlements. Every account
+uses ADMIN_PASSWORD from .env.worktree. Prices and pay are placeholders for the demo, not approved
+business values.
 
 Refuses to run against a non-local database and does nothing if test@test.com already exists.
 """
@@ -26,6 +27,7 @@ from app.models import (
     Booking,
     BookingStatus,
     CaptureStatus,
+    CustomerAddress,
     Earning,
     EarningStatus,
     ExceptionStatus,
@@ -72,6 +74,26 @@ ADDRESSES = [
     "Félix Cuevas 301, Tlacoquemécatl",
     "Holbein 112, Ciudad de los Deportes",
 ]
+SAVED_ADDRESSES = [
+    dict(
+        label="Casa",
+        street="Colima 214",
+        interior="3",
+        neighbourhood="Roma Norte",
+        postal_code="06700",
+        municipality="Cuauhtémoc",
+        state="Ciudad de México",
+        directions="Portón negro junto a la panadería",
+    ),
+    dict(
+        label="Oficina",
+        street="Ámsterdam 88",
+        neighbourhood="Condesa",
+        postal_code="06100",
+        municipality="Cuauhtémoc",
+        state="Ciudad de México",
+    ),
+]
 START_HOURS = [8, 11, 14, 17]
 DAYS_BACK = 42
 DAYS_AHEAD = 7
@@ -117,6 +139,10 @@ async def main() -> None:
 
         customer = await auth.create_user(
             session, CUSTOMER_EMAIL, password, "Cliente de prueba", Role.customer
+        )
+        session.add_all(
+            CustomerAddress(customer_id=customer.id, is_default=i == 0, **fields)
+            for i, fields in enumerate(SAVED_ADDRESSES)
         )
         staff: list[tuple[StaffProfile, User]] = []
         for slug, full_name, display, bio, active in STAFF:

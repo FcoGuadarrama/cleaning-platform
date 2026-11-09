@@ -1,6 +1,7 @@
 import type { Schemas } from "@repo/api-client";
 import { router } from "expo-router";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
+import { shortAddress, useAddresses } from "../../../src/addresses";
 import { api } from "../../../src/api";
 import { DateBlock } from "../../../src/DateBlock";
 import { BOOKING_LABELS, BOOKING_TONES, formatDuration, formatMoney, formatClock, formatRelativeDay, formatWeekday } from "../../../src/format";
@@ -55,10 +56,11 @@ export default function Home() {
   const bookings = useResource(() => api.GET("/bookings"));
   const offerings = useResource(() => api.GET("/offerings"));
   const staff = useResource(() => api.GET("/staff"));
+  const addresses = useAddresses();
+  const home = addresses.data?.find((a) => a.is_default);
 
   const sorted = [...(bookings.data ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const next = sorted.find((b) => UPCOMING.has(b.status));
-  const lastAddress = (next ?? sorted.at(-1))?.address;
   const offeringOf = (id: number) => offerings.data?.find((o) => o.id === id);
   const staffName = (id: number) => staff.data?.find((s) => s.id === id)?.display_name;
 
@@ -66,6 +68,7 @@ export default function Home() {
     void bookings.refresh();
     void offerings.refresh();
     void staff.refresh();
+    void addresses.refresh();
   }
 
   return (
@@ -77,11 +80,20 @@ export default function Home() {
             <Icon name="bell" size={26} color={color.text} strokeWidth={1.6} />
           </View>
         </View>
-        {lastAddress ? (
-          <View className="flex-row items-center gap-1.5">
+        {addresses.data ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={home ? `Domicilio principal: ${home.label}. Mis domicilios` : "Agrega tu domicilio"}
+            onPress={() => router.push("/(customer)/addresses")}
+            className="min-h-11 flex-row items-center gap-1.5 self-start active:opacity-60"
+          >
             <Icon name="pin" size={18} color={color.text} strokeWidth={1.6} />
-            <Text numberOfLines={1} className="flex-1 text-sm text-text">{lastAddress}</Text>
-          </View>
+            <Text numberOfLines={1} className="shrink text-sm text-text">
+              {home ? <Text className="font-semibold">{home.label} · </Text> : null}
+              {home ? shortAddress(home) : "Agrega tu domicilio"}
+            </Text>
+            <Icon name="chevron" size={16} color={color.text} strokeWidth={1.8} />
+          </Pressable>
         ) : null}
         <Text accessibilityRole="header" className="pt-3 text-2xl font-bold leading-[38px] tracking-[-1px] text-text">
           Tu {formatWeekday(new Date().toISOString())},{"\n"}con más tiempo.
