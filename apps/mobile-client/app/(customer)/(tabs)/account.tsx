@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { AccountScreen, AccountSection } from "../../../src/AccountScreen";
+import { useAddresses } from "../../../src/addresses";
 import { api } from "../../../src/api";
 import { List, Row } from "../../../src/ui";
 import { useResource } from "../../../src/useResource";
@@ -10,12 +11,20 @@ export default function CustomerAccount() {
   const staff = useResource(() => api.GET("/staff"));
   const usualId = usualStaffId(bookings.data ?? []);
   const usual = staff.data?.find((s) => s.id === usualId);
+  const addresses = useAddresses();
+  const saved = addresses.data ?? [];
+  const main = saved.find((a) => a.is_default);
 
   return (
     <AccountScreen>
       <AccountSection title="Tu hogar">
         <List>
-          <Row icon="home" title="Mis domicilios" soon />
+          <Row
+            icon="home"
+            title="Mis domicilios"
+            subtitle={main ? `${main.label}${saved.length > 1 ? ` y ${saved.length - 1} más` : ""}` : "Guarda tu casa u oficina"}
+            onPress={() => router.push("/(customer)/addresses")}
+          />
           <Row icon="sliders" title="Preferencias de limpieza" subtitle="Mascotas, superficies y prioridades" soon />
           <Row
             icon="person"

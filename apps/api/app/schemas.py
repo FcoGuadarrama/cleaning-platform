@@ -1,9 +1,9 @@
 """Pydantic transport models (the public contract). Kept separate from ORM models."""
 
 from datetime import date, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator
 
 from app.models import (
     AttendanceKind,
@@ -100,12 +100,67 @@ class AvailabilityOut(BaseModel):
     slots: list[SlotOut]
 
 
+# addresses
+Line = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+OptionalLine = Annotated[str, StringConstraints(strip_whitespace=True)]
+PostalCode = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\d{5}$")]
+
+
+class AddressFields(Strict):
+    label: Annotated[Line, Field(max_length=40, description="Customer's name for it, e.g. Casa")]
+    street: Annotated[Line, Field(max_length=200, description="Street and outdoor number")]
+    interior: Annotated[OptionalLine, Field(max_length=60)] = ""
+    neighbourhood: Annotated[Line, Field(max_length=120, description="Colonia")]
+    postal_code: PostalCode
+    municipality: Annotated[Line, Field(max_length=120, description="Municipio o alcaldía")]
+    state: Annotated[Line, Field(max_length=80)]
+    directions: Annotated[OptionalLine, Field(max_length=300, description="Landmarks for the cleaner")] = ""
+
+
+class AddressCreateRequest(AddressFields):
+    is_default: bool = False
+
+
+class AddressUpdateRequest(Strict):
+    """Partial update; omitted fields keep their value. Only `true` is accepted for is_default."""
+
+    label: Annotated[Line, Field(max_length=40)] | None = None
+    street: Annotated[Line, Field(max_length=200)] | None = None
+    interior: Annotated[OptionalLine, Field(max_length=60)] | None = None
+    neighbourhood: Annotated[Line, Field(max_length=120)] | None = None
+    postal_code: PostalCode | None = None
+    municipality: Annotated[Line, Field(max_length=120)] | None = None
+    state: Annotated[Line, Field(max_length=80)] | None = None
+    directions: Annotated[OptionalLine, Field(max_length=300)] | None = None
+    is_default: Literal[True] | None = None
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _no_explicit_null(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("omit the field instead of sending null")
+        return value
+
+
+class AddressOut(Out):
+    id: int
+    label: str
+    street: str
+    interior: str
+    neighbourhood: str
+    postal_code: str
+    municipality: str
+    state: str
+    directions: str
+    is_default: bool
+
+
 # bookings
 class BookingCreateRequest(Strict):
     staff_id: int
     offering_id: int
     starts_at: AwareDatetime
-    address: Annotated[str, Field(min_length=5, max_length=500)]
+    address_id: Annotated[int, Field(description="One of the customer's saved addresses")]
 
 
 class BookingOut(Out):
@@ -119,7 +174,8 @@ class BookingOut(Out):
     hold_expires_at: datetime | None
     price_minor: int
     currency: str
-    address: str
+    address: Annotated[str, Field(description="Address text as it was when the booking was made")]
+    address_id: int | None
 
 
 class BookingCancelRequest(Strict):

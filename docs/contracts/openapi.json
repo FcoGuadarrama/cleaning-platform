@@ -1,6 +1,257 @@
 {
   "components": {
     "schemas": {
+      "AddressCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "directions": {
+            "default": "",
+            "description": "Landmarks for the cleaner",
+            "maxLength": 300,
+            "title": "Directions",
+            "type": "string"
+          },
+          "interior": {
+            "default": "",
+            "maxLength": 60,
+            "title": "Interior",
+            "type": "string"
+          },
+          "is_default": {
+            "default": false,
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "label": {
+            "description": "Customer's name for it, e.g. Casa",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "municipality": {
+            "description": "Municipio o alcaldía",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Municipality",
+            "type": "string"
+          },
+          "neighbourhood": {
+            "description": "Colonia",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Neighbourhood",
+            "type": "string"
+          },
+          "postal_code": {
+            "pattern": "^\\d{5}$",
+            "title": "Postal Code",
+            "type": "string"
+          },
+          "state": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "State",
+            "type": "string"
+          },
+          "street": {
+            "description": "Street and outdoor number",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Street",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "street",
+          "neighbourhood",
+          "postal_code",
+          "municipality",
+          "state"
+        ],
+        "title": "AddressCreateRequest",
+        "type": "object"
+      },
+      "AddressOut": {
+        "properties": {
+          "directions": {
+            "title": "Directions",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "interior": {
+            "title": "Interior",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "municipality": {
+            "title": "Municipality",
+            "type": "string"
+          },
+          "neighbourhood": {
+            "title": "Neighbourhood",
+            "type": "string"
+          },
+          "postal_code": {
+            "title": "Postal Code",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "street": {
+            "title": "Street",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "street",
+          "interior",
+          "neighbourhood",
+          "postal_code",
+          "municipality",
+          "state",
+          "directions",
+          "is_default"
+        ],
+        "title": "AddressOut",
+        "type": "object"
+      },
+      "AddressUpdateRequest": {
+        "additionalProperties": false,
+        "description": "Partial update; omitted fields keep their value. Only `true` is accepted for is_default.",
+        "properties": {
+          "directions": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Directions"
+          },
+          "interior": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interior"
+          },
+          "is_default": {
+            "anyOf": [
+              {
+                "const": true,
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "municipality": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Municipality"
+          },
+          "neighbourhood": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neighbourhood"
+          },
+          "postal_code": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{5}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postal Code"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "street": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Street"
+          }
+        },
+        "title": "AddressUpdateRequest",
+        "type": "object"
+      },
       "AttendanceExceptionOut": {
         "properties": {
           "attendance_id": {
@@ -251,11 +502,10 @@
       "BookingCreateRequest": {
         "additionalProperties": false,
         "properties": {
-          "address": {
-            "maxLength": 500,
-            "minLength": 5,
-            "title": "Address",
-            "type": "string"
+          "address_id": {
+            "description": "One of the customer's saved addresses",
+            "title": "Address Id",
+            "type": "integer"
           },
           "offering_id": {
             "title": "Offering Id",
@@ -275,7 +525,7 @@
           "staff_id",
           "offering_id",
           "starts_at",
-          "address"
+          "address_id"
         ],
         "title": "BookingCreateRequest",
         "type": "object"
@@ -283,8 +533,20 @@
       "BookingOut": {
         "properties": {
           "address": {
+            "description": "Address text as it was when the booking was made",
             "title": "Address",
             "type": "string"
+          },
+          "address_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Id"
           },
           "currency": {
             "title": "Currency",
@@ -347,7 +609,8 @@
           "hold_expires_at",
           "price_minor",
           "currency",
-          "address"
+          "address",
+          "address_id"
         ],
         "title": "BookingOut",
         "type": "object"
@@ -1092,6 +1355,376 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/addresses": {
+      "get": {
+        "description": "The caller's saved addresses, default first.",
+        "operationId": "addresses_list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AddressOut"
+                  },
+                  "title": "Response Addresses List",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Addresses List",
+        "tags": [
+          "addresses"
+        ]
+      },
+      "post": {
+        "operationId": "addresses_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Addresses Create",
+        "tags": [
+          "addresses"
+        ]
+      }
+    },
+    "/addresses/{address_id}": {
+      "delete": {
+        "operationId": "addresses_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "address_id",
+            "required": true,
+            "schema": {
+              "title": "Address Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Addresses Delete",
+        "tags": [
+          "addresses"
+        ]
+      },
+      "patch": {
+        "operationId": "addresses_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "address_id",
+            "required": true,
+            "schema": {
+              "title": "Address Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Addresses Update",
+        "tags": [
+          "addresses"
+        ]
+      }
+    },
     "/admin/attendance-exceptions": {
       "get": {
         "operationId": "admin_list_attendance_exceptions",

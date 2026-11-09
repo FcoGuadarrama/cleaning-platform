@@ -61,6 +61,7 @@ describe("booking rows", () => {
     price_minor: 65000,
     currency: "MXN",
     address: "Colima 214, Roma Norte",
+    address_id: null,
   };
   const lookups = {
     staffName: () => "Ana",

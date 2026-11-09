@@ -1,4 +1,4 @@
-# Task 004 — Bookings in the admin dashboard
+# Task 005 — Bookings in the admin dashboard
 
 - **Owner:** claude-code · **Branch:** feature/reservas · **Base SHA:** 94236a9
 - **Contracts:** docs/contracts/openapi.json changed (two admin endpoints, two schemas); client regenerated.

@@ -1,9 +1,10 @@
 import type { Schemas } from "@repo/api-client";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { type Address, shortAddress, useAddresses } from "../../src/addresses";
 import { api, errorMessage } from "../../src/api";
 import { useDaySlots, useNextSlots } from "../../src/availability";
 import { formatAmount, formatClock, formatDuration, formatLongDay, formatMoney, formatRelativeDay, formatShortDay, nextBusinessDays } from "../../src/format";
@@ -14,7 +15,7 @@ import { FlowScreen } from "../../src/screen";
 import { DayPicker, SlotGrid } from "../../src/SlotPicker";
 import { Text } from "../../src/text";
 import { color } from "../../src/theme";
-import { Avatar, BRAND_NAME, Button, Callout, Field, Hairline, InfoNote, List, Notice, Overline, Row, SectionTitle, SkeletonRows, Soon, StateView, StatusDot } from "../../src/ui";
+import { Avatar, BRAND_NAME, Button, Callout, Hairline, InfoNote, List, Notice, Overline, Row, SectionTitle, SkeletonRows, Soon, StateView, StatusDot } from "../../src/ui";
 import { useResource } from "../../src/useResource";
 import { serviceIcon } from "../../src/visits";
 
@@ -27,6 +28,46 @@ function StepHeading({ step, title }: { step: Step; title: string }) {
       <Overline>Paso {step} de 3</Overline>
       <Text accessibilityRole="header" className="text-2xl font-bold leading-[38px] tracking-[-1px] text-text">{title}</Text>
     </View>
+  );
+}
+
+function AddressRow({ address, onChange }: { address?: Address; onChange?: () => void }) {
+  return (
+    <Row
+      icon="home"
+      title={address ? `Domicilio · ${address.label}` : "Domicilio"}
+      subtitle={address ? shortAddress(address) : "Agrega dónde será la visita"}
+      trailing={
+        onChange ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Cambiar domicilio" onPress={onChange} className="min-h-11 justify-center active:opacity-60">
+            <Text className="border-b border-primary text-md font-semibold text-primary">Cambiar</Text>
+          </Pressable>
+        ) : undefined
+      }
+    />
+  );
+}
+
+function AddressChoices({ addresses, selected, onSelect }: { addresses: Address[]; selected: number | null; onSelect: (id: number) => void }) {
+  return (
+    <List>
+      {addresses.map((a) => (
+        <Row
+          key={a.id}
+          icon="pin"
+          title={a.label}
+          subtitle={shortAddress(a)}
+          onPress={() => onSelect(a.id)}
+          trailing={<Icon name={a.id === selected ? "check" : "circle"} size={22} color={a.id === selected ? color.primary : color.border} strokeWidth={2} />}
+          accessibilityLabel={`${a.label}${a.id === selected ? ", elegido" : ""}`}
+        />
+      ))}
+      <Row
+        leading={<Icon name="plus" size={24} color={color.primary} strokeWidth={1.8} />}
+        title="Agregar domicilio"
+        onPress={() => router.push({ pathname: "/(customer)/addresses/[id]", params: { id: "new" } })}
+      />
+    </List>
   );
 }
 
@@ -71,9 +112,8 @@ export default function Book() {
   const [day, setDay] = useState(params.day && days.includes(params.day) ? params.day : days[0]!);
   const [slot, setSlot] = useState<string | null>(params.slot ?? null);
   const [step, setStep] = useState<Step>(params.staffId ? (params.slot ? 3 : 2) : 1);
-  const [address, setAddress] = useState("");
-  // The field stays open while the customer types; it collapses to a row only on blur or when prefilled.
-  const [editingAddress, setEditingAddress] = useState(true);
+  const [addressId, setAddressId] = useState<number | null>(null);
+  const [choosingAddress, setChoosingAddress] = useState(false);
   const [booking, setBooking] = useState<Schemas["BookingOut"] | null>(null);
   const [payment, setPayment] = useState<Schemas["PaymentOut"] | null>(null);
   const [paid, setPaid] = useState(false);
@@ -82,7 +122,8 @@ export default function Book() {
 
   const offerings = useResource(() => api.GET("/offerings"));
   const staff = useResource(() => api.GET("/staff"));
-  const bookings = useResource(() => api.GET("/bookings"));
+  const addresses = useAddresses();
+  const knownAddressIds = useRef<Set<number> | null>(null);
   const offering = offerings.data?.find((o) => o.id === offeringId);
   const person = staff.data?.find((s) => s.id === staffId);
   const nextSlots = useNextSlots((staff.data ?? []).map((s) => s.id), offeringId ?? undefined);
@@ -93,15 +134,27 @@ export default function Book() {
     if (!offeringId && offerings.data?.[0]) setOfferingId(offerings.data[0].id);
   }, [offerings.data, offeringId]);
 
-  // Prefill the address of the customer's latest visit; there is no address book yet.
+  // Start on the default address; an address added from this screen is selected when the form closes.
   useEffect(() => {
-    const last = [...(bookings.data ?? [])].sort((a, b) => b.starts_at.localeCompare(a.starts_at))[0];
-    if (last && !address) {
-      setAddress(last.address);
-      setEditingAddress(false);
-    }
+    const list = addresses.data;
+    if (!list) return;
+    const known = knownAddressIds.current;
+    const added = known ? list.find((a) => !known.has(a.id)) : undefined;
+    knownAddressIds.current = new Set(list.map((a) => a.id));
+    if (added) chooseAddress(added.id);
+    else if (!list.some((a) => a.id === addressId)) chooseAddress(list.find((a) => a.is_default)?.id ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookings.data]);
+  }, [addresses.data]);
+
+  function chooseAddress(id: number | null) {
+    // A hold carries its address, so a different address needs a new hold.
+    if (id !== addressId) {
+      setBooking(null);
+      setPayment(null);
+    }
+    setAddressId(id);
+    setChoosingAddress(false);
+  }
 
   function go(next: Step) {
     // Changing an earlier choice drops a pending hold; it expires on its own.
@@ -112,12 +165,12 @@ export default function Book() {
   }
 
   async function pay() {
-    if (!offering || !slot || !staffId) return;
+    if (!offering || !slot || !staffId || !addressId) return;
     setBusy(true);
     setError(null);
     let held = booking;
     if (!held) {
-      const r = await api.POST("/bookings", { body: { staff_id: staffId, offering_id: offering.id, starts_at: slot, address: address.trim() } });
+      const r = await api.POST("/bookings", { body: { staff_id: staffId, offering_id: offering.id, starts_at: slot, address_id: addressId } });
       if (!r.data) {
         setBusy(false);
         setSlot(null);
@@ -148,7 +201,7 @@ export default function Book() {
   if (booking && paid) return <Confirmed name={person?.display_name ?? ""} booking={booking} />;
 
   const back = step > 1 ? () => go((step - 1) as Step) : undefined;
-  const addressOk = address.trim().length >= 5;
+  const address = addresses.data?.find((a) => a.id === addressId);
   const total = booking?.price_minor ?? offering?.price_minor;
   const currency = booking?.currency ?? offering?.currency ?? "MXN";
 
@@ -238,7 +291,7 @@ export default function Book() {
       title={TITLES[3]}
       fallback="/(customer)/(tabs)"
       onBack={back}
-      footer={<Button label={total !== undefined ? `Pagar ${formatMoney(total, currency)}` : "Pagar"} busy={busy} disabled={!offering || !slot || !addressOk} onPress={pay} />}
+      footer={<Button label={total !== undefined ? `Pagar ${formatMoney(total, currency)}` : "Pagar"} busy={busy} disabled={!offering || !slot || !address} onPress={pay} />}
     >
       <StepHeading step={3} title={`Todo listo para\nrecibir a ${BRAND_NAME}.`} />
 
@@ -266,34 +319,13 @@ export default function Book() {
               </View>
             }
           />
-          {editingAddress || !addressOk ? (
-            <View className="py-3">
-              <Field
-                label="Domicilio"
-                icon="home"
-                placeholder="Calle, número y colonia"
-                value={address}
-                onChangeText={setAddress}
-                onBlur={() => addressOk && setEditingAddress(false)}
-                autoComplete="street-address"
-                textContentType="fullStreetAddress"
-              />
-            </View>
-          ) : (
-            <Row
-              icon="home"
-              title="Domicilio"
-              trailing={
-                <View className="max-w-[60%] flex-row items-center gap-3">
-                  <Text numberOfLines={1} className="shrink text-md text-text">{address}</Text>
-                  <Pressable accessibilityRole="button" accessibilityLabel="Editar domicilio" onPress={() => setEditingAddress(true)} className="min-h-11 justify-center active:opacity-60">
-                    <Text className="border-b border-primary text-md font-semibold text-primary">Editar</Text>
-                  </Pressable>
-                </View>
-              }
-            />
-          )}
+          <AddressRow address={address} onChange={addresses.data?.length ? () => setChoosingAddress((v) => !v) : undefined} />
         </List>
+        {addresses.loading && !addresses.data ? <SkeletonRows count={1} /> : null}
+        {addresses.error ? <Notice tone="danger" text={addresses.error} /> : null}
+        {choosingAddress || (addresses.data && !addresses.data.length) ? (
+          <AddressChoices addresses={addresses.data ?? []} selected={addressId} onSelect={chooseAddress} />
+        ) : null}
       </View>
 
       <View className="gap-3">

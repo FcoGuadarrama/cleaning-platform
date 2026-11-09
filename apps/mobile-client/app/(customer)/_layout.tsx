@@ -8,6 +8,8 @@ export default function CustomerLayout() {
       <Stack.Screen name="staff/[id]" />
       <Stack.Screen name="booking/[id]" />
       <Stack.Screen name="book" />
+      <Stack.Screen name="addresses/index" />
+      <Stack.Screen name="addresses/[id]" />
     </Stack>
   );
 }

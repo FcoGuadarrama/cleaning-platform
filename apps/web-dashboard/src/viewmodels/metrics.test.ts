@@ -16,6 +16,7 @@ function booking(id: number, startsAt: string, status: Schemas["BookingStatus"],
     price_minor: price,
     currency: "MXN",
     address: "Calle 1",
+    address_id: null,
   };
 }
 

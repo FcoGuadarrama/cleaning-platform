@@ -20,7 +20,7 @@ router = APIRouter(tags=["bookings"], responses=ERROR_RESPONSES)
 @router.post("/bookings", status_code=201, name="bookings_create_hold")
 async def create_hold(body: BookingCreateRequest, session: SessionDep, user: CustomerDep) -> BookingOut:
     booking = await scheduling.create_hold(
-        session, user, body.staff_id, body.offering_id, body.starts_at, body.address
+        session, user, body.staff_id, body.offering_id, body.starts_at, body.address_id
     )
     return BookingOut.model_validate(booking)
 

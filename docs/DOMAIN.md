@@ -4,7 +4,9 @@
 - **User**: account with exactly one role: `customer`, `staff`, `admin`.
 - **StaffProfile**: public profile of a cleaner (display name, bio, active flag). Created only by admin.
 - **ServiceOffering**: what is sold (name, duration minutes, price in minor units, currency). Versioned by creating a new row; bookings copy the values.
-- **Booking**: one scheduled visit (customer, staff, start/end UTC, status, price snapshot).
+- **CustomerAddress**: a customer's saved service address (label, street, interior, colonia, postal code,
+  municipality, state, directions). Exactly one is the default while any exist.
+- **Booking**: one scheduled visit (customer, staff, start/end UTC, status, price snapshot, address snapshot).
 - **Hold**: a booking in `held` status with `hold_expires_at`; blocks the slot until expiry.
 - **Payment**: provider-agnostic record of a charge attempt for a booking (`provider`, `provider_ref`, status, amount).
 - **WebhookEvent**: received provider event, unique on (`provider`, `event_id`) → idempotency.
@@ -32,3 +34,5 @@ Settlement: `approved → paid`.
    and the booking cannot complete until an admin resolves the exception or a successful capture exists.
 7. Customers read only their bookings; staff only bookings assigned to them and their own earnings.
 8. Money is integer minor units; no floats.
+9. A booking uses one of its customer's own saved addresses and copies it as text; editing or deleting the saved
+   address never changes the booking's address.
