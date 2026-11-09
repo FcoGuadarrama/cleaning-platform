@@ -3,6 +3,7 @@ import type { Schemas } from "@repo/api-client";
 import { computed, reactive, ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -10,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { api, errorMessage } from "../api";
 import { useDirectory } from "../stores/directory";
-import { formatDateTime, fromBusinessWallTime, toBusinessWallTime } from "../viewmodels/format";
+import { CANCELLABLE_STATUSES, formatDateTime, fromBusinessWallTime, toBusinessWallTime } from "../viewmodels/format";
 import StatusBadge from "./StatusBadge.vue";
 
 const props = defineProps<{ bookingId: number | null }>();
@@ -21,16 +22,25 @@ const row = computed(() => directory.bookingRows.find((r) => r.id === props.book
 const raw = computed(() => directory.bookings.data?.find((b) => b.id === props.bookingId) ?? null);
 const offering = computed(() => (raw.value ? directory.offeringById.get(raw.value.offering_id) : undefined));
 const canRecordAttendance = computed(() => row.value !== null && !["cancelled", "expired"].includes(row.value.status));
+const canCancel = computed(() => row.value !== null && CANCELLABLE_STATUSES.has(row.value.status));
 
 const form = reactive({ kind: "check_in" as Schemas["AttendanceKind"], when: "", reason: "" });
 const busy = ref(false);
 const error = ref<string | null>(null);
+
+const cancelOpen = ref(false);
+const cancelReason = ref("");
+const cancelBusy = ref(false);
+const cancelError = ref<string | null>(null);
 
 watch(
   () => props.bookingId,
   () => {
     Object.assign(form, { kind: "check_in", when: toBusinessWallTime(new Date()), reason: "" });
     error.value = null;
+    cancelOpen.value = false;
+    cancelReason.value = "";
+    cancelError.value = null;
   },
   { immediate: true },
 );
@@ -49,6 +59,24 @@ async function recordAttendance(): Promise<void> {
   form.reason = "";
   await directory.bookings.refresh();
 }
+
+async function cancelBooking(): Promise<void> {
+  const reason = cancelReason.value.trim();
+  if (!props.bookingId || reason.length < 3) return;
+  cancelBusy.value = true;
+  const { data, error: e } = await api.POST("/admin/bookings/{booking_id}/cancel", {
+    params: { path: { booking_id: props.bookingId } },
+    body: { reason },
+  });
+  cancelBusy.value = false;
+  cancelError.value = e ? errorMessage(e) : null;
+  if (!data) return;
+  cancelOpen.value = false;
+  cancelReason.value = "";
+  if (data.refund_required) toast.warning("Reserva cancelada. El pago quedó marcado para reembolso.");
+  else toast.success("Reserva cancelada");
+  await directory.bookings.refresh();
+}
 </script>
 
 <template>
@@ -64,6 +92,11 @@ async function recordAttendance(): Promise<void> {
         <dl class="grid grid-cols-[8rem_1fr] gap-x-4 gap-y-3 p-6">
           <dt class="text-muted-foreground">Servicio</dt>
           <dd>{{ row.offeringName }}<span v-if="offering" class="text-muted-foreground">, {{ offering.duration_minutes }} min</span></dd>
+          <dt class="text-muted-foreground">Cliente</dt>
+          <dd>
+            {{ row.customerName }}
+            <a v-if="row.customerEmail" :href="`mailto:${row.customerEmail}`" class="block break-all text-muted-foreground hover:text-text hover:underline">{{ row.customerEmail }}</a>
+          </dd>
           <dt class="text-muted-foreground">Persona</dt>
           <dd>{{ row.staffName }}</dd>
           <dt class="text-muted-foreground">Dirección</dt>
@@ -100,6 +133,14 @@ async function recordAttendance(): Promise<void> {
             {{ form.kind === "check_in" ? "Registrar entrada" : "Registrar salida" }}
           </Button>
         </form>
+
+        <section v-if="canCancel" class="grid gap-3 border-t border-hairline p-6" aria-labelledby="cancel-title">
+          <div>
+            <h3 id="cancel-title" class="font-semibold">Cancelar reserva</h3>
+            <p class="mt-1 text-muted-foreground">Libera el horario de la persona. El cliente verá la visita como cancelada en la app.</p>
+          </div>
+          <Button variant="outline" class="justify-self-start text-danger hover:text-danger" @click="cancelOpen = true">Cancelar reserva…</Button>
+        </section>
       </template>
       <SheetHeader v-else class="p-6">
         <SheetTitle>Reserva no encontrada</SheetTitle>
@@ -107,4 +148,26 @@ async function recordAttendance(): Promise<void> {
       </SheetHeader>
     </SheetContent>
   </Sheet>
+
+  <Dialog v-model:open="cancelOpen">
+    <DialogContent class="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle class="title-section">¿Cancelar la reserva {{ bookingId }}?</DialogTitle>
+        <DialogDescription>
+          <template v-if="row?.status === 'confirmed'">Esta reserva ya está pagada: el pago quedará marcado para reembolso, pero el reembolso no se hace en automático.</template>
+          <template v-else>El horario apartado se libera y el cliente ya no podrá pagarlo.</template>
+          No se puede deshacer.
+        </DialogDescription>
+      </DialogHeader>
+      <form id="cancel-form" class="grid gap-2" @submit.prevent="cancelBooking">
+        <Label for="cancel-reason">Motivo</Label>
+        <Textarea id="cancel-reason" v-model="cancelReason" rows="3" minlength="3" maxlength="1000" required placeholder="Ej. el cliente pidió cancelar por teléfono" />
+        <p v-if="cancelError" role="alert" class="text-danger">{{ cancelError }}</p>
+      </form>
+      <DialogFooter>
+        <Button variant="outline" @click="cancelOpen = false">Volver</Button>
+        <Button type="submit" form="cancel-form" variant="destructive" :disabled="cancelBusy || cancelReason.trim().length < 3" :aria-busy="cancelBusy">Sí, cancelar</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>

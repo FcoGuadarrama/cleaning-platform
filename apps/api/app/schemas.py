@@ -122,6 +122,15 @@ class BookingOut(Out):
     address: str
 
 
+class BookingCancelRequest(Strict):
+    reason: Annotated[str, Field(min_length=3, max_length=1000)]
+
+
+class BookingCancelOut(BaseModel):
+    booking: BookingOut
+    refund_required: bool
+
+
 class PaymentOut(Out):
     id: int
     booking_id: int

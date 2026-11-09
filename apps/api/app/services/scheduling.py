@@ -8,7 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.errors import AppError, conflict, forbidden, not_found
 from app.core.timeutil import utcnow
-from app.models import Booking, BookingStatus, Role, ServiceOffering, StaffProfile, User
+from app.models import (
+    Booking,
+    BookingStatus,
+    Payment,
+    PaymentStatus,
+    Role,
+    ServiceOffering,
+    StaffProfile,
+    User,
+)
 from app.services import audit
 
 BLOCKING = (BookingStatus.confirmed, BookingStatus.in_progress, BookingStatus.pending_review)
@@ -141,6 +150,45 @@ async def expire_holds(session: AsyncSession) -> int:
             .values(status=BookingStatus.expired)
         )
     return int(getattr(result, "rowcount", 0))
+
+
+CANCELLABLE = (BookingStatus.held, BookingStatus.confirmed)
+
+
+async def cancel(session: AsyncSession, admin: User, booking_id: int, reason: str) -> tuple[Booking, bool]:
+    """Admin cancel of a held/confirmed booking. A captured payment is only flagged for refund here:
+    refund execution and late-cancellation compensation are open product decisions."""
+    async with session.begin():
+        # Same lock order as the payment webhook (payments, then booking) so the two cannot deadlock.
+        payments = (
+            (await session.execute(select(Payment).where(Payment.booking_id == booking_id).with_for_update()))
+            .scalars()
+            .all()
+        )
+        booking = (
+            await session.execute(select(Booking).where(Booking.id == booking_id).with_for_update())
+        ).scalar_one_or_none()
+        if booking is None:
+            raise not_found("Booking")
+        if booking.status not in CANCELLABLE:
+            raise conflict("invalid_booking_state", f"Cannot cancel a booking in {booking.status}")
+        paid = [p for p in payments if p.status == PaymentStatus.succeeded]
+        for payment in paid:
+            payment.needs_refund = True
+        previous = booking.status
+        booking.status = BookingStatus.cancelled
+        booking.hold_expires_at = None
+        audit.record(
+            session,
+            admin.id,
+            "booking.cancelled",
+            "booking",
+            booking.id,
+            reason=reason,
+            previous_status=previous.value,
+            refund_payment_ids=[p.id for p in paid],
+        )
+    return booking, bool(paid)
 
 
 async def staff_profile_for(session: AsyncSession, user: User) -> StaffProfile:
