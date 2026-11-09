@@ -49,7 +49,7 @@ function DeleteAddress({ id, onError }: { id: number; onError: (message: string)
       <Text className="text-sm text-text">Tus visitas ya reservadas conservan la dirección con la que se agendaron.</Text>
       <View className="flex-row gap-3">
         <Button label="Cancelar" variant="outline" compact className="flex-1" onPress={() => setConfirming(false)} />
-        <Button label="Eliminar" compact busy={busy} className="flex-1" onPress={remove} />
+        <Button label="Eliminar" variant="danger" compact busy={busy} className="flex-1" onPress={remove} />
       </View>
     </View>
   );

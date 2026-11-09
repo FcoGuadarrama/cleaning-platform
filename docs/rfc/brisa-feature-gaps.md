@@ -10,7 +10,7 @@ built. Each section below is one RFC candidate. **Blocked by** points to an open
 **ADRs** lists the architecture choices the RFC will force.
 
 Already backed by data (no RFC needed): next visit, service catalog (name, duration, price), cleaner choice and real
-availability, sandbox payment, visit status, address per booking, "customer supplies products", "Mon–Fri",
+availability, sandbox payment, visit status, saved addresses (gap 7), "customer supplies products", "Mon–Fri",
 24 h change notice (confirmed rule, shown only as text).
 
 ## 1. Subscription / monthly plan (screen 05, "Conoce el plan mensual", "Mi suscripción")
@@ -50,10 +50,10 @@ availability, sandbox payment, visit status, address per booking, "customer supp
 - ADRs: push provider (Expo Push Service vs APNs/FCM direct); outbox/background worker.
 
 ## 7. Saved addresses ("Mi casa · Veracruz" selector, "Mis domicilios", "Domicilio · Editar")
-- Today the address is a free-text field on each booking. The app pre-fills it from the latest booking.
-- Needs: `CustomerAddress` (label, street, neighbourhood, municipality, optional geo), a default address, a
-  service-area check.
-- Blocked by: decision 7 (service area boundaries).
+- **Built** (task 004, `docs/tasks/004-mis-domicilios.md`): `CustomerAddress` address book with one default,
+  `/addresses` CRUD, booking by `address_id` with a text snapshot, Mis domicilios screens, booking picker,
+  default address on Inicio.
+- Still open: the service-area check, blocked by decision 7 (service area boundaries).
 - ADRs: geocoding provider (or none); whether the geofence uses the address's coordinates (relates to decision 5).
 
 ## 8. Cleaning preferences and per-visit instructions ("Preferencias de limpieza", "Indicaciones": Mascotas, Prioridad)
