@@ -1,14 +1,13 @@
 import { Stack } from "expo-router";
-import { RoleGate } from "../../src/RoleGate";
+import { stackScreenOptions } from "../../src/navigation";
 
 export default function CustomerLayout() {
   return (
-    <RoleGate role="customer">
-      <Stack screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
-        <Stack.Screen name="index" options={{ title: "Elige a tu persona de limpieza" }} />
-        <Stack.Screen name="book" options={{ title: "Reservar visita" }} />
-        <Stack.Screen name="bookings" options={{ title: "Mis reservas" }} />
-      </Stack>
-    </RoleGate>
+    <Stack screenOptions={stackScreenOptions}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="staff/[id]" />
+      <Stack.Screen name="booking/[id]" />
+      <Stack.Screen name="book" />
+    </Stack>
   );
 }

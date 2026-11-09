@@ -1,9 +1,12 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { ScrollView, Text, TextInput } from "react-native";
+import { View } from "react-native";
+import { Text } from "../src/text";
+import { AuthLayout } from "../src/AuthLayout";
 import { useSession } from "../src/session";
-import { Button } from "../src/ui";
-import { inputClass } from "./login";
+import { Button, Field, Notice } from "../src/ui";
+
+const MIN_PASSWORD = 10;
 
 export default function Register() {
   const { register } = useSession();
@@ -11,6 +14,7 @@ export default function Register() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof form) => (v: string) => setForm({ ...form, [k]: v });
+  const shortPassword = form.password.length > 0 && form.password.length < MIN_PASSWORD;
 
   async function submit() {
     setBusy(true);
@@ -21,12 +25,17 @@ export default function Register() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-4 p-6">
-      <TextInput accessibilityLabel="Nombre completo" placeholder="Nombre completo" autoComplete="name" value={form.name} onChangeText={set("name")} className={inputClass} />
-      <TextInput accessibilityLabel="Correo electrónico" placeholder="Correo electrónico" autoCapitalize="none" keyboardType="email-address" value={form.email} onChangeText={set("email")} className={inputClass} />
-      <TextInput accessibilityLabel="Contraseña, mínimo 10 caracteres" placeholder="Contraseña (mín. 10 caracteres)" secureTextEntry textContentType="newPassword" value={form.password} onChangeText={set("password")} className={inputClass} />
-      {error ? <Text accessibilityRole="alert" className="text-md text-danger">{error}</Text> : null}
-      <Button label="Crear cuenta" onPress={submit} busy={busy} disabled={!form.name || !form.email || form.password.length < 10} />
-    </ScrollView>
+    <AuthLayout back title="Crea tu cuenta" subtitle="Elige a tu persona de limpieza, reserva y paga desde la app.">
+      <Field label="Nombre completo" icon="person" placeholder="Nombre y apellido" autoComplete="name" textContentType="name" value={form.name} onChangeText={set("name")} />
+      <Field label="Correo electrónico" icon="mail" placeholder="tucorreo@ejemplo.com" autoCapitalize="none" autoCorrect={false} keyboardType="email-address" autoComplete="email" value={form.email} onChangeText={set("email")} />
+      <View className="gap-2">
+        <Field label="Contraseña" icon="shield" placeholder={`Mínimo ${MIN_PASSWORD} caracteres`} secureTextEntry textContentType="newPassword" autoComplete="new-password" value={form.password} onChangeText={set("password")} />
+        <Text className={`px-1 text-xs font-medium ${shortPassword ? "text-warning" : "text-text-muted"}`}>
+          {shortPassword ? `Faltan ${MIN_PASSWORD - form.password.length} caracteres.` : `Usa al menos ${MIN_PASSWORD} caracteres.`}
+        </Text>
+      </View>
+      {error ? <Notice tone="danger" text={error} /> : null}
+      <Button label="Crear cuenta" onPress={submit} busy={busy} disabled={!form.name || !form.email || form.password.length < MIN_PASSWORD} />
+    </AuthLayout>
   );
 }
