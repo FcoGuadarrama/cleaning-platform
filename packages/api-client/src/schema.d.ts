@@ -4,6 +4,45 @@
  */
 
 export interface paths {
+    "/addresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Addresses List
+         * @description The caller's saved addresses, default first.
+         */
+        get: operations["addresses_list"];
+        put?: never;
+        /** Addresses Create */
+        post: operations["addresses_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/addresses/{address_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Addresses Delete */
+        delete: operations["addresses_delete"];
+        options?: never;
+        head?: never;
+        /** Addresses Update */
+        patch: operations["addresses_update"];
+        trace?: never;
+    };
     "/admin/attendance-exceptions": {
         parameters: {
             query?: never;
@@ -416,6 +455,96 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AddressCreateRequest */
+        AddressCreateRequest: {
+            /**
+             * Directions
+             * @description Landmarks for the cleaner
+             * @default
+             */
+            directions?: string;
+            /**
+             * Interior
+             * @default
+             */
+            interior?: string;
+            /**
+             * Is Default
+             * @default false
+             */
+            is_default?: boolean;
+            /**
+             * Label
+             * @description Customer's name for it, e.g. Casa
+             */
+            label: string;
+            /**
+             * Municipality
+             * @description Municipio o alcaldía
+             */
+            municipality: string;
+            /**
+             * Neighbourhood
+             * @description Colonia
+             */
+            neighbourhood: string;
+            /** Postal Code */
+            postal_code: string;
+            /** State */
+            state: string;
+            /**
+             * Street
+             * @description Street and outdoor number
+             */
+            street: string;
+        };
+        /** AddressOut */
+        AddressOut: {
+            /** Directions */
+            directions: string;
+            /** Id */
+            id: number;
+            /** Interior */
+            interior: string;
+            /** Is Default */
+            is_default: boolean;
+            /** Label */
+            label: string;
+            /** Municipality */
+            municipality: string;
+            /** Neighbourhood */
+            neighbourhood: string;
+            /** Postal Code */
+            postal_code: string;
+            /** State */
+            state: string;
+            /** Street */
+            street: string;
+        };
+        /**
+         * AddressUpdateRequest
+         * @description Partial update; omitted fields keep their value. Only `true` is accepted for is_default.
+         */
+        AddressUpdateRequest: {
+            /** Directions */
+            directions?: string | null;
+            /** Interior */
+            interior?: string | null;
+            /** Is Default */
+            is_default?: true | null;
+            /** Label */
+            label?: string | null;
+            /** Municipality */
+            municipality?: string | null;
+            /** Neighbourhood */
+            neighbourhood?: string | null;
+            /** Postal Code */
+            postal_code?: string | null;
+            /** State */
+            state?: string | null;
+            /** Street */
+            street?: string | null;
+        };
         /** AttendanceExceptionOut */
         AttendanceExceptionOut: {
             /** Attendance Id */
@@ -488,8 +617,11 @@ export interface components {
         };
         /** BookingCreateRequest */
         BookingCreateRequest: {
-            /** Address */
-            address: string;
+            /**
+             * Address Id
+             * @description One of the customer's saved addresses
+             */
+            address_id: number;
             /** Offering Id */
             offering_id: number;
             /** Staff Id */
@@ -502,8 +634,13 @@ export interface components {
         };
         /** BookingOut */
         BookingOut: {
-            /** Address */
+            /**
+             * Address
+             * @description Address text as it was when the booking was made
+             */
             address: string;
+            /** Address Id */
+            address_id: number | null;
             /** Currency */
             currency: string;
             /** Customer Id */
@@ -852,6 +989,303 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    addresses_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressOut"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addresses_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    addresses_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                address_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    addresses_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                address_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     admin_list_attendance_exceptions: {
         parameters: {
             query?: never;

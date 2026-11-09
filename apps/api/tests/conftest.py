@@ -115,7 +115,25 @@ def future_weekday(hour: int = 10, days_ahead: int = 3) -> datetime:
     return datetime.combine(day, time(hour), tz)
 
 
+ADDRESS = {
+    "label": "Casa",
+    "street": "Calle Prueba 123",
+    "neighbourhood": "Centro",
+    "postal_code": "91700",
+    "municipality": "Veracruz",
+    "state": "Veracruz",
+}
+
+
+async def saved_address(client: AsyncClient, headers: dict[str, str], **overrides: Any) -> Any:
+    r = await client.post("/addresses", headers=headers, json={**ADDRESS, **overrides})
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
 async def hold(client: AsyncClient, headers: dict[str, str], world: dict[str, Any], start: datetime) -> Any:
+    listed = (await client.get("/addresses", headers=headers)).json()
+    address = listed[0] if listed else await saved_address(client, headers)
     return await client.post(
         "/bookings",
         headers=headers,
@@ -123,7 +141,7 @@ async def hold(client: AsyncClient, headers: dict[str, str], world: dict[str, An
             "staff_id": world["staff_id"],
             "offering_id": world["offering_id"],
             "starts_at": start.isoformat(),
-            "address": "Calle Prueba 123, Veracruz",
+            "address_id": address["id"],
         },
     )
 
