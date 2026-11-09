@@ -159,7 +159,11 @@ export const SCHEDULED_STATUSES: ReadonlySet<BookingStatus> = new Set([
 export interface Lookups {
   staffName: (id: number) => string;
   offeringName: (id: number) => string;
+  customer: (id: number) => { name: string; email: string | null };
 }
+
+/** Statuses an admin can still cancel (`held|confirmed → cancelled` in docs/DOMAIN.md). */
+export const CANCELLABLE_STATUSES: ReadonlySet<BookingStatus> = new Set(["held", "confirmed"]);
 
 export interface BookingRow {
   id: number;
@@ -177,6 +181,8 @@ export interface BookingRow {
   staffId: number;
   staffName: string;
   offeringName: string;
+  customerName: string;
+  customerEmail: string | null;
 }
 
 export function toBookingRow(b: Schemas["BookingOut"], lookups: Lookups): BookingRow {
@@ -184,6 +190,7 @@ export function toBookingRow(b: Schemas["BookingOut"], lookups: Lookups): Bookin
   const end = new Date(b.ends_at);
   const day = businessDay(start);
   const meta = BOOKING_STATUS[b.status];
+  const customer = lookups.customer(b.customer_id);
   return {
     id: b.id,
     status: b.status,
@@ -200,5 +207,7 @@ export function toBookingRow(b: Schemas["BookingOut"], lookups: Lookups): Bookin
     staffId: b.staff_id,
     staffName: lookups.staffName(b.staff_id),
     offeringName: lookups.offeringName(b.offering_id),
+    customerName: customer.name,
+    customerEmail: customer.email,
   };
 }

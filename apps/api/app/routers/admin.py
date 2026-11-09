@@ -5,10 +5,13 @@ from sqlalchemy import select
 
 from app.core.errors import ERROR_RESPONSES
 from app.deps import AdminDep, SessionDep
-from app.models import AttendanceException, ExceptionStatus, Role, ServiceOffering, StaffProfile
+from app.models import AttendanceException, ExceptionStatus, Role, ServiceOffering, StaffProfile, User
 from app.schemas import (
     AttendanceExceptionOut,
     AttendanceOut,
+    BookingCancelOut,
+    BookingCancelRequest,
+    BookingOut,
     EarningsSummaryOut,
     ExceptionResolveRequest,
     ManualAttendanceRequest,
@@ -19,8 +22,9 @@ from app.schemas import (
     SettlementOut,
     StaffCreateRequest,
     StaffProfileOut,
+    UserOut,
 )
-from app.services import attendance, audit, auth, earnings
+from app.services import attendance, audit, auth, earnings, scheduling
 
 router = APIRouter(prefix="/admin", tags=["admin"], responses=ERROR_RESPONSES)
 
@@ -41,6 +45,12 @@ async def list_staff(session: SessionDep, _: AdminDep) -> list[StaffProfileOut]:
     return [
         StaffProfileOut.model_validate(s) for s in (await session.execute(select(StaffProfile))).scalars()
     ]
+
+
+@router.get("/customers", name="admin_list_customers")
+async def list_customers(session: SessionDep, _: AdminDep) -> list[UserOut]:
+    rows = await session.execute(select(User).where(User.role == Role.customer).order_by(User.full_name))
+    return [UserOut.model_validate(u) for u in rows.scalars()]
 
 
 @router.post("/offerings", status_code=201, name="admin_create_offering")
@@ -75,6 +85,14 @@ async def manual_attendance(
 ) -> AttendanceOut:
     row = await attendance.record_manual(session, admin, booking_id, body.kind, body.occurred_at, body.reason)
     return AttendanceOut.model_validate(row)
+
+
+@router.post("/bookings/{booking_id}/cancel", name="admin_cancel_booking")
+async def cancel_booking(
+    booking_id: int, body: BookingCancelRequest, session: SessionDep, admin: AdminDep
+) -> BookingCancelOut:
+    booking, refund_required = await scheduling.cancel(session, admin, booking_id, body.reason)
+    return BookingCancelOut(booking=BookingOut.model_validate(booking), refund_required=refund_required)
 
 
 @router.get("/staff/{staff_id}/earnings", name="admin_staff_earnings")

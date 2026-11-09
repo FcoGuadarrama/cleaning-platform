@@ -7,6 +7,7 @@ import {
   minutesIntoDay,
   mondayOf,
   shiftDay,
+  toBookingRow,
   toBusinessWallTime,
   toMinor,
 } from "./format";
@@ -44,5 +45,35 @@ describe("business time zone helpers", () => {
   });
   it("formats a week range in Spanish", () => {
     expect(formatWeekRange("2026-11-02")).toBe("2–8 de noviembre");
+  });
+});
+
+describe("booking rows", () => {
+  const booking = {
+    id: 7,
+    customer_id: 3,
+    staff_id: 1,
+    offering_id: 2,
+    starts_at: "2026-11-10T16:00:00Z",
+    ends_at: "2026-11-10T19:00:00Z",
+    status: "confirmed" as const,
+    hold_expires_at: null,
+    price_minor: 65000,
+    currency: "MXN",
+    address: "Colima 214, Roma Norte",
+    address_id: null,
+  };
+  const lookups = {
+    staffName: () => "Ana",
+    offeringName: () => "Limpieza general",
+    customer: (id: number) => (id === 3 ? { name: "Cliente Prueba", email: "test@test.com" } : { name: `Cliente #${id}`, email: null }),
+  };
+
+  it("joins the customer and shows business-zone times", () => {
+    const row = toBookingRow(booking, lookups);
+    expect(row).toMatchObject({ customerName: "Cliente Prueba", customerEmail: "test@test.com", timeRange: "10:00–13:00" });
+  });
+  it("falls back to the customer id when the customer list has not loaded", () => {
+    expect(toBookingRow({ ...booking, customer_id: 9 }, lookups)).toMatchObject({ customerName: "Cliente #9", customerEmail: null });
   });
 });

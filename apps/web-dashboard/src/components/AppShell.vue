@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { BrushCleaning, Menu, Search } from "@lucide/vue";
-import { useWindowScroll } from "@vueuse/core";
-import { computed, onMounted, ref } from "vue";
+import { useDocumentVisibility, useIntervalFn, useWindowScroll } from "@vueuse/core";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
@@ -21,8 +21,18 @@ const condensed = computed(() => y.value > 48);
 const title = computed(() => String(route.meta.title ?? ""));
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
+const LIVE_REFRESH_MS = 30_000;
+const visibility = useDocumentVisibility();
+
 onMounted(() => {
   void directory.exceptions.refresh();
+});
+
+useIntervalFn(() => {
+  if (visibility.value === "visible") void directory.refreshLive();
+}, LIVE_REFRESH_MS);
+watch(visibility, (state) => {
+  if (state === "visible") void directory.refreshLive();
 });
 </script>
 

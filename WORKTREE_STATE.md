@@ -1,41 +1,32 @@
 # WORKTREE STATE & HANDOFF LOG
-- **Feature:** 004-mis-domicilios (saved customer addresses, docs/tasks/004-mis-domicilios.md)
+- **Feature:** 005-admin-bookings (bookings in the admin dashboard, docs/tasks/005-admin-bookings.md)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-09T19:43:35Z
-- **Branch / Worktree:** feature/mis-domicilios (current worktree)
+- **Last Updated:** 2026-11-09T20:26:03Z
+- **Branch / Worktree:** feature/reservas (current worktree), merged with origin/main b3fc796 (Mis domicilios)
 - **Base SHA:** 94236a9
-- **Contract Version:** docs/contracts/openapi.json sha256 2e0d4386b3901ee6d446e24f5f89545032ffdccf6d4e0077d4529ac730e6d7c6 (changed: /addresses, booking address_id)
-- **Database:** compose project cp_39ed4883 (app + app_test at alembic 0002)
+- **Contract Version:** docs/contracts/openapi.json sha256 f3f6f4a24d65239f0989b6fa4f0f74d6c229da04ddef5b8568b7ed1ddeccb794 (admin customers + cancel on top of /addresses)
+- **Database:** compose project cp_5f97f191 (app + app_test at alembic 0002; app seeded with app.seed_demo)
 
 ## Microtask checklist
-- [x] 1. API: CustomerAddress model, migration 0002, /addresses CRUD (customer only), booking takes address_id and
-      stores a text snapshot, MAX_ADDRESSES_PER_CUSTOMER config, seed_demo saves 2 addresses for test@test.com.
-- [x] 2. Tests: tests/test_addresses.py (default rules, concurrency, ownership, validation, cap, snapshot).
-- [x] 3. Contract exported, api-client regenerated.
-- [x] 4. Mobile: Mis domicilios list + form (inline delete confirm, danger Button variant), booking address picker
-      (default preselected, newly added address auto-selected), Inicio default address, Cuenta row.
-- [x] 5. Browser walkthrough; docs (DESIGN.md, brisa-feature-gaps.md gap 7, DOMAIN.md glossary + invariant 9).
+- [x] 1. API: GET /admin/customers, POST /admin/bookings/{id}/cancel, expire holds on booking reads; tests.
+- [x] 2. Contract exported, api-client regenerated.
+- [x] 3. Dashboard: customer column/detail + search, cancel dialog, 30 s background refresh while visible.
+- [x] 4. Owner's main stack (~/projects/cleaning-platform, cp_f4bbf0f0) seeded with app.seed_demo.
+- [x] 5. Merged origin/main (004-mis-domicilios): task renumbered 004 → 005, scheduling imports combined,
+      contract and client regenerated after the merge, dashboard fixture gained address_id.
 
 ## Immediate context / Handoff notes
-Previous handoff (app-design) is in git history (94236a9). Service-area check and geocoding stay out (decisions
-7 and 5 open). Address writes lock the user row and update default flags by primary key only: a ranged UPDATE on
-customer_id deadlocked with other customers' inserts (gap locks). Migration downgrade drops the table without
-dropping its FK index first (MySQL 1553).
+Refund execution and late-cancel compensation stay open; cancel only flags payments.needs_refund.
+Previous handoffs: docs/tasks/app-design/handoff.md; Mis domicilios handoff is in git history (b3fc796).
 
 ## Verification
-- Last command executed: uv run pytest; ruff; pnpm -r typecheck; pnpm check:drift; dashboard vitest.
-- Result and timestamp: 29 passed; ruff clean; typecheck clean; no drift; dashboard 11 passed (2026-11-09T19:43:35Z).
-- Browser (Expo web on the host, customer test@test.com): Inicio shows default address → Mis domicilios → add
-  (CP validation, principal) → edit Casa back to principal → delete with confirmation → Reservar step 3 with Casa
-  preselected, switched to Oficina → sandbox pay → Detalle shows the address snapshot. No console errors.
-- Note: the Docker `mobile` container was OOM-killed (Docker VM 7.7 GB shared with other worktrees' stacks); Expo
-  web was run on the host instead (`npx expo start --web --port $MOBILE_PORT`).
-- Pending tests: staff screens unchanged (address text only), not re-checked in the browser.
+- After merge (2026-11-09T20:26:03Z): pytest 35 passed (MySQL cp_5f97f191); ruff check/format clean; mypy
+  clean; pnpm -r typecheck clean; dashboard vitest 13 passed; dashboard build OK.
+- Before merge: browser check of customer column, cancel (refund toast) and 30 s live refresh; no console errors.
+- Pending tests: browser not re-run after the merge (no UI file conflicts).
 
 ## Partial work
-- Modified or new files: see git status.
-- Operations in progress: none.
-- Blockers: none.
+- None.
 
 ## Exact next action
-- Owner review of the feature; then open a PR from feature/mis-domicilios (needs owner approval to push/merge).
+- Owner review of PR feature/reservas.

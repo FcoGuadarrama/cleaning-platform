@@ -38,7 +38,9 @@ function select(id: number | null): void {
 function matches(row: BookingRow, term: string): boolean {
   if (!term) return true;
   const needle = term.replace(/^#/, "").toLocaleLowerCase("es-MX");
-  return [String(row.id), row.address, row.staffName, row.offeringName].some((v) => v.toLocaleLowerCase("es-MX").includes(needle));
+  return [String(row.id), row.address, row.staffName, row.offeringName, row.customerName, row.customerEmail ?? ""].some((v) =>
+    v.toLocaleLowerCase("es-MX").includes(needle),
+  );
 }
 
 const counts = computed(() =>
@@ -96,7 +98,7 @@ const emptyText = computed(() =>
     </Tabs>
     <div class="relative lg:w-72">
       <Search class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
-      <Input v-model="search" type="search" class="pl-9" placeholder="Número, dirección o persona" aria-label="Buscar reservas" />
+      <Input v-model="search" type="search" class="pl-9" placeholder="Número, cliente, dirección o persona" aria-label="Buscar reservas" />
     </div>
   </div>
 
@@ -115,6 +117,7 @@ const emptyText = computed(() =>
             <TableHead class="hidden w-16 pl-4 text-text-muted sm:table-cell">Núm.</TableHead>
             <TableHead class="pl-4 text-text-muted sm:pl-2">Fecha</TableHead>
             <TableHead class="text-text-muted">Servicio</TableHead>
+            <TableHead class="hidden text-text-muted lg:table-cell">Cliente</TableHead>
             <TableHead class="hidden text-text-muted xl:table-cell">Dirección</TableHead>
             <TableHead class="text-text-muted">Estado</TableHead>
             <TableHead class="pr-4 text-right text-text-muted">Importe</TableHead>
@@ -140,6 +143,10 @@ const emptyText = computed(() =>
             <TableCell class="max-w-64">
               <span class="block truncate">{{ r.offeringName }}</span>
               <span class="block truncate text-muted-foreground">{{ r.staffName }}</span>
+            </TableCell>
+            <TableCell class="hidden max-w-56 lg:table-cell">
+              <span class="block truncate">{{ r.customerName }}</span>
+              <span v-if="r.customerEmail" class="block truncate text-muted-foreground">{{ r.customerEmail }}</span>
             </TableCell>
             <TableCell class="hidden max-w-72 truncate text-muted-foreground xl:table-cell">{{ r.address }}</TableCell>
             <TableCell><StatusBadge :tone="r.tone" :label="r.statusLabel" /></TableCell>

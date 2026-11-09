@@ -46,7 +46,7 @@ async def test_payment_after_hold_expiry_flags_refund(client: AsyncClient, custo
         )
     r = await client.post(f"/payments/{payment['id']}/sandbox-outcome", headers=customer, json={})
     assert r.json()["status"] == "succeeded"
-    assert (await client.get(f"/bookings/{booking['id']}", headers=customer)).json()["status"] == "held"
+    assert (await client.get(f"/bookings/{booking['id']}", headers=customer)).json()["status"] == "expired"
     # Slot is free again for others: the expired hold no longer blocks.
     assert (await hold(client, customer, world, future_weekday())).status_code == 201
 
