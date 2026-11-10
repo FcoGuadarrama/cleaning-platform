@@ -16,6 +16,7 @@ class Settings:
     token_ttl_hours: int
     gps_low_accuracy_m: float
     max_addresses_per_customer: int
+    subscription_start_window_days: int
     payment_provider: str
     sandbox_webhook_secret: str
 
@@ -40,6 +41,7 @@ def get_settings() -> Settings:
         token_ttl_hours=_int("TOKEN_TTL_HOURS", 24 * 14),
         gps_low_accuracy_m=float(os.environ.get("GPS_LOW_ACCURACY_M", "100")),
         max_addresses_per_customer=_int("MAX_ADDRESSES_PER_CUSTOMER", 10),
+        subscription_start_window_days=_int("SUBSCRIPTION_START_WINDOW_DAYS", 28),
         payment_provider=provider,
         sandbox_webhook_secret=os.environ["SANDBOX_WEBHOOK_SECRET"],
     )

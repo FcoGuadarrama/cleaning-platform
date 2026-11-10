@@ -252,6 +252,148 @@
         "title": "AddressUpdateRequest",
         "type": "object"
       },
+      "AdminSubscriptionOut": {
+        "properties": {
+          "address": {
+            "description": "Address text as it was when the plan was contracted",
+            "title": "Address",
+            "type": "string"
+          },
+          "address_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "customer_id": {
+            "title": "Customer Id",
+            "type": "integer"
+          },
+          "cycles": {
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionCycleOut"
+            },
+            "title": "Cycles",
+            "type": "array"
+          },
+          "days_per_week": {
+            "title": "Days Per Week",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "plan_id": {
+            "title": "Plan Id",
+            "type": "integer"
+          },
+          "plan_name": {
+            "title": "Plan Name",
+            "type": "string"
+          },
+          "price_minor": {
+            "description": "Accepted price per cycle",
+            "title": "Price Minor",
+            "type": "integer"
+          },
+          "renews_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Start of the next cycle while active",
+            "title": "Renews On"
+          },
+          "staff_earning_minor": {
+            "description": "Accepted cleaner pay per completed visit",
+            "title": "Staff Earning Minor",
+            "type": "integer"
+          },
+          "staff_id": {
+            "title": "Staff Id",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SubscriptionStatus"
+          },
+          "terms": {
+            "description": "Accepted terms",
+            "title": "Terms",
+            "type": "string"
+          },
+          "terms_accepted_at": {
+            "format": "date-time",
+            "title": "Terms Accepted At",
+            "type": "string"
+          },
+          "visit_duration_minutes": {
+            "title": "Visit Duration Minutes",
+            "type": "integer"
+          },
+          "visit_start": {
+            "description": "Local start time of every visit",
+            "format": "time",
+            "title": "Visit Start",
+            "type": "string"
+          },
+          "visits_per_cycle": {
+            "title": "Visits Per Cycle",
+            "type": "integer"
+          },
+          "weekdays": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Weekdays",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "plan_id",
+          "plan_name",
+          "staff_id",
+          "weekdays",
+          "visit_start",
+          "address",
+          "address_id",
+          "days_per_week",
+          "visits_per_cycle",
+          "visit_duration_minutes",
+          "price_minor",
+          "currency",
+          "terms",
+          "terms_accepted_at",
+          "created_at",
+          "renews_on",
+          "cycles",
+          "customer_id",
+          "staff_earning_minor"
+        ],
+        "title": "AdminSubscriptionOut",
+        "type": "object"
+      },
       "AdminSubscriptionPlanOut": {
         "properties": {
           "created_at": {
@@ -661,8 +803,16 @@
             "type": "integer"
           },
           "offering_id": {
-            "title": "Offering Id",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set for a single visit",
+            "title": "Offering Id"
           },
           "price_minor": {
             "title": "Price Minor",
@@ -679,6 +829,18 @@
           },
           "status": {
             "$ref": "#/components/schemas/BookingStatus"
+          },
+          "subscription_cycle_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set for a subscription visit; price_minor is 0, the cycle is charged",
+            "title": "Subscription Cycle Id"
           }
         },
         "required": [
@@ -686,6 +848,7 @@
           "customer_id",
           "staff_id",
           "offering_id",
+          "subscription_cycle_id",
           "starts_at",
           "ends_at",
           "status",
@@ -721,6 +884,15 @@
           "admin_manual"
         ],
         "title": "CaptureStatus",
+        "type": "string"
+      },
+      "CycleStatus": {
+        "enum": [
+          "held",
+          "confirmed",
+          "expired"
+        ],
+        "title": "CycleStatus",
         "type": "string"
       },
       "EarningOut": {
@@ -1028,14 +1200,22 @@
         "type": "object"
       },
       "PaymentOut": {
+        "description": "Exactly one of booking_id and subscription_cycle_id is set.",
         "properties": {
           "amount_minor": {
             "title": "Amount Minor",
             "type": "integer"
           },
           "booking_id": {
-            "title": "Booking Id",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Booking Id"
           },
           "currency": {
             "title": "Currency",
@@ -1055,11 +1235,23 @@
           },
           "status": {
             "$ref": "#/components/schemas/PaymentStatus"
+          },
+          "subscription_cycle_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subscription Cycle Id"
           }
         },
         "required": [
           "id",
           "booking_id",
+          "subscription_cycle_id",
           "provider",
           "provider_ref",
           "status",
@@ -1311,6 +1503,263 @@
         "title": "StaffProfileOut",
         "type": "object"
       },
+      "SubscriptionCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "accept_terms": {
+            "const": true,
+            "description": "The customer accepted the plan's terms",
+            "title": "Accept Terms",
+            "type": "boolean"
+          },
+          "address_id": {
+            "description": "One of the customer's saved addresses",
+            "title": "Address Id",
+            "type": "integer"
+          },
+          "plan_id": {
+            "title": "Plan Id",
+            "type": "integer"
+          },
+          "staff_id": {
+            "title": "Staff Id",
+            "type": "integer"
+          },
+          "starts_on": {
+            "description": "First visit; must fall on one of the weekdays",
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          },
+          "visit_start": {
+            "description": "Local start time, the same for every visit",
+            "format": "time",
+            "title": "Visit Start",
+            "type": "string"
+          },
+          "weekdays": {
+            "items": {
+              "description": "0=Monday … 4=Friday",
+              "maximum": 4.0,
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Weekdays",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plan_id",
+          "staff_id",
+          "address_id",
+          "weekdays",
+          "starts_on",
+          "visit_start",
+          "accept_terms"
+        ],
+        "title": "SubscriptionCreateRequest",
+        "type": "object"
+      },
+      "SubscriptionCycleOut": {
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "ends_on": {
+            "description": "Last day of the cycle, inclusive",
+            "format": "date",
+            "title": "Ends On",
+            "type": "string"
+          },
+          "hold_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hold Expires At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "price_minor": {
+            "title": "Price Minor",
+            "type": "integer"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "starts_on": {
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CycleStatus"
+          },
+          "visits": {
+            "items": {
+              "$ref": "#/components/schemas/BookingOut"
+            },
+            "title": "Visits",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "sequence",
+          "starts_on",
+          "ends_on",
+          "status",
+          "hold_expires_at",
+          "price_minor",
+          "currency",
+          "visits"
+        ],
+        "title": "SubscriptionCycleOut",
+        "type": "object"
+      },
+      "SubscriptionOut": {
+        "description": "A contracted plan with the price and terms copied when the customer accepted them.",
+        "properties": {
+          "address": {
+            "description": "Address text as it was when the plan was contracted",
+            "title": "Address",
+            "type": "string"
+          },
+          "address_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "cycles": {
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionCycleOut"
+            },
+            "title": "Cycles",
+            "type": "array"
+          },
+          "days_per_week": {
+            "title": "Days Per Week",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "plan_id": {
+            "title": "Plan Id",
+            "type": "integer"
+          },
+          "plan_name": {
+            "title": "Plan Name",
+            "type": "string"
+          },
+          "price_minor": {
+            "description": "Accepted price per cycle",
+            "title": "Price Minor",
+            "type": "integer"
+          },
+          "renews_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Start of the next cycle while active",
+            "title": "Renews On"
+          },
+          "staff_id": {
+            "title": "Staff Id",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SubscriptionStatus"
+          },
+          "terms": {
+            "description": "Accepted terms",
+            "title": "Terms",
+            "type": "string"
+          },
+          "terms_accepted_at": {
+            "format": "date-time",
+            "title": "Terms Accepted At",
+            "type": "string"
+          },
+          "visit_duration_minutes": {
+            "title": "Visit Duration Minutes",
+            "type": "integer"
+          },
+          "visit_start": {
+            "description": "Local start time of every visit",
+            "format": "time",
+            "title": "Visit Start",
+            "type": "string"
+          },
+          "visits_per_cycle": {
+            "title": "Visits Per Cycle",
+            "type": "integer"
+          },
+          "weekdays": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Weekdays",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "plan_id",
+          "plan_name",
+          "staff_id",
+          "weekdays",
+          "visit_start",
+          "address",
+          "address_id",
+          "days_per_week",
+          "visits_per_cycle",
+          "visit_duration_minutes",
+          "price_minor",
+          "currency",
+          "terms",
+          "terms_accepted_at",
+          "created_at",
+          "renews_on",
+          "cycles"
+        ],
+        "title": "SubscriptionOut",
+        "type": "object"
+      },
       "SubscriptionPlanOut": {
         "description": "What customers see. The cleaner's pay stays in the admin view.",
         "properties": {
@@ -1446,6 +1895,79 @@
         ],
         "title": "SubscriptionPlanVisibilityRequest",
         "type": "object"
+      },
+      "SubscriptionScheduleOut": {
+        "description": "The first cycle a choice of cleaner, weekdays and first visit gives. Advisory: the hold re-checks.",
+        "properties": {
+          "ends_on": {
+            "description": "Last day of the cycle (four weeks), inclusive",
+            "format": "date",
+            "title": "Ends On",
+            "type": "string"
+          },
+          "plan_id": {
+            "title": "Plan Id",
+            "type": "integer"
+          },
+          "renews_on": {
+            "description": "Next cycle's first day: renewal and charge",
+            "format": "date",
+            "title": "Renews On",
+            "type": "string"
+          },
+          "staff_id": {
+            "title": "Staff Id",
+            "type": "integer"
+          },
+          "start_times": {
+            "description": "Local start times free on every visit date",
+            "items": {
+              "format": "time",
+              "type": "string"
+            },
+            "title": "Start Times",
+            "type": "array"
+          },
+          "starts_on": {
+            "description": "First visit; the cycle starts here",
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "visit_dates": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Visit Dates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plan_id",
+          "staff_id",
+          "timezone",
+          "starts_on",
+          "ends_on",
+          "renews_on",
+          "visit_dates",
+          "start_times"
+        ],
+        "title": "SubscriptionScheduleOut",
+        "type": "object"
+      },
+      "SubscriptionStatus": {
+        "enum": [
+          "held",
+          "active",
+          "expired"
+        ],
+        "title": "SubscriptionStatus",
+        "type": "string"
       },
       "TokenOut": {
         "properties": {
@@ -3395,6 +3917,184 @@
         ]
       }
     },
+    "/admin/subscriptions": {
+      "get": {
+        "description": "Every contracted subscription, newest first, lapsed holds included.",
+        "operationId": "admin_list_subscriptions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminSubscriptionOut"
+                  },
+                  "title": "Response Admin List Subscriptions",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin List Subscriptions",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/subscriptions/{subscription_id}": {
+      "get": {
+        "operationId": "admin_get_subscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subscription_id",
+            "required": true,
+            "schema": {
+              "title": "Subscription Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSubscriptionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin Get Subscription",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/auth/login": {
       "post": {
         "operationId": "auth_login",
@@ -4923,6 +5623,510 @@
         "summary": "Catalog List Subscription Plans",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/subscription-plans/{plan_id}/schedule": {
+      "get": {
+        "description": "First-cycle visit dates and the start times free on all of them. Advisory: the hold re-checks.",
+        "operationId": "subscriptions_schedule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "title": "Plan Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "staff_id",
+            "required": true,
+            "schema": {
+              "title": "Staff Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "starts_on",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Starts On",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "weekdays",
+            "required": true,
+            "schema": {
+              "items": {
+                "description": "0=Monday … 4=Friday",
+                "maximum": 4,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "maxItems": 5,
+              "minItems": 1,
+              "title": "Weekdays",
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionScheduleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Subscriptions Schedule",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/subscriptions": {
+      "get": {
+        "description": "The customer's pending and active subscriptions, newest first.",
+        "operationId": "subscriptions_list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SubscriptionOut"
+                  },
+                  "title": "Response Subscriptions List",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Subscriptions List",
+        "tags": [
+          "subscriptions"
+        ]
+      },
+      "post": {
+        "description": "Holds every visit of the first cycle for the checkout TTL. 409 `visits_unavailable` lists the dates\nthat are taken (`details.dates`).",
+        "operationId": "subscriptions_create_hold",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Subscriptions Create Hold",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/subscriptions/{subscription_id}": {
+      "get": {
+        "operationId": "subscriptions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subscription_id",
+            "required": true,
+            "schema": {
+              "title": "Subscription Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Subscriptions Get",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/subscriptions/{subscription_id}/checkout": {
+      "post": {
+        "operationId": "subscriptions_checkout",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subscription_id",
+            "required": true,
+            "schema": {
+              "title": "Subscription Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Subscriptions Checkout",
+        "tags": [
+          "subscriptions"
         ]
       }
     }

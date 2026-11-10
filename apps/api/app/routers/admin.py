@@ -7,6 +7,7 @@ from app.core.errors import ERROR_RESPONSES
 from app.deps import AdminDep, SessionDep
 from app.models import AttendanceException, ExceptionStatus, Role, ServiceOffering, StaffProfile, User
 from app.schemas import (
+    AdminSubscriptionOut,
     AdminSubscriptionPlanOut,
     AttendanceExceptionOut,
     AttendanceOut,
@@ -27,7 +28,7 @@ from app.schemas import (
     SubscriptionPlanVisibilityRequest,
     UserOut,
 )
-from app.services import attendance, audit, auth, earnings, scheduling, subscriptions
+from app.services import attendance, audit, auth, contracting, earnings, scheduling, subscriptions
 
 router = APIRouter(prefix="/admin", tags=["admin"], responses=ERROR_RESPONSES)
 
@@ -93,6 +94,17 @@ async def set_subscription_plan_visibility(
 ) -> AdminSubscriptionPlanOut:
     plan = await subscriptions.set_visibility(session, admin, plan_id, body.is_active)
     return AdminSubscriptionPlanOut.model_validate(plan)
+
+
+@router.get("/subscriptions", name="admin_list_subscriptions")
+async def list_subscriptions(session: SessionDep, _: AdminDep) -> list[AdminSubscriptionOut]:
+    """Every contracted subscription, newest first, lapsed holds included."""
+    return await contracting.list_all(session)
+
+
+@router.get("/subscriptions/{subscription_id}", name="admin_get_subscription")
+async def get_subscription(subscription_id: int, session: SessionDep, _: AdminDep) -> AdminSubscriptionOut:
+    return await contracting.get_any(session, subscription_id)
 
 
 @router.get("/attendance-exceptions", name="admin_list_attendance_exceptions")

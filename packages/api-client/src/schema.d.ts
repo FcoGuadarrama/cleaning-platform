@@ -272,6 +272,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin List Subscriptions
+         * @description Every contracted subscription, newest first, lapsed holds included.
+         */
+        get: operations["admin_list_subscriptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/subscriptions/{subscription_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Get Subscription */
+        get: operations["admin_get_subscription"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -563,6 +600,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/subscription-plans/{plan_id}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Subscriptions Schedule
+         * @description First-cycle visit dates and the start times free on all of them. Advisory: the hold re-checks.
+         */
+        get: operations["subscriptions_schedule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Subscriptions List
+         * @description The customer's pending and active subscriptions, newest first.
+         */
+        get: operations["subscriptions_list"];
+        put?: never;
+        /**
+         * Subscriptions Create Hold
+         * @description Holds every visit of the first cycle for the checkout TTL. 409 `visits_unavailable` lists the dates
+         *     that are taken (`details.dates`).
+         */
+        post: operations["subscriptions_create_hold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subscriptions/{subscription_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Subscriptions Get */
+        get: operations["subscriptions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subscriptions/{subscription_id}/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Subscriptions Checkout */
+        post: operations["subscriptions_checkout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -656,6 +772,75 @@ export interface components {
             state?: string | null;
             /** Street */
             street?: string | null;
+        };
+        /** AdminSubscriptionOut */
+        AdminSubscriptionOut: {
+            /**
+             * Address
+             * @description Address text as it was when the plan was contracted
+             */
+            address: string;
+            /** Address Id */
+            address_id: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /** Customer Id */
+            customer_id: number;
+            /** Cycles */
+            cycles: components["schemas"]["SubscriptionCycleOut"][];
+            /** Days Per Week */
+            days_per_week: number;
+            /** Id */
+            id: number;
+            /** Plan Id */
+            plan_id: number;
+            /** Plan Name */
+            plan_name: string;
+            /**
+             * Price Minor
+             * @description Accepted price per cycle
+             */
+            price_minor: number;
+            /**
+             * Renews On
+             * @description Start of the next cycle while active
+             */
+            renews_on: string | null;
+            /**
+             * Staff Earning Minor
+             * @description Accepted cleaner pay per completed visit
+             */
+            staff_earning_minor: number;
+            /** Staff Id */
+            staff_id: number;
+            status: components["schemas"]["SubscriptionStatus"];
+            /**
+             * Terms
+             * @description Accepted terms
+             */
+            terms: string;
+            /**
+             * Terms Accepted At
+             * Format: date-time
+             */
+            terms_accepted_at: string;
+            /** Visit Duration Minutes */
+            visit_duration_minutes: number;
+            /**
+             * Visit Start
+             * Format: time
+             * @description Local start time of every visit
+             */
+            visit_start: string;
+            /** Visits Per Cycle */
+            visits_per_cycle: number;
+            /** Weekdays */
+            weekdays: number[];
         };
         /** AdminSubscriptionPlanOut */
         AdminSubscriptionPlanOut: {
@@ -815,8 +1000,11 @@ export interface components {
             hold_expires_at: string | null;
             /** Id */
             id: number;
-            /** Offering Id */
-            offering_id: number;
+            /**
+             * Offering Id
+             * @description Set for a single visit
+             */
+            offering_id: number | null;
             /** Price Minor */
             price_minor: number;
             /** Staff Id */
@@ -827,6 +1015,11 @@ export interface components {
              */
             starts_at: string;
             status: components["schemas"]["BookingStatus"];
+            /**
+             * Subscription Cycle Id
+             * @description Set for a subscription visit; price_minor is 0, the cycle is charged
+             */
+            subscription_cycle_id: number | null;
         };
         /**
          * BookingStatus
@@ -838,6 +1031,11 @@ export interface components {
          * @enum {string}
          */
         CaptureStatus: "captured" | "permission_denied" | "unavailable" | "network_error" | "admin_manual";
+        /**
+         * CycleStatus
+         * @enum {string}
+         */
+        CycleStatus: "held" | "confirmed" | "expired";
         /** EarningOut */
         EarningOut: {
             /** Amount Minor */
@@ -970,12 +1168,15 @@ export interface components {
             /** Staff Earning Minor */
             staff_earning_minor: number;
         };
-        /** PaymentOut */
+        /**
+         * PaymentOut
+         * @description Exactly one of booking_id and subscription_cycle_id is set.
+         */
         PaymentOut: {
             /** Amount Minor */
             amount_minor: number;
             /** Booking Id */
-            booking_id: number;
+            booking_id: number | null;
             /** Currency */
             currency: string;
             /** Id */
@@ -985,6 +1186,8 @@ export interface components {
             /** Provider Ref */
             provider_ref: string;
             status: components["schemas"]["PaymentStatus"];
+            /** Subscription Cycle Id */
+            subscription_cycle_id: number | null;
         };
         /**
          * PaymentStatus
@@ -1095,6 +1298,130 @@ export interface components {
             /** Is Active */
             is_active: boolean;
         };
+        /** SubscriptionCreateRequest */
+        SubscriptionCreateRequest: {
+            /**
+             * Accept Terms
+             * @description The customer accepted the plan's terms
+             * @constant
+             */
+            accept_terms: true;
+            /**
+             * Address Id
+             * @description One of the customer's saved addresses
+             */
+            address_id: number;
+            /** Plan Id */
+            plan_id: number;
+            /** Staff Id */
+            staff_id: number;
+            /**
+             * Starts On
+             * Format: date
+             * @description First visit; must fall on one of the weekdays
+             */
+            starts_on: string;
+            /**
+             * Visit Start
+             * Format: time
+             * @description Local start time, the same for every visit
+             */
+            visit_start: string;
+            /** Weekdays */
+            weekdays: number[];
+        };
+        /** SubscriptionCycleOut */
+        SubscriptionCycleOut: {
+            /** Currency */
+            currency: string;
+            /**
+             * Ends On
+             * Format: date
+             * @description Last day of the cycle, inclusive
+             */
+            ends_on: string;
+            /** Hold Expires At */
+            hold_expires_at: string | null;
+            /** Id */
+            id: number;
+            /** Price Minor */
+            price_minor: number;
+            /** Sequence */
+            sequence: number;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            status: components["schemas"]["CycleStatus"];
+            /** Visits */
+            visits: components["schemas"]["BookingOut"][];
+        };
+        /**
+         * SubscriptionOut
+         * @description A contracted plan with the price and terms copied when the customer accepted them.
+         */
+        SubscriptionOut: {
+            /**
+             * Address
+             * @description Address text as it was when the plan was contracted
+             */
+            address: string;
+            /** Address Id */
+            address_id: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /** Cycles */
+            cycles: components["schemas"]["SubscriptionCycleOut"][];
+            /** Days Per Week */
+            days_per_week: number;
+            /** Id */
+            id: number;
+            /** Plan Id */
+            plan_id: number;
+            /** Plan Name */
+            plan_name: string;
+            /**
+             * Price Minor
+             * @description Accepted price per cycle
+             */
+            price_minor: number;
+            /**
+             * Renews On
+             * @description Start of the next cycle while active
+             */
+            renews_on: string | null;
+            /** Staff Id */
+            staff_id: number;
+            status: components["schemas"]["SubscriptionStatus"];
+            /**
+             * Terms
+             * @description Accepted terms
+             */
+            terms: string;
+            /**
+             * Terms Accepted At
+             * Format: date-time
+             */
+            terms_accepted_at: string;
+            /** Visit Duration Minutes */
+            visit_duration_minutes: number;
+            /**
+             * Visit Start
+             * Format: time
+             * @description Local start time of every visit
+             */
+            visit_start: string;
+            /** Visits Per Cycle */
+            visits_per_cycle: number;
+            /** Weekdays */
+            weekdays: number[];
+        };
         /**
          * SubscriptionPlanOut
          * @description What customers see. The cleaner's pay stays in the admin view.
@@ -1168,6 +1495,48 @@ export interface components {
              */
             is_active: boolean;
         };
+        /**
+         * SubscriptionScheduleOut
+         * @description The first cycle a choice of cleaner, weekdays and first visit gives. Advisory: the hold re-checks.
+         */
+        SubscriptionScheduleOut: {
+            /**
+             * Ends On
+             * Format: date
+             * @description Last day of the cycle (four weeks), inclusive
+             */
+            ends_on: string;
+            /** Plan Id */
+            plan_id: number;
+            /**
+             * Renews On
+             * Format: date
+             * @description Next cycle's first day: renewal and charge
+             */
+            renews_on: string;
+            /** Staff Id */
+            staff_id: number;
+            /**
+             * Start Times
+             * @description Local start times free on every visit date
+             */
+            start_times: string[];
+            /**
+             * Starts On
+             * Format: date
+             * @description First visit; the cycle starts here
+             */
+            starts_on: string;
+            /** Timezone */
+            timezone: string;
+            /** Visit Dates */
+            visit_dates: string[];
+        };
+        /**
+         * SubscriptionStatus
+         * @enum {string}
+         */
+        SubscriptionStatus: "held" | "active" | "expired";
         /** TokenOut */
         TokenOut: {
             /** Access Token */
@@ -2650,6 +3019,147 @@ export interface operations {
             };
         };
     };
+    admin_list_subscriptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSubscriptionOut"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_get_subscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSubscriptionOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     auth_login: {
         parameters: {
             query?: never;
@@ -3850,6 +4360,381 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    subscriptions_schedule: {
+        parameters: {
+            query: {
+                staff_id: number;
+                starts_on: string;
+                weekdays: number[];
+            };
+            header?: never;
+            path: {
+                plan_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionScheduleOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    subscriptions_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    subscriptions_create_hold: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscriptionCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    subscriptions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    subscriptions_checkout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

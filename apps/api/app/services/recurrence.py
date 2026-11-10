@@ -1,12 +1,22 @@
-"""Calendar-only helpers for future subscriptions. No billing rules here (cycle definition is open)."""
+"""Subscription calendar. Owner decision 2026-11-10: a cycle starts on the first visit and lasts four
+weeks, so each chosen weekday falls exactly four times in it; the next cycle (the renewal) starts the day
+after it ends."""
 
-import calendar
-from datetime import date
+from datetime import date, timedelta
+
+from app.models import VISITS_PER_WEEKDAY_PER_CYCLE
+
+CYCLE_DAYS = 7 * VISITS_PER_WEEKDAY_PER_CYCLE
 
 
-def weekday_occurrences(year: int, month: int, weekday: int) -> list[date]:
-    """All dates in the calendar month falling on `weekday` (0=Mon … 4=Fri). May return 4 or 5 dates."""
-    if not 0 <= weekday <= 4:
+def cycle_end(starts_on: date) -> date:
+    """Last day of the cycle that starts on `starts_on` (inclusive)."""
+    return starts_on + timedelta(days=CYCLE_DAYS - 1)
+
+
+def cycle_dates(starts_on: date, weekdays: list[int]) -> list[date]:
+    """Visit dates of one cycle, in order: four per chosen weekday (0=Mon … 4=Fri)."""
+    if not weekdays or any(not 0 <= w <= 4 for w in weekdays):
         raise ValueError("services run Monday to Friday")
-    days = calendar.monthrange(year, month)[1]
-    return [date(year, month, d) for d in range(1, days + 1) if date(year, month, d).weekday() == weekday]
+    days = (starts_on + timedelta(days=i) for i in range(CYCLE_DAYS))
+    return [d for d in days if d.weekday() in weekdays]

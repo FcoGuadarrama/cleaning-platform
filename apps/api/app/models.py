@@ -1,13 +1,14 @@
 """ORM models. Not exposed over HTTP — see app.schemas for transport models."""
 
 import enum
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Any
 
 from sqlalchemy import (
     JSON,
     BigInteger,
     Boolean,
+    CheckConstraint,
     Date,
     Enum,
     Float,
@@ -15,6 +16,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Time,
     UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -81,6 +83,18 @@ class EarningStatus(enum.StrEnum):
 class SettlementStatus(enum.StrEnum):
     approved = "approved"
     paid = "paid"
+
+
+class SubscriptionStatus(enum.StrEnum):
+    held = "held"
+    active = "active"
+    expired = "expired"
+
+
+class CycleStatus(enum.StrEnum):
+    held = "held"
+    confirmed = "confirmed"
+    expired = "expired"
 
 
 class TimestampMixin:
@@ -158,6 +172,54 @@ class SubscriptionPlan(TimestampMixin, Base):
         return self.days_per_week * VISITS_PER_WEEKDAY_PER_CYCLE
 
 
+class Subscription(TimestampMixin, Base):
+    """A customer's contracted plan: same cleaner, weekdays and start time every cycle. Keeps its own copy
+    of the plan's price and terms as accepted, so later plan versions never change it."""
+
+    __tablename__ = "subscriptions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    staff_id: Mapped[int] = mapped_column(ForeignKey("staff_profiles.id"), index=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("subscription_plans.id"))
+    status: Mapped[SubscriptionStatus] = mapped_column(_enum(SubscriptionStatus), index=True)
+    weekdays: Mapped[list[int]] = mapped_column(JSON)
+    visit_start: Mapped[time] = mapped_column(Time, comment="Local start time in the business time zone")
+    address: Mapped[str] = mapped_column(String(500))
+    address_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "customer_addresses.id",
+            ondelete="SET NULL",
+            name="fk_subscriptions_address_id_customer_addresses",
+        ),
+        nullable=True,
+    )
+    plan_name: Mapped[str] = mapped_column(String(80))
+    days_per_week: Mapped[int] = mapped_column(Integer)
+    visits_per_cycle: Mapped[int] = mapped_column(Integer)
+    visit_duration_minutes: Mapped[int] = mapped_column(Integer)
+    price_minor: Mapped[int] = mapped_column(BigInteger)
+    staff_earning_minor: Mapped[int] = mapped_column(BigInteger)
+    currency: Mapped[str] = mapped_column(String(3))
+    terms: Mapped[str] = mapped_column(Text)
+    terms_accepted_at: Mapped[datetime] = mapped_column(UTCDateTime())
+
+
+class SubscriptionCycle(TimestampMixin, Base):
+    """One paid period of a subscription (four weeks from its first visit) and the price charged for it."""
+
+    __tablename__ = "subscription_cycles"
+    __table_args__ = (UniqueConstraint("subscription_id", "sequence"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subscription_id: Mapped[int] = mapped_column(ForeignKey("subscriptions.id"), index=True)
+    sequence: Mapped[int] = mapped_column(Integer)
+    starts_on: Mapped[date] = mapped_column(Date)
+    ends_on: Mapped[date] = mapped_column(Date, comment="Last day of the cycle, inclusive")
+    status: Mapped[CycleStatus] = mapped_column(_enum(CycleStatus), index=True)
+    hold_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    price_minor: Mapped[int] = mapped_column(BigInteger)
+    currency: Mapped[str] = mapped_column(String(3))
+
+
 class CustomerAddress(TimestampMixin, Base):
     """A customer's saved service address. Bookings copy it as text, so edits never rewrite past visits."""
 
@@ -180,11 +242,19 @@ class CustomerAddress(TimestampMixin, Base):
 
 
 class Booking(TimestampMixin, Base):
+    """One visit: a single visit sold from an offering, or one visit of a subscription cycle (price 0 here;
+    the cycle carries the charge)."""
+
     __tablename__ = "bookings"
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     staff_id: Mapped[int] = mapped_column(ForeignKey("staff_profiles.id"), index=True)
-    offering_id: Mapped[int] = mapped_column(ForeignKey("service_offerings.id"))
+    offering_id: Mapped[int | None] = mapped_column(ForeignKey("service_offerings.id"), nullable=True)
+    subscription_cycle_id: Mapped[int | None] = mapped_column(
+        ForeignKey("subscription_cycles.id", name="fk_bookings_subscription_cycle_id"),
+        nullable=True,
+        index=True,
+    )
     starts_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
     ends_at: Mapped[datetime] = mapped_column(UTCDateTime())
     status: Mapped[BookingStatus] = mapped_column(_enum(BookingStatus), index=True)
@@ -202,9 +272,21 @@ class Booking(TimestampMixin, Base):
 
 
 class Payment(TimestampMixin, Base):
+    """Pays either one single-visit booking or one subscription cycle, never both."""
+
     __tablename__ = "payments"
+    __table_args__ = (
+        CheckConstraint(
+            "(booking_id IS NULL) <> (subscription_cycle_id IS NULL)", name="ck_payments_one_target"
+        ),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
-    booking_id: Mapped[int] = mapped_column(ForeignKey("bookings.id"), index=True)
+    booking_id: Mapped[int | None] = mapped_column(ForeignKey("bookings.id"), index=True, nullable=True)
+    subscription_cycle_id: Mapped[int | None] = mapped_column(
+        ForeignKey("subscription_cycles.id", name="fk_payments_subscription_cycle_id"),
+        nullable=True,
+        index=True,
+    )
     provider: Mapped[str] = mapped_column(String(32))
     provider_ref: Mapped[str] = mapped_column(String(64), unique=True)
     status: Mapped[PaymentStatus] = mapped_column(_enum(PaymentStatus))
