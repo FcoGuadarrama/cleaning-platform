@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
 import { api } from "../../../src/api";
 import { formatAmount, formatDuration, formatMoney } from "../../../src/format";
@@ -6,7 +6,7 @@ import { Skeleton } from "../../../src/motion";
 import { daysLabel, perVisitMinor } from "../../../src/plans";
 import { FlowScreen } from "../../../src/screen";
 import { Text } from "../../../src/text";
-import { Button, EmptyState, List, Notice, Row, SectionTitle, SkeletonRows, Soon } from "../../../src/ui";
+import { Button, EmptyState, List, Notice, Row, SectionTitle, SkeletonRows } from "../../../src/ui";
 import { useResource } from "../../../src/useResource";
 
 export default function PlanDetail() {
@@ -20,13 +20,7 @@ export default function PlanDetail() {
       fallback="/(customer)/(tabs)/plans"
       footer={
         plan ? (
-          <>
-            <View className="flex-row items-center justify-center gap-2">
-              <Soon />
-              <Text className="text-sm text-text-muted">Muy pronto podrás contratarlo aquí</Text>
-            </View>
-            <Button label="Contratar este plan" soon />
-          </>
+          <Button label="Contratar este plan" onPress={() => router.push({ pathname: "/(customer)/subscribe", params: { planId: String(plan.id) } })} />
         ) : undefined
       }
     >

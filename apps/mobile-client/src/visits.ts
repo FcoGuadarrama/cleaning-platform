@@ -1,4 +1,5 @@
 import type { Schemas } from "@repo/api-client";
+import { formatMoney } from "./format";
 import type { IconName } from "./icons";
 
 type Status = Schemas["BookingStatus"];
@@ -19,3 +20,12 @@ export function usualStaffId(bookings: Schemas["BookingOut"][]) {
   for (const [id, n] of counts) if (best === undefined || n > counts.get(best)!) best = id;
   return best;
 }
+
+export const isPlanVisit = (b: Schemas["BookingOut"]) => b.subscription_cycle_id !== null;
+
+/** What the visit is: its service name, or the plan for a subscription visit. */
+export const visitTitle = (b: Schemas["BookingOut"], offering?: Schemas["OfferingOut"]) =>
+  isPlanVisit(b) ? "Visita de tu plan" : offering?.name;
+
+/** Price line: a subscription visit is paid with its monthly cycle. */
+export const visitPrice = (b: Schemas["BookingOut"]) => (isPlanVisit(b) ? "Incluida en tu plan" : formatMoney(b.price_minor, b.currency));

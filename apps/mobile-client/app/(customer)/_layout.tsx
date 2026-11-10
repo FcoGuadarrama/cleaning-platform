@@ -11,6 +11,8 @@ export default function CustomerLayout() {
       <Stack.Screen name="addresses/index" />
       <Stack.Screen name="addresses/[id]" />
       <Stack.Screen name="plans/[id]" />
+      <Stack.Screen name="subscribe" />
+      <Stack.Screen name="subscription/index" />
     </Stack>
   );
 }

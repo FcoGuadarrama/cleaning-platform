@@ -9,7 +9,7 @@ import { Icon } from "../../../src/icons";
 import { HomeScene } from "../../../src/illustrations";
 import { Rise } from "../../../src/motion";
 import { Screen } from "../../../src/screen";
-import { UPCOMING } from "../../../src/visits";
+import { UPCOMING, visitTitle } from "../../../src/visits";
 import { Text } from "../../../src/text";
 import { color } from "../../../src/theme";
 import { Avatar, Button, Card, Hairline, SectionTitle, SkeletonCard, StatusLine, TextLink, Wordmark } from "../../../src/ui";
@@ -26,7 +26,11 @@ function NextVisit({ booking, offering, staffName }: { booking: Booking; offerin
           <Text className="text-lg font-semibold text-text">
             {formatRelativeDay(booking.starts_at)}, {formatClock(booking.starts_at)}
           </Text>
-          {offering ? <Text className="text-sm text-text">{offering.name} · {formatDuration(offering.duration_minutes)}</Text> : null}
+          {visitTitle(booking, offering) ? (
+            <Text className="text-sm text-text">
+              {visitTitle(booking, offering)} · {formatDuration((Date.parse(booking.ends_at) - Date.parse(booking.starts_at)) / 60_000)}
+            </Text>
+          ) : null}
           <StatusLine label={BOOKING_LABELS[booking.status]} tone={BOOKING_TONES[booking.status]} />
         </View>
       </View>
@@ -68,7 +72,7 @@ export default function Home() {
 
   const sorted = [...(bookings.data ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const next = sorted.find((b) => UPCOMING.has(b.status));
-  const offeringOf = (id: number) => offerings.data?.find((o) => o.id === id);
+  const offeringOf = (id: number | null) => offerings.data?.find((o) => o.id === id);
   const staffName = (id: number) => staff.data?.find((s) => s.id === id)?.display_name;
 
   function refresh() {

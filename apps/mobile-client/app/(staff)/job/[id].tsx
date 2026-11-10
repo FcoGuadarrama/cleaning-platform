@@ -51,6 +51,7 @@ export default function JobDetail() {
               }
             />
             {offering ? <Row icon="broom" title={offering.name} subtitle={formatDuration(offering.duration_minutes)} /> : null}
+            {b.subscription_cycle_id !== null ? <Row icon="layers" title="Visita de plan mensual" subtitle="Mismo cliente y horario cada semana" /> : null}
           </List>
           <Callout icon="spray">
             <Text className="text-md font-semibold text-text">El cliente proporciona los productos y herramientas.</Text>
