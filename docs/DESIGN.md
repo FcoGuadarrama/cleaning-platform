@@ -83,7 +83,7 @@ Screens use semantic tokens only; the token change also restyles the web dashboa
   sign-in use the same pieces.
 - **Not supported yet → "Próximamente":** designed features without backend are visible but cannot be tapped
   (`Soon`, the `soon` prop on `Row`/`Button`/`TextLink`). The full list, with the RFC/ADR each one needs, is in
-  `docs/rfc/brisa-feature-gaps.md`. Screen 05 (plan mensual) is not built.
+  `docs/rfc/brisa-feature-gaps.md`. Screen 05 (plan mensual) is built as a catalog (`app/(customer)/plans/`); contracting is "Próximamente".
 - **Placeholders:** interior photography → `HomeScene` (token-drawn, `src/illustrations.tsx`); people photos → initials
   `Avatar`; the logo → `Wordmark` set in Outfit until `assets.logo` exists.
 - **Copy rule:** only confirmed facts and rules (Mon–Fri, company staff, customer supplies products, 24 h change

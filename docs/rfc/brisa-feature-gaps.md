@@ -5,8 +5,8 @@ Source: owner-supplied "brisa" product concept, 6 customer screens (01 Inicio, 0
 "precios y datos ilustrativos", so its sample values (prices, kit cost, dates) are not product decisions.
 
 Each feature the design shows but the product cannot do yet is shown in the app as **"Próximamente"**: the entry is
-there, but it cannot be tapped (`Soon` and the `soon` props in `apps/mobile-client/src/ui.tsx`). Screen 05 is not
-built. Each section below is one RFC candidate. **Blocked by** points to an open decision in `docs/PRODUCT.md`;
+there, but it cannot be tapped (`Soon` and the `soon` props in `apps/mobile-client/src/ui.tsx`). Screen 05 exists as a
+plan catalog (section 1). Each section below is one RFC candidate. **Blocked by** points to an open decision in `docs/PRODUCT.md`;
 **ADRs** lists the architecture choices the RFC will force.
 
 Already backed by data (no RFC needed): next visit, service catalog (name, duration, price), cleaner choice and real
@@ -14,6 +14,8 @@ availability, sandbox payment, visit status, saved addresses (gap 7), "customer 
 24 h change notice (confirmed rule, shown only as text).
 
 ## 1. Subscription / monthly plan (screen 05, "Conoce el plan mensual", "Mi suscripción")
+- **Done (task 006):** versioned `SubscriptionPlan` catalog, admin view, customer list + detail with terms.
+  Decision 2 is settled (four visits per chosen weekday). Still missing below: purchase, cycles, renewal, checkout.
 - Design: 4 dated visits per cycle, same weekday, time and cleaner. Shows the dates before payment, renews
   automatically, and states "Sin quinta visita automática".
 - Blocked by: open decision 2 ("four monthly visits" vs "every selected weekday"; the design assumes four),

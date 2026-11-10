@@ -6,7 +6,7 @@ import { Skeleton } from "../../../src/motion";
 import { daysLabel, perVisitMinor } from "../../../src/plans";
 import { FlowScreen } from "../../../src/screen";
 import { Text } from "../../../src/text";
-import { Button, EmptyState, List, Notice, Row, SectionTitle, SkeletonRows } from "../../../src/ui";
+import { Button, EmptyState, List, Notice, Row, SectionTitle, SkeletonRows, Soon } from "../../../src/ui";
 import { useResource } from "../../../src/useResource";
 
 export default function PlanDetail() {
@@ -18,7 +18,17 @@ export default function PlanDetail() {
     <FlowScreen
       title={plan?.name ?? "Plan mensual"}
       fallback="/(customer)/plans"
-      footer={plan ? <Button label="Contratar este plan" soon hint="La contratación desde la app llega pronto" /> : undefined}
+      footer={
+        plan ? (
+          <>
+            <View className="flex-row items-center justify-center gap-2">
+              <Soon />
+              <Text className="text-sm text-text-muted">Muy pronto podrás contratarlo aquí</Text>
+            </View>
+            <Button label="Contratar este plan" soon />
+          </>
+        ) : undefined
+      }
     >
       {plans.error ? <Notice tone="danger" text={plans.error} /> : null}
       {plans.loading ? (

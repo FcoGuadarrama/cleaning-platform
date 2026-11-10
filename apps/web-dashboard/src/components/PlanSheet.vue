@@ -14,11 +14,16 @@ const emit = defineEmits<{ close: []; edit: []; toggle: [] }>();
 const plan = computed(() => props.family?.current ?? null);
 const economics = computed(() => (plan.value ? planEconomics(plan.value) : null));
 const versionNumber = computed(() => (props.family ? props.family.previous.length + 1 : 0));
+
+/** Clicking a toast action (Deshacer) is not a reason to close the sheet. */
+function keepOpenForToasts(event: Event): void {
+  if (event.target instanceof Element && event.target.closest("[data-sonner-toaster]")) event.preventDefault();
+}
 </script>
 
 <template>
   <Sheet :open="family !== null" @update:open="(v) => !v && emit('close')">
-    <SheetContent class="w-full gap-0 overflow-y-auto sm:max-w-md">
+    <SheetContent class="w-full gap-0 overflow-y-auto sm:max-w-md" @interact-outside="keepOpenForToasts">
       <template v-if="family && plan && economics">
         <SheetHeader class="gap-2 border-b border-hairline p-6 pr-12">
           <StatusBadge :tone="plan.is_active ? 'success' : 'neutral'" :label="plan.is_active ? 'Visible para clientes' : 'Oculto'" />

@@ -15,6 +15,9 @@
 - Weekly settlement; fixed amount per completed service. Completion, payment, earning, approved settlement and payout are separate records.
 - Customer supplies tools/products; optional extra kit.
 - Admin configures subscription prices/terms; terms are versioned; accepted version preserved per purchase; no retroactive changes.
+- Subscription plans (owner, 2026-11-10): fixed monthly price; each plan sets 1–5 weekdays per week; a cycle has four
+  visits per chosen weekday, and a month with a fifth occurrence adds no visit. Customers see published plans in the
+  app; contracting waits for the payment provider (Stripe, not connected yet).
 
 ## Proposals (reversible defaults used in code until decided)
 | Topic | Default | Where |
@@ -29,7 +32,7 @@
 
 ## Open decisions (block only the noted flow)
 1. Prices, durations, travel buffer — blocks pilot pricing, not sandbox.
-2. "Four monthly visits" vs "every selected weekday" (months with 5 occurrences) — **blocks live recurring billing**. No 28-day substitution.
+2. ~~"Four monthly visits" vs "every selected weekday"~~ — **decided 2026-11-10: four visits per chosen weekday per monthly cycle** (see Confirmed). Cycle start date and renewal day are still open.
 3. Payment provider, failed payments, refunds, pause/cancel subscription — blocks live payments.
 4. Cleaner compensation for late cancellation / customer-attributable failure.
 5. Geofence radius, GPS data retention, automatic payment consequences of GPS.
