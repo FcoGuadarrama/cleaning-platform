@@ -1,26 +1,28 @@
 # WORKTREE STATE & HANDOFF LOG
-- **Feature:** bookings table sort + filters (admin dashboard, follow-up to docs/tasks/005-admin-bookings.md)
+- **Feature:** subscription plans catalog (docs/tasks/006-subscription-plans.md)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-10T15:47:06Z
-- **Branch / Worktree:** feature/reservas-orden-filtros (current worktree), from origin/main a884bed
-- **Base SHA:** a884bed
-- **Contract Version:** unchanged (no API changes)
-- **Database:** compose project cp_5f97f191 (app + app_test at alembic 0002; app seeded with app.seed_demo)
+- **Last Updated:** 2026-11-10T16:12:15Z
+- **Branch / Worktree:** feature/suscripciones (main worktree), from origin/main ab48e83
+- **Base SHA:** ab48e83
+- **Contract Version:** docs/contracts/openapi.json sha256 0aaba04a5c0edddf122237a85dafae174449fe5549fa11094016d10148e005ab
+- **Database:** compose project cp_f4bbf0f0 (app + app_test at alembic 0003)
 
 ## Microtask checklist
-- [x] 1. View model: viewmodels/bookingTable.ts (sort by column, default newest first; filters by person,
-      service name, business-day range and search; "#N" searches one booking exactly); unit tests.
-- [x] 2. Components: SortableHead (arrows + aria-sort), FilterSelect (native select).
-- [x] 3. BookingsView: every column sortable, filter toolbar, sort/filters kept in the URL query
-      (orden, dir, persona, servicio, desde, hasta); status-tab counts follow the toolbar filters.
+- [x] 1. API: SubscriptionPlan model (versioned via replaces_id), migration 0003, admin list/create/version/visibility,
+      customer catalog GET /subscription-plans (no staff pay), tests; contract exported, client regenerated.
+- [ ] 2. Dashboard: Suscripciones view (plan list, editor sheet with customer preview, versions, show/hide).
+- [ ] 3. Mobile: plans screen from "Conoce el plan mensual"; plan detail with terms; Suscribirme = Próximamente.
+- [ ] 4. Docs (PRODUCT decision 2, DOMAIN, task file), browser check, final commit.
 
 ## Immediate context / Handoff notes
-"Próximas" no longer lists soonest first: the owner asked for newest first everywhere in the bookings table;
-clicking Fecha flips it. The service filter groups offering versions by name (price changes create versions).
+Owner decided 2026-11-10: fixed monthly price, four visits per chosen weekday (no fifth visit), 1–5 days per week per
+plan. No checkout yet (Stripe later): customers only see plans.
 
 ## Verification
-- 2026-11-10T15:47:06Z: dashboard typecheck clean; vitest 20 passed; build OK. Browser (cp_5f97f191 web): default newest
-  first, sort by Importe, person + date filters with updated tab counts, Quitar filtros; no console errors.
+- 2026-11-10T16:12:15Z: pytest 40 passed; ruff clean; mypy app clean; pnpm --filter @repo/api-client generate OK.
 
 ## Partial work
 - None.
+
+## Exact next action
+- Build apps/web-dashboard/src/views/SubscriptionsView.vue and register route + nav.

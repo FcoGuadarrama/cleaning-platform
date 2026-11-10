@@ -7,6 +7,7 @@ from app.core.errors import ERROR_RESPONSES
 from app.deps import AdminDep, SessionDep
 from app.models import AttendanceException, ExceptionStatus, Role, ServiceOffering, StaffProfile, User
 from app.schemas import (
+    AdminSubscriptionPlanOut,
     AttendanceExceptionOut,
     AttendanceOut,
     BookingCancelOut,
@@ -22,9 +23,11 @@ from app.schemas import (
     SettlementOut,
     StaffCreateRequest,
     StaffProfileOut,
+    SubscriptionPlanRequest,
+    SubscriptionPlanVisibilityRequest,
     UserOut,
 )
-from app.services import attendance, audit, auth, earnings, scheduling
+from app.services import attendance, audit, auth, earnings, scheduling, subscriptions
 
 router = APIRouter(prefix="/admin", tags=["admin"], responses=ERROR_RESPONSES)
 
@@ -61,6 +64,35 @@ async def create_offering(body: OfferingCreateRequest, session: SessionDep, admi
         await session.flush()
         audit.record(session, admin.id, "offering.created", "offering", offering.id, **body.model_dump())
     return OfferingOut.model_validate(offering)
+
+
+@router.get("/subscription-plans", name="admin_list_subscription_plans")
+async def list_subscription_plans(session: SessionDep, _: AdminDep) -> list[AdminSubscriptionPlanOut]:
+    """Every version, oldest first, hidden ones included."""
+    return [AdminSubscriptionPlanOut.model_validate(p) for p in await subscriptions.list_all(session)]
+
+
+@router.post("/subscription-plans", status_code=201, name="admin_create_subscription_plan")
+async def create_subscription_plan(
+    body: SubscriptionPlanRequest, session: SessionDep, admin: AdminDep
+) -> AdminSubscriptionPlanOut:
+    return AdminSubscriptionPlanOut.model_validate(await subscriptions.create(session, admin, body))
+
+
+@router.post("/subscription-plans/{plan_id}/versions", status_code=201, name="admin_revise_subscription_plan")
+async def revise_subscription_plan(
+    plan_id: int, body: SubscriptionPlanRequest, session: SessionDep, admin: AdminDep
+) -> AdminSubscriptionPlanOut:
+    """Creates a new version that replaces `plan_id`. 409 `plan_superseded` if `plan_id` is not the latest."""
+    return AdminSubscriptionPlanOut.model_validate(await subscriptions.revise(session, admin, plan_id, body))
+
+
+@router.patch("/subscription-plans/{plan_id}", name="admin_set_subscription_plan_visibility")
+async def set_subscription_plan_visibility(
+    plan_id: int, body: SubscriptionPlanVisibilityRequest, session: SessionDep, admin: AdminDep
+) -> AdminSubscriptionPlanOut:
+    plan = await subscriptions.set_visibility(session, admin, plan_id, body.is_active)
+    return AdminSubscriptionPlanOut.model_validate(plan)
 
 
 @router.get("/attendance-exceptions", name="admin_list_attendance_exceptions")

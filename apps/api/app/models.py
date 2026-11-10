@@ -127,6 +127,37 @@ class ServiceOffering(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+# Owner decision 2026-11-10 (docs/PRODUCT.md, decision 2): a monthly cycle has four visits per chosen weekday;
+# a month with a fifth occurrence adds no visit.
+VISITS_PER_WEEKDAY_PER_CYCLE = 4
+
+
+class SubscriptionPlan(TimestampMixin, Base):
+    """A monthly plan customers can see. Immutable once created: a change is a new version that replaces
+    this row (`replaces_id`), so a future purchase keeps the exact price and terms it accepted."""
+
+    __tablename__ = "subscription_plans"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(80))
+    description: Mapped[str] = mapped_column(String(300), default="")
+    days_per_week: Mapped[int] = mapped_column(Integer)
+    visit_duration_minutes: Mapped[int] = mapped_column(Integer)
+    price_minor: Mapped[int] = mapped_column(BigInteger)
+    staff_earning_minor: Mapped[int] = mapped_column(BigInteger)
+    currency: Mapped[str] = mapped_column(String(3), default="MXN")
+    terms: Mapped[str] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    replaces_id: Mapped[int | None] = mapped_column(
+        ForeignKey("subscription_plans.id", name="fk_subscription_plans_replaces_id"),
+        unique=True,
+        nullable=True,
+    )
+
+    @property
+    def visits_per_cycle(self) -> int:
+        return self.days_per_week * VISITS_PER_WEEKDAY_PER_CYCLE
+
+
 class CustomerAddress(TimestampMixin, Base):
     """A customer's saved service address. Bookings copy it as text, so edits never rewrite past visits."""
 
