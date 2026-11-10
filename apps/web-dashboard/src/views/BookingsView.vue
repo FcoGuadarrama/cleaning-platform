@@ -1,16 +1,30 @@
 <script setup lang="ts">
-import { Search } from "@lucide/vue";
+import { Search, X } from "@lucide/vue";
 import { computed, onMounted, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { type LocationQueryRaw, useRoute, useRouter } from "vue-router";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AsyncState from "../components/AsyncState.vue";
 import BookingSheet from "../components/BookingSheet.vue";
+import FilterSelect from "../components/FilterSelect.vue";
 import PageHeader from "../components/PageHeader.vue";
+import SortableHead from "../components/SortableHead.vue";
 import StatStrip from "../components/StatStrip.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import { useDirectory } from "../stores/directory";
+import {
+  BOOKING_SORT_KEYS,
+  type BookingFilters,
+  type BookingSort,
+  type BookingSortKey,
+  DEFAULT_BOOKING_SORT,
+  activeFilterCount,
+  filterBookings,
+  nextSort,
+  sortBookings,
+} from "../viewmodels/bookingTable";
 import { BOOKING_FILTERS, type BookingFilterId, type BookingRow, businessDay, formatMoney, shiftDay } from "../viewmodels/format";
 
 const directory = useDirectory();
@@ -20,9 +34,18 @@ const search = ref("");
 
 onMounted(directory.refreshAll);
 
+function setQuery(patch: LocationQueryRaw): void {
+  void router.replace({ query: { ...route.query, ...patch } });
+}
+
+function queryText(name: string): string {
+  const value = route.query[name];
+  return typeof value === "string" ? value : "";
+}
+
 const filterId = computed<BookingFilterId>({
   get: () => BOOKING_FILTERS.find((f) => f.id === route.query.estado)?.id ?? "proximas",
-  set: (estado) => void router.replace({ query: { ...route.query, estado } }),
+  set: (estado) => setQuery({ estado }),
 });
 
 const selectedId = computed(() => {
@@ -31,30 +54,82 @@ const selectedId = computed(() => {
 });
 
 function select(id: number | null): void {
-  const query = { ...route.query, reserva: id === null ? undefined : String(id) };
-  void router.replace({ query });
+  setQuery({ reserva: id === null ? undefined : String(id) });
 }
 
-function matches(row: BookingRow, term: string): boolean {
-  if (!term) return true;
-  const needle = term.replace(/^#/, "").toLocaleLowerCase("es-MX");
-  return [String(row.id), row.address, row.staffName, row.offeringName, row.customerName, row.customerEmail ?? ""].some((v) =>
-    v.toLocaleLowerCase("es-MX").includes(needle),
-  );
+const sort = computed<BookingSort>(() => {
+  const key = BOOKING_SORT_KEYS.find((k) => k === route.query.orden);
+  if (!key) return DEFAULT_BOOKING_SORT;
+  return { key, dir: route.query.dir === "asc" ? "asc" : "desc" };
+});
+
+function sortBy(key: BookingSortKey): void {
+  const next = nextSort(sort.value, key);
+  const isDefault = next.key === DEFAULT_BOOKING_SORT.key && next.dir === DEFAULT_BOOKING_SORT.dir;
+  setQuery({ orden: isDefault ? undefined : next.key, dir: isDefault ? undefined : next.dir });
 }
+
+/** Two-way binding between a toolbar control and its URL query parameter ("" clears it). */
+function queryModel(name: string) {
+  return computed({
+    get: () => queryText(name),
+    set: (value: string) => setQuery({ [name]: value || undefined }),
+  });
+}
+
+const staffParam = queryModel("persona");
+const offeringParam = queryModel("servicio");
+const fromParam = queryModel("desde");
+const toParam = queryModel("hasta");
+
+const isoDay = (value: string) => (/^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null);
+
+const filters = computed<BookingFilters>(() => {
+  const staffId = Number(staffParam.value);
+  return {
+    staffId: Number.isInteger(staffId) && staffId > 0 ? staffId : null,
+    offeringName: offeringParam.value || null,
+    from: isoDay(fromParam.value),
+    to: isoDay(toParam.value),
+    search: search.value,
+  };
+});
+
+const filterCount = computed(() => activeFilterCount(filters.value));
+
+function clearFilters(): void {
+  search.value = "";
+  setQuery({ persona: undefined, servicio: undefined, desde: undefined, hasta: undefined });
+}
+
+const staffOptions = computed(() =>
+  [...(directory.staff.data ?? [])]
+    .sort((a, b) => Number(b.is_active) - Number(a.is_active) || a.display_name.localeCompare(b.display_name, "es-MX"))
+    .map((s) => ({ value: String(s.id), label: s.is_active ? s.display_name : `${s.display_name} (inactiva)` })),
+);
+
+/** Price changes create new offering versions with the same name, so the filter groups them by name. */
+const offeringOptions = computed(() =>
+  [...new Set((directory.offerings.data ?? []).map((o) => o.name))]
+    .sort((a, b) => a.localeCompare(b, "es-MX"))
+    .map((name) => ({ value: name, label: name })),
+);
+
+/** Rows that pass the toolbar filters; the status tabs count and split these. */
+const filtered = computed(() => filterBookings(directory.bookingRows, filters.value));
 
 const counts = computed(() =>
   Object.fromEntries(
-    BOOKING_FILTERS.map((f) => [f.id, directory.bookingRows.filter((r) => (f.statuses as readonly string[]).includes(r.status)).length]),
+    BOOKING_FILTERS.map((f) => [f.id, filtered.value.filter((r) => (f.statuses as readonly string[]).includes(r.status)).length]),
   ),
 );
 
 const rows = computed(() => {
-  const filter = BOOKING_FILTERS.find((f) => f.id === filterId.value)!;
-  const statuses = filter.statuses as readonly string[];
-  const term = search.value.trim();
-  const list = directory.bookingRows.filter((r) => statuses.includes(r.status) && matches(r, term));
-  return filter.soonestFirst ? [...list].reverse() : list;
+  const statuses = BOOKING_FILTERS.find((f) => f.id === filterId.value)!.statuses as readonly string[];
+  return sortBookings(
+    filtered.value.filter((r) => statuses.includes(r.status)),
+    sort.value,
+  );
 });
 
 const stats = computed(() => {
@@ -78,8 +153,10 @@ const stats = computed(() => {
   ];
 });
 
+const headProps = computed(() => ({ sortKey: sort.value.key, sortDir: sort.value.dir }));
+
 const emptyText = computed(() =>
-  search.value.trim() ? "Ninguna reserva coincide con la búsqueda." : "No hay reservas en este estado.",
+  search.value.trim() || filterCount.value > 0 ? "Ninguna reserva coincide con los filtros." : "No hay reservas en este estado.",
 );
 </script>
 
@@ -102,6 +179,22 @@ const emptyText = computed(() =>
     </div>
   </div>
 
+  <div role="group" aria-label="Filtros de reservas" class="mb-4 grid grid-cols-2 items-end gap-3 md:grid-cols-[repeat(4,minmax(0,12rem))_auto]">
+    <FilterSelect id="filter-staff" v-model="staffParam" label="Persona" all-label="Todas" :options="staffOptions" />
+    <FilterSelect id="filter-offering" v-model="offeringParam" label="Servicio" all-label="Todos" :options="offeringOptions" />
+    <div class="grid gap-1">
+      <label for="filter-from" class="text-xs text-text-muted">Desde</label>
+      <Input id="filter-from" v-model="fromParam" type="date" :max="toParam || undefined" class="tabular-nums" />
+    </div>
+    <div class="grid gap-1">
+      <label for="filter-to" class="text-xs text-text-muted">Hasta</label>
+      <Input id="filter-to" v-model="toParam" type="date" :min="fromParam || undefined" class="tabular-nums" />
+    </div>
+    <Button v-if="filterCount > 0 || search.trim()" variant="ghost" class="col-span-2 justify-self-start md:col-span-1" @click="clearFilters">
+      <X />Quitar filtros
+    </Button>
+  </div>
+
   <AsyncState
     :loading="directory.bookings.loading"
     :error="directory.bookings.error"
@@ -114,13 +207,13 @@ const emptyText = computed(() =>
         <caption class="sr-only">Reservas, selecciona una para ver el detalle</caption>
         <TableHeader>
           <TableRow class="hover:bg-transparent">
-            <TableHead class="hidden w-16 pl-4 text-text-muted sm:table-cell">Núm.</TableHead>
-            <TableHead class="pl-4 text-text-muted sm:pl-2">Fecha</TableHead>
-            <TableHead class="text-text-muted">Servicio</TableHead>
-            <TableHead class="hidden text-text-muted lg:table-cell">Cliente</TableHead>
-            <TableHead class="hidden text-text-muted xl:table-cell">Dirección</TableHead>
-            <TableHead class="text-text-muted">Estado</TableHead>
-            <TableHead class="pr-4 text-right text-text-muted">Importe</TableHead>
+            <SortableHead v-bind="headProps" column="numero" label="Núm." class="hidden w-20 pl-4 sm:table-cell" @sort="sortBy" />
+            <SortableHead v-bind="headProps" column="fecha" label="Fecha" class="pl-4 sm:pl-2" @sort="sortBy" />
+            <SortableHead v-bind="headProps" column="servicio" label="Servicio" @sort="sortBy" />
+            <SortableHead v-bind="headProps" column="cliente" label="Cliente" class="hidden lg:table-cell" @sort="sortBy" />
+            <SortableHead v-bind="headProps" column="direccion" label="Dirección" class="hidden xl:table-cell" @sort="sortBy" />
+            <SortableHead v-bind="headProps" column="estado" label="Estado" @sort="sortBy" />
+            <SortableHead v-bind="headProps" column="importe" label="Importe" align="right" class="pr-4 text-right" @sort="sortBy" />
           </TableRow>
         </TableHeader>
         <TableBody>
