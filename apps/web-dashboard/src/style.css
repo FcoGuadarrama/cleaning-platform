@@ -121,6 +121,11 @@
   }
 }
 
+/* An open sheet or dialog sets `pointer-events: none` on <body>; toast actions (Deshacer) must stay clickable. */
+[data-sonner-toaster] {
+  pointer-events: auto;
+}
+
 :root[data-theme="dark"] :is(.panel, .grouped) {
   box-shadow: none;
 }

@@ -155,6 +155,47 @@ class AddressOut(Out):
     is_default: bool
 
 
+# subscription plans
+class SubscriptionPlanRequest(Strict):
+    """Creates a plan, or a new version of one. Every field is required: a version is a full snapshot."""
+
+    name: Annotated[Line, Field(max_length=80)]
+    description: Annotated[
+        OptionalLine, Field(max_length=300, description="One line shown under the name")
+    ] = ""
+    days_per_week: Annotated[int, Field(ge=1, le=5, description="Weekdays (Mon–Fri) the customer chooses")]
+    visit_duration_minutes: Annotated[int, Field(gt=0, le=12 * 60)]
+    price_minor: Annotated[int, Field(gt=0, description="Monthly price in minor units (centavos)")]
+    staff_earning_minor: Annotated[Money, Field(description="Paid to the cleaner per completed visit")]
+    currency: Currency = "MXN"
+    terms: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=10_000)]
+
+
+class SubscriptionPlanVisibilityRequest(Strict):
+    is_active: Annotated[bool, Field(description="Whether customers see the plan")]
+
+
+class SubscriptionPlanOut(Out):
+    """What customers see. The cleaner's pay stays in the admin view."""
+
+    id: int
+    name: str
+    description: str
+    days_per_week: int
+    visits_per_cycle: Annotated[int, Field(description="Visits per monthly cycle: four per chosen weekday")]
+    visit_duration_minutes: int
+    price_minor: int
+    currency: str
+    terms: str
+
+
+class AdminSubscriptionPlanOut(SubscriptionPlanOut):
+    staff_earning_minor: int
+    is_active: bool
+    replaces_id: Annotated[int | None, Field(description="The version this one replaced")]
+    created_at: datetime
+
+
 # bookings
 class BookingCreateRequest(Strict):
     staff_id: int

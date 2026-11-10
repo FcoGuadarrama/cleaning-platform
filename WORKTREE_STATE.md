@@ -1,26 +1,39 @@
 # WORKTREE STATE & HANDOFF LOG
-- **Feature:** bookings table sort + filters (admin dashboard, follow-up to docs/tasks/005-admin-bookings.md)
+- **Feature:** subscription plans catalog (docs/tasks/006-subscription-plans.md)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-10T15:47:06Z
-- **Branch / Worktree:** feature/reservas-orden-filtros (current worktree), from origin/main a884bed
-- **Base SHA:** a884bed
-- **Contract Version:** unchanged (no API changes)
-- **Database:** compose project cp_5f97f191 (app + app_test at alembic 0002; app seeded with app.seed_demo)
+- **Last Updated:** 2026-11-10T21:19:03Z
+- **Branch / Worktree:** feature/suscripciones (main worktree), from origin/main ab48e83
+- **Base SHA:** ab48e83
+- **Contract Version:** docs/contracts/openapi.json sha256 0aaba04a5c0edddf122237a85dafae174449fe5549fa11094016d10148e005ab
+- **Database:** compose project cp_f4bbf0f0 (app + app_test at alembic 0003; app has one demo plan with 2 versions)
 
 ## Microtask checklist
-- [x] 1. View model: viewmodels/bookingTable.ts (sort by column, default newest first; filters by person,
-      service name, business-day range and search; "#N" searches one booking exactly); unit tests.
-- [x] 2. Components: SortableHead (arrows + aria-sort), FilterSelect (native select).
-- [x] 3. BookingsView: every column sortable, filter toolbar, sort/filters kept in the URL query
-      (orden, dir, persona, servicio, desde, hasta); status-tab counts follow the toolbar filters.
+- [x] 1. API: versioned SubscriptionPlan, migration 0003, admin + catalog endpoints, tests, contract + client.
+- [x] 2. Dashboard: Suscripciones view (list, detail sheet, editor with live preview, versions, show/hide + Deshacer).
+- [x] 3. Mobile: plans list from Inicio, plan detail with terms, contracting shown as Próximamente.
+- [x] 4. Docs (PRODUCT decision 2 closed, DOMAIN, DESIGN, RFC, task 006), browser check.
 
 ## Immediate context / Handoff notes
-"Próximas" no longer lists soonest first: the owner asked for newest first everywhere in the bookings table;
-clicking Fecha flips it. The service filter groups offering versions by name (price changes create versions).
+Owner decided 2026-11-10: fixed monthly price, four visits per chosen weekday (no fifth visit), 1–5 days per week per
+plan. No checkout yet (Stripe later). The local admin@admin.com password in cp_f4bbf0f0 was reset to the
+.env.worktree value at the owner's request (it had been created with another one).
+Found and fixed: toasts were not clickable while a sheet/dialog was open (body pointer-events none).
 
 ## Verification
-- 2026-11-10T15:47:06Z: dashboard typecheck clean; vitest 20 passed; build OK. Browser (cp_5f97f191 web): default newest
-  first, sort by Importe, person + date filters with updated tab counts, Quitar filtros; no console errors.
+- 2026-11-10T20:56:10Z: pytest 40 passed; ruff + mypy app clean; dashboard typecheck, vitest 25 passed, build OK; mobile tsc clean;
+  pnpm check:drift clean. Browser (cp_f4bbf0f0): created plan, new version with history, hide + Deshacer keeps the
+  sheet open, customer app lists the latest version and shows terms; no console errors.
+- aislop not run: the global install's symlink is broken (dist/cli.js missing).
+
+- 2026-11-10T21:09:59Z: owner asked to favour subscriptions over single visits. Inicio now shows plans before "Visita suelta";
+  dashboard nav lists Suscripciones before Servicios. Mobile tsc + dashboard typecheck clean; checked in browser.
+
+- 2026-11-10T21:19:03Z: Inicio is status-only; new Planes tab (plans + single services). Mobile tsc clean; browser: Inicio,
+  Planes, plan detail and back (scroll kept), no console errors. The empty "no visits" card was not seen in the browser
+  (test customer has a visit).
 
 ## Partial work
 - None.
+
+## Exact next action
+- Owner review; then PR feature/suscripciones → main (needs owner approval to push/merge).

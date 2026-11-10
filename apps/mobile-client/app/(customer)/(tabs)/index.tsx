@@ -4,15 +4,15 @@ import { Pressable, View } from "react-native";
 import { shortAddress, useAddresses } from "../../../src/addresses";
 import { api } from "../../../src/api";
 import { DateBlock } from "../../../src/DateBlock";
-import { BOOKING_LABELS, BOOKING_TONES, formatDuration, formatMoney, formatClock, formatRelativeDay, formatWeekday } from "../../../src/format";
+import { BOOKING_LABELS, BOOKING_TONES, formatDuration, formatClock, formatRelativeDay, formatWeekday } from "../../../src/format";
 import { Icon } from "../../../src/icons";
 import { HomeScene } from "../../../src/illustrations";
 import { Rise } from "../../../src/motion";
 import { Screen } from "../../../src/screen";
-import { serviceIcon, UPCOMING } from "../../../src/visits";
+import { UPCOMING } from "../../../src/visits";
 import { Text } from "../../../src/text";
 import { color } from "../../../src/theme";
-import { Avatar, Button, Card, Hairline, List, Row, SectionTitle, SkeletonCard, SkeletonRows, StateView, StatusLine, TextLink, Wordmark } from "../../../src/ui";
+import { Avatar, Button, Card, Hairline, SectionTitle, SkeletonCard, StatusLine, TextLink, Wordmark } from "../../../src/ui";
 import { useResource } from "../../../src/useResource";
 
 type Booking = Schemas["BookingOut"];
@@ -43,11 +43,18 @@ function NextVisit({ booking, offering, staffName }: { booking: Booking; offerin
   );
 }
 
-function FirstVisit({ returning }: { returning: boolean }) {
+/** Nothing scheduled: point to a monthly plan first, a single visit second. */
+function NoVisit({ returning }: { returning: boolean }) {
   return (
-    <Card className="gap-1">
-      <Text className="text-lg font-semibold text-text">{returning ? "No tienes visitas próximas" : "Aún no tienes visitas"}</Text>
-      <Text className="text-sm text-text-muted">Elige un servicio aquí abajo y reserva con la persona que prefieras.</Text>
+    <Card className="gap-4">
+      <View className="gap-1">
+        <Text className="text-lg font-semibold text-text">{returning ? "No tienes visitas próximas" : "Aún no tienes visitas"}</Text>
+        <Text className="text-sm text-text-muted">Con un plan mensual, la misma persona viene los mismos días y pagas un precio fijo.</Text>
+      </View>
+      <Button label="Conoce los planes" onPress={() => router.push("/(customer)/(tabs)/plans")} />
+      <View className="items-center">
+        <TextLink label="Reservar una visita suelta" onPress={() => router.push("/(customer)/book")} />
+      </View>
     </Card>
   );
 }
@@ -112,36 +119,9 @@ export default function Home() {
           ) : next ? (
             <NextVisit booking={next} offering={offeringOf(next.offering_id)} staffName={staffName(next.staff_id)} />
           ) : (
-            <FirstVisit returning={sorted.length > 0} />
+            <NoVisit returning={sorted.length > 0} />
           )}
         </Rise>
-      </View>
-
-      <View className="gap-1">
-        <SectionTitle title="¿Qué necesita tu casa?" />
-        <StateView
-          loading={offerings.loading}
-          error={offerings.error}
-          empty={!offerings.data?.length}
-          emptyIcon="broom"
-          emptyTitle="Aún no hay servicios disponibles"
-          onRetry={offerings.refresh}
-          skeleton={<SkeletonRows count={2} />}
-        >
-          <List>
-            {(offerings.data ?? []).map((o, i) => (
-              <Row
-                key={o.id}
-                icon={serviceIcon(i)}
-                title={o.name}
-                subtitle={`${formatDuration(o.duration_minutes)} · ${formatMoney(o.price_minor, o.currency)}`}
-                accessibilityLabel={`Reservar ${o.name}`}
-                onPress={() => router.push({ pathname: "/(customer)/book", params: { offeringId: String(o.id) } })}
-              />
-            ))}
-          </List>
-        </StateView>
-        <TextLink label="Conoce el plan mensual" soon />
       </View>
     </Screen>
   );

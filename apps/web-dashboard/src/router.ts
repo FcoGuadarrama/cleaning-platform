@@ -9,6 +9,7 @@ export const router = createRouter({
     { path: "/reservas", component: () => import("./views/BookingsView.vue"), meta: { title: "Reservas" } },
     { path: "/personal", component: () => import("./views/StaffView.vue"), meta: { title: "Personal" } },
     { path: "/servicios", component: () => import("./views/OfferingsView.vue"), meta: { title: "Servicios" } },
+    { path: "/suscripciones", component: () => import("./views/SubscriptionsView.vue"), meta: { title: "Suscripciones" } },
     { path: "/asistencia", component: () => import("./views/ExceptionsView.vue"), meta: { title: "Asistencia" } },
     { path: "/liquidaciones", component: () => import("./views/SettlementsView.vue"), meta: { title: "Liquidaciones" } },
     { path: "/:rest(.*)*", redirect: "/" },

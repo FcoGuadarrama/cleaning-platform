@@ -6,6 +6,9 @@
 - **ServiceOffering**: what is sold (name, duration minutes, price in minor units, currency). Versioned by creating a new row; bookings copy the values.
 - **CustomerAddress**: a customer's saved service address (label, street, interior, colonia, postal code,
   municipality, state, directions). Exactly one is the default while any exist.
+- **SubscriptionPlan**: a monthly plan customers can see (name, description, weekdays per week 1–5, visit duration,
+  monthly price, cleaner pay per visit, terms). Immutable; a change is a new version that replaces the old one
+  (`replaces_id`, at most one successor). Visits per cycle = 4 × weekdays per week.
 - **Booking**: one scheduled visit (customer, staff, start/end UTC, status, price snapshot, address snapshot).
 - **Hold**: a booking in `held` status with `hold_expires_at`; blocks the slot until expiry.
 - **Payment**: provider-agnostic record of a charge attempt for a booking (`provider`, `provider_ref`, status, amount).
@@ -36,3 +39,5 @@ Settlement: `approved → paid`.
 8. Money is integer minor units; no floats.
 9. A booking uses one of its customer's own saved addresses and copies it as text; editing or deleting the saved
    address never changes the booking's address.
+10. A subscription plan version never changes after creation. Revising hides the old version for good; only the latest
+    version of a plan can be shown to customers. Customers never see the cleaner's pay.

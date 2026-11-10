@@ -252,6 +252,89 @@
         "title": "AddressUpdateRequest",
         "type": "object"
       },
+      "AdminSubscriptionPlanOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "days_per_week": {
+            "title": "Days Per Week",
+            "type": "integer"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price_minor": {
+            "title": "Price Minor",
+            "type": "integer"
+          },
+          "replaces_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The version this one replaced",
+            "title": "Replaces Id"
+          },
+          "staff_earning_minor": {
+            "title": "Staff Earning Minor",
+            "type": "integer"
+          },
+          "terms": {
+            "title": "Terms",
+            "type": "string"
+          },
+          "visit_duration_minutes": {
+            "title": "Visit Duration Minutes",
+            "type": "integer"
+          },
+          "visits_per_cycle": {
+            "description": "Visits per monthly cycle: four per chosen weekday",
+            "title": "Visits Per Cycle",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "days_per_week",
+          "visits_per_cycle",
+          "visit_duration_minutes",
+          "price_minor",
+          "currency",
+          "terms",
+          "staff_earning_minor",
+          "is_active",
+          "replaces_id",
+          "created_at"
+        ],
+        "title": "AdminSubscriptionPlanOut",
+        "type": "object"
+      },
       "AttendanceExceptionOut": {
         "properties": {
           "attendance_id": {
@@ -1226,6 +1309,142 @@
           "is_active"
         ],
         "title": "StaffProfileOut",
+        "type": "object"
+      },
+      "SubscriptionPlanOut": {
+        "description": "What customers see. The cleaner's pay stays in the admin view.",
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "days_per_week": {
+            "title": "Days Per Week",
+            "type": "integer"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price_minor": {
+            "title": "Price Minor",
+            "type": "integer"
+          },
+          "terms": {
+            "title": "Terms",
+            "type": "string"
+          },
+          "visit_duration_minutes": {
+            "title": "Visit Duration Minutes",
+            "type": "integer"
+          },
+          "visits_per_cycle": {
+            "description": "Visits per monthly cycle: four per chosen weekday",
+            "title": "Visits Per Cycle",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "days_per_week",
+          "visits_per_cycle",
+          "visit_duration_minutes",
+          "price_minor",
+          "currency",
+          "terms"
+        ],
+        "title": "SubscriptionPlanOut",
+        "type": "object"
+      },
+      "SubscriptionPlanRequest": {
+        "additionalProperties": false,
+        "description": "Creates a plan, or a new version of one. Every field is required: a version is a full snapshot.",
+        "properties": {
+          "currency": {
+            "default": "MXN",
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "days_per_week": {
+            "description": "Weekdays (Mon–Fri) the customer chooses",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Days Per Week",
+            "type": "integer"
+          },
+          "description": {
+            "default": "",
+            "description": "One line shown under the name",
+            "maxLength": 300,
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "price_minor": {
+            "description": "Monthly price in minor units (centavos)",
+            "exclusiveMinimum": 0.0,
+            "title": "Price Minor",
+            "type": "integer"
+          },
+          "staff_earning_minor": {
+            "description": "Paid to the cleaner per completed visit",
+            "minimum": 0.0,
+            "title": "Staff Earning Minor",
+            "type": "integer"
+          },
+          "terms": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Terms",
+            "type": "string"
+          },
+          "visit_duration_minutes": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 720.0,
+            "title": "Visit Duration Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "days_per_week",
+          "visit_duration_minutes",
+          "price_minor",
+          "staff_earning_minor",
+          "terms"
+        ],
+        "title": "SubscriptionPlanRequest",
+        "type": "object"
+      },
+      "SubscriptionPlanVisibilityRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "is_active": {
+            "description": "Whether customers see the plan",
+            "title": "Is Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "is_active"
+        ],
+        "title": "SubscriptionPlanVisibilityRequest",
         "type": "object"
       },
       "TokenOut": {
@@ -2786,6 +3005,396 @@
         ]
       }
     },
+    "/admin/subscription-plans": {
+      "get": {
+        "description": "Every version, oldest first, hidden ones included.",
+        "operationId": "admin_list_subscription_plans",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminSubscriptionPlanOut"
+                  },
+                  "title": "Response Admin List Subscription Plans",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin List Subscription Plans",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "admin_create_subscription_plan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSubscriptionPlanOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin Create Subscription Plan",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/subscription-plans/{plan_id}": {
+      "patch": {
+        "operationId": "admin_set_subscription_plan_visibility",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "title": "Plan Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionPlanVisibilityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSubscriptionPlanOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin Set Subscription Plan Visibility",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/subscription-plans/{plan_id}/versions": {
+      "post": {
+        "description": "Creates a new version that replaces `plan_id`. 409 `plan_superseded` if `plan_id` is not the latest.",
+        "operationId": "admin_revise_subscription_plan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "title": "Plan Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSubscriptionPlanOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin Revise Subscription Plan",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/auth/login": {
       "post": {
         "operationId": "auth_login",
@@ -4231,6 +4840,87 @@
           }
         ],
         "summary": "Catalog Staff Availability",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/subscription-plans": {
+      "get": {
+        "description": "Plans customers can see, fewest days per week first.",
+        "operationId": "catalog_list_subscription_plans",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SubscriptionPlanOut"
+                  },
+                  "title": "Response Catalog List Subscription Plans",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Catalog List Subscription Plans",
         "tags": [
           "catalog"
         ]
