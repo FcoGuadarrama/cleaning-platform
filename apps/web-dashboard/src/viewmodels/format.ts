@@ -181,6 +181,7 @@ export interface BookingRow {
   address: string;
   staffId: number;
   staffName: string;
+  /** Service name, or "Visita de plan mensual" for a subscription visit (its price is the cycle's). */
   offeringName: string;
   customerName: string;
   customerEmail: string | null;
@@ -203,12 +204,12 @@ export function toBookingRow(b: Schemas["BookingOut"], lookups: Lookups): Bookin
     startMinutes: minutesIntoDay(start),
     endMinutes: businessDay(end) === day ? minutesIntoDay(end) : 24 * 60,
     startsAt: start.getTime(),
-    amount: formatMoney(b.price_minor, b.currency),
+    amount: b.subscription_cycle_id === null ? formatMoney(b.price_minor, b.currency) : "En plan",
     priceMinor: b.price_minor,
     address: b.address,
     staffId: b.staff_id,
     staffName: lookups.staffName(b.staff_id),
-    offeringName: lookups.offeringName(b.offering_id),
+    offeringName: b.offering_id === null ? "Visita de plan mensual" : lookups.offeringName(b.offering_id),
     customerName: customer.name,
     customerEmail: customer.email,
   };

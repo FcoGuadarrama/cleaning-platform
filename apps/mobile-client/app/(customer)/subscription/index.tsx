@@ -81,7 +81,7 @@ function SubscriptionDetail({ subscription: s, staffName }: { subscription: Subs
 
       <View className="gap-2">
         <SectionTitle title="Condiciones aceptadas" />
-        <Text className="text-sm text-text-muted">Aceptadas el {formatDateTime(s.terms_accepted_at)}. Si el plan cambia, tu suscripción conserva estas condiciones y este precio.</Text>
+        <Text className="text-sm text-text-muted">Las aceptaste el {formatDateTime(s.terms_accepted_at)}; si el plan cambia, tu suscripción conserva estas condiciones y este precio.</Text>
         <Text className="text-md leading-[24px] text-text">{s.terms}</Text>
       </View>
 

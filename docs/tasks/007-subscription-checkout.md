@@ -48,8 +48,19 @@ and can see the subscription and its visits. Admin can see contracted subscripti
   (they see them under the subscription).
 - Audited: `subscription.hold_created`, `subscription.cycle_confirmed`, plus the existing payment events.
 
+## UI
+- Mobile: plan detail → "Contratar este plan" → `subscribe.tsx` (1 cleaner · 2 weekdays, first visit among the next
+  dates on those weekdays, a time free on every visit · 3 review: every date, cycle range, renewal day, address,
+  terms checkbox, total) → sandbox pay → "Tu plan está activo" → "Mi suscripción" (Cuenta). A lost hold sends the
+  customer back to step 2 with the reason. Plan visits show "Visita de tu plan" / "Incluida en tu plan".
+- Dashboard › Suscripciones: tabs Planes · Contratadas. Contratadas lists subscriptions (Activas, Pago pendiente,
+  Apartados vencidos, Todas); the sheet shows what the customer accepted, the cycle and its visits (link to Reservas)
+  and the accepted terms. Bookings show plan visits as "Visita de plan mensual · En plan"; sales and average ticket
+  leave them out (bookings and hours count them).
+
 ## Out of scope
-Renewal and its charge, provisional replacement cleaner, pause/cancel, refunds execution, Stripe.
+Renewal and its charge, provisional replacement cleaner, pause/cancel, refunds execution, Stripe, subscription
+revenue on the dashboard overview (sales there are single visits only).
 
 ## Acceptance
 1. API: pytest, ruff, mypy pass; contract exported; client regenerated; `pnpm check:drift` clean.

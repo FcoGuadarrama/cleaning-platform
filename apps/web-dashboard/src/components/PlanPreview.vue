@@ -29,7 +29,7 @@ const perVisit = computed(() => (props.priceMinor === null ? null : Math.round(p
       <li>{{ visitsLabel(visits) }}, {{ daysLabel(daysPerWeek) }} de lunes a viernes</li>
       <li v-if="durationMinutes">{{ formatDuration(durationMinutes) }} por visita</li>
       <li>La misma persona en cada visita</li>
-      <li class="text-muted-foreground">Si el mes trae una quinta semana, no se agenda visita extra</li>
+      <li class="text-muted-foreground">Ciclos de cuatro semanas desde la primera visita</li>
     </ul>
   </figure>
 </template>

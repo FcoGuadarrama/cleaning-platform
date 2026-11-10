@@ -17,6 +17,7 @@ function booking(id: number, startsAt: string, status: Schemas["BookingStatus"],
     currency: "MXN",
     address: "Calle 1",
     address_id: null,
+    subscription_cycle_id: null,
   };
 }
 
@@ -35,6 +36,15 @@ describe("dashboard metrics", () => {
     expect(m.bookings.value).toBe(3);
     expect(m.avgTicket.value).toBe(15_000);
     expect(m.hours.value).toBe(4);
+  });
+
+  it("counts a subscription visit's hours but not a $0 sale", () => {
+    const planVisit = { ...booking(6, "2026-11-05T18:00:00Z", "confirmed", 0), offering_id: null, subscription_cycle_id: 3 };
+    const m = computeMetrics([...data, planVisit], "2026-11-05", "7");
+    expect(m.sales.value).toBe(30_000);
+    expect(m.avgTicket.value).toBe(15_000);
+    expect(m.bookings.value).toBe(4);
+    expect(m.hours.value).toBe(6);
   });
 
   it("compares against the previous period of the same length", () => {

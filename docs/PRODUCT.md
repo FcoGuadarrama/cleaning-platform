@@ -17,7 +17,12 @@
 - Admin configures subscription prices/terms; terms are versioned; accepted version preserved per purchase; no retroactive changes.
 - Subscription plans (owner, 2026-11-10): fixed monthly price; each plan sets 1–5 weekdays per week; a cycle has four
   visits per chosen weekday, and a month with a fifth occurrence adds no visit. Customers see published plans in the
-  app; contracting waits for the payment provider (Stripe, not connected yet).
+  app.
+- Subscription cycle (owner, 2026-11-10): the cycle starts with the first visit, not with the payment, and lasts four
+  weeks (choosing Monday gives the four Mondays from the first visit). It renews, and will be charged, on the same
+  weekday right after (the first day of the next four weeks). If the assigned cleaner cannot cover a visit of the
+  next cycle, another cleaner covers it provisionally. Customers contract in the app with sandbox payment (task 007);
+  renewal and live billing are still pending.
 
 ## Proposals (reversible defaults used in code until decided)
 | Topic | Default | Where |
@@ -26,13 +31,15 @@
 | Checkout hold TTL | 15 min | `HOLD_TTL_MINUTES` setting |
 | Travel buffer | 60 min between visits of the same cleaner | `TRAVEL_BUFFER_MINUTES` setting |
 | Service duration | admin-defined per `ServiceOffering` (no default offering seeded as a "real" price) | DB |
+| Subscription start time | one local start time for every visit of a subscription | `subscriptions.visit_start` |
+| Subscription first visit | at most 28 days ahead | `SUBSCRIPTION_START_WINDOW_DAYS` setting |
 | GPS poor accuracy | > 100 m flagged as `low_accuracy` (still recorded, not auto-rejected) | setting |
 | Earnings amount | admin-defined `EarningRate` versioned; none seeded in prod | DB |
 | Notifications | none (in-app state only) | — |
 
 ## Open decisions (block only the noted flow)
 1. Prices, durations, travel buffer — blocks pilot pricing, not sandbox.
-2. ~~"Four monthly visits" vs "every selected weekday"~~ — **decided 2026-11-10: four visits per chosen weekday per monthly cycle** (see Confirmed). Cycle start date and renewal day are still open.
+2. ~~"Four monthly visits" vs "every selected weekday"~~ — **decided 2026-11-10: four visits per chosen weekday per four-week cycle that starts with the first visit and renews on the same weekday right after** (see Confirmed).
 3. Payment provider, failed payments, refunds, pause/cancel subscription — blocks live payments.
 4. Cleaner compensation for late cancellation / customer-attributable failure.
 5. Geofence radius, GPS data retention, automatic payment consequences of GPS.

@@ -20,7 +20,7 @@ const emit = defineEmits<{ close: [] }>();
 const directory = useDirectory();
 const row = computed(() => directory.bookingRows.find((r) => r.id === props.bookingId) ?? null);
 const raw = computed(() => directory.bookings.data?.find((b) => b.id === props.bookingId) ?? null);
-const offering = computed(() => (raw.value ? directory.offeringById.get(raw.value.offering_id) : undefined));
+const offering = computed(() => (raw.value?.offering_id ? directory.offeringById.get(raw.value.offering_id) : undefined));
 const canRecordAttendance = computed(() => row.value !== null && !["cancelled", "expired"].includes(row.value.status));
 const canCancel = computed(() => row.value !== null && CANCELLABLE_STATUSES.has(row.value.status));
 

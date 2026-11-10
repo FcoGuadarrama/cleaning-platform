@@ -4,13 +4,14 @@ import { api } from "../api";
 import { useResource } from "../useResource";
 import { type Lookups, toBookingRow } from "../viewmodels/format";
 
-/** Bookings, staff, offerings and customers shared by every view that needs to join them. */
+/** Bookings, staff, offerings, customers and contracted subscriptions shared by every view that joins them. */
 export const useDirectory = defineStore("directory", () => {
   const bookings = useResource(() => api.GET("/bookings"));
   const staff = useResource(() => api.GET("/admin/staff"));
   const offerings = useResource(() => api.GET("/offerings"));
   const customers = useResource(() => api.GET("/admin/customers"));
   const exceptions = useResource(() => api.GET("/admin/attendance-exceptions"));
+  const subscriptions = useResource(() => api.GET("/admin/subscriptions"));
 
   const staffById = computed(() => new Map((staff.data ?? []).map((s) => [s.id, s])));
   const offeringById = computed(() => new Map((offerings.data ?? []).map((o) => [o.id, o])));
@@ -33,9 +34,9 @@ export const useDirectory = defineStore("directory", () => {
     await Promise.all([bookings, staff, offerings, customers, exceptions].map((r) => r.refresh()));
   }
 
-  /** Polled while the panel is visible so bookings made in the mobile app show up without a reload. */
+  /** Polled while the panel is visible so bookings and plans contracted in the mobile app show up without a reload. */
   async function refreshLive(): Promise<void> {
-    const live = [bookings, customers, exceptions].filter((r) => r.loaded);
+    const live = [bookings, customers, exceptions, subscriptions].filter((r) => r.loaded);
     await Promise.all(live.map((r) => r.refresh({ background: true })));
   }
 
@@ -45,6 +46,7 @@ export const useDirectory = defineStore("directory", () => {
     offerings,
     customers,
     exceptions,
+    subscriptions,
     staffById,
     offeringById,
     customerById,
