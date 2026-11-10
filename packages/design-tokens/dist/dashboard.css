@@ -1,0 +1,84 @@
+/* GENERATED from src/brand.json by scripts/build.mjs — do not edit. */
+:root {
+  --color-background: #FFFFFF;
+  --color-surface: #F3F4F6;
+  --color-surface-raised: #FFFFFF;
+  --color-border: #DFE2E8;
+  --color-text: #171A21;
+  --color-text-muted: #585F6C;
+  --color-primary: #2D46C8;
+  --color-on-primary: #FFFFFF;
+  --color-primary-soft: #E9EDFC;
+  --color-accent: #2D46C8;
+  --color-on-accent: #FFFFFF;
+  --color-accent-soft: #E9EDFC;
+  --color-success: #1B7A47;
+  --color-on-success: #FFFFFF;
+  --color-success-soft: #E3F3E9;
+  --color-focus: #2D46C8;
+  --color-disabled: #ECEEF2;
+  --color-on-disabled: #5B6270;
+  --color-chart: #2F6BC4;
+  --color-sidebar: #15181F;
+  --color-on-sidebar: #ECEEF3;
+  --color-sidebar-muted: #9AA1AE;
+  --color-sidebar-active: #A9B7FF;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-background: #0D0F13;
+    --color-surface: #111318;
+    --color-surface-raised: #181B21;
+    --color-border: #2B2F38;
+    --color-text: #ECEEF2;
+    --color-text-muted: #A1A7B3;
+    --color-primary: #8FA2FF;
+    --color-on-primary: #0B1442;
+    --color-primary-soft: #1B2248;
+    --color-accent: #8FA2FF;
+    --color-on-accent: #0B1442;
+    --color-accent-soft: #1B2248;
+    --color-success: #63CB91;
+    --color-on-success: #062311;
+    --color-success-soft: #12281B;
+    --color-focus: #8FA2FF;
+    --color-disabled: #1F2229;
+    --color-on-disabled: #A4AAB5;
+    --color-chart: #5A92DC;
+    --color-sidebar: #0A0B0E;
+    --color-on-sidebar: #ECEEF3;
+    --color-sidebar-muted: #9AA1AE;
+    --color-sidebar-active: #A9B7FF;
+  }
+}
+:root[data-theme="dark"] {
+  --color-background: #0D0F13;
+  --color-surface: #111318;
+  --color-surface-raised: #181B21;
+  --color-border: #2B2F38;
+  --color-text: #ECEEF2;
+  --color-text-muted: #A1A7B3;
+  --color-primary: #8FA2FF;
+  --color-on-primary: #0B1442;
+  --color-primary-soft: #1B2248;
+  --color-accent: #8FA2FF;
+  --color-on-accent: #0B1442;
+  --color-accent-soft: #1B2248;
+  --color-success: #63CB91;
+  --color-on-success: #062311;
+  --color-success-soft: #12281B;
+  --color-focus: #8FA2FF;
+  --color-disabled: #1F2229;
+  --color-on-disabled: #A4AAB5;
+  --color-chart: #5A92DC;
+  --color-sidebar: #0A0B0E;
+  --color-on-sidebar: #ECEEF3;
+  --color-sidebar-muted: #9AA1AE;
+  --color-sidebar-active: #A9B7FF;
+}
+@theme inline {
+  --color-sidebar: var(--color-sidebar);
+  --color-on-sidebar: var(--color-on-sidebar);
+  --color-sidebar-muted: var(--color-sidebar-muted);
+  --color-sidebar-active: var(--color-sidebar-active);
+}

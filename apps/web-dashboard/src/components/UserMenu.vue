@@ -25,16 +25,16 @@ function logout(): void {
 <template>
   <DropdownMenu v-if="session.user">
     <DropdownMenuTrigger
-      class="flex w-full items-center gap-2.5 rounded-md p-1.5 text-left transition-colors duration-100 hover:bg-text/6 active:bg-text/10"
+      class="flex w-full items-center gap-2.5 rounded-md p-1.5 text-left transition-colors duration-100 hover:bg-on-sidebar/7 active:bg-on-sidebar/12"
     >
       <Avatar class="size-8">
-        <AvatarFallback class="bg-primary/12 text-xs font-semibold text-primary">{{ initials(session.user.full_name) }}</AvatarFallback>
+        <AvatarFallback class="bg-on-sidebar/12 text-xs font-semibold text-on-sidebar">{{ initials(session.user.full_name) }}</AvatarFallback>
       </Avatar>
       <span class="min-w-0 flex-1">
         <span class="block truncate font-medium">{{ session.user.full_name }}</span>
-        <span class="block truncate text-xs text-muted-foreground">Administración</span>
+        <span class="block truncate text-xs text-sidebar-muted">Administración</span>
       </span>
-      <ChevronsUpDown class="size-4 text-muted-foreground" aria-hidden="true" />
+      <ChevronsUpDown class="size-4 text-sidebar-muted" aria-hidden="true" />
     </DropdownMenuTrigger>
     <DropdownMenuContent side="top" align="start" class="w-(--reka-dropdown-menu-trigger-width) min-w-56">
       <DropdownMenuLabel class="font-normal">

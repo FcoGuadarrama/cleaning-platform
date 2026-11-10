@@ -9,6 +9,7 @@ generates (never hand-edit):
 |---|---|
 | `dist/tokens.css` | CSS custom properties, light + `prefers-color-scheme: dark` |
 | `dist/tailwind-theme.css` | Tailwind 4 `@theme` for the dashboard |
+| `dist/<surface>.css` | per-surface palette overrides from `surfaces` (today `dashboard.css`), light + dark, plus `@theme` for colors the base lacks |
 | `dist/nativewind-preset.cjs` | NativeWind 4 preset (mobile uses Tailwind 3.4.19, as NativeWind 4 requires) |
 | `dist/native.js` + `.d.ts` | raw values for React Native APIs that cannot use classes |
 
@@ -33,13 +34,22 @@ Categories: color (light/dark), typography (family, size, line height, weight), 
 then owned here: edit them freely, do not re-run `add` over local changes. `src/style.css` maps every shadcn
 variable (`--color-foreground`, `--color-muted`, `--color-ring`…) to a brand token, so the dashboard has no colors of
 its own; tints are `color-mix()` of a token. Conventions:
+- **Dashboard palette (2026-11-10, owner: "no verde")**: `brand.json › surfaces.dashboard` overrides the Brisa colors for
+  the web panel only (mobile keeps Brisa). Neutral graphite canvas (`surface` #F3F4F6 / #111318), white/raised cards,
+  cobalt `primary` (#2D46C8 light, #8FA2FF dark), green only as `success`. The sidebar is dark graphite in both modes
+  (`sidebar`, `on-sidebar`, `sidebar-muted`, `sidebar-active`); its own contrast pairs are checked at build, and every
+  base pair is re-checked against the merged surface palette.
+- **Theme switch**: header menu (`ThemeMenu.vue`) with Claro / Oscuro / Sistema, stored per browser in `localStorage`
+  (`dashboard.theme`, `src/theme.ts`). Generated tokens read `<html data-theme>`; without it they follow
+  `prefers-color-scheme`. Tailwind `dark:` is a custom variant over the same rule; `index.html` applies the saved theme
+  before paint.
 - Status colour comes from `BOOKING_STATUS` tones in `src/viewmodels/format.ts` (`StatusBadge`, agenda blocks).
 - Grouped lists (`.grouped`) instead of card grids; hairline separators; radius grows with surface size.
 - Translucent header (`.material-bar`) falls back to solid under `prefers-reduced-transparency`; overlays become
   cross-fades under `prefers-reduced-motion`; buttons scale to 0.97 on press and grow to 44 px on coarse pointers.
 - Canvas is `surface`; cards (`.panel`, `.grouped`) are `surface-raised` with a light-mode-only hairline shadow.
 - Charts are hand-built SVG/HTML in `src/components/charts/` (no chart library). One series uses the `chart`
-  token (`#2F6BC4` light, `#5A92DC` dark), validated with the dataviz palette script (lightness band, chroma floor,
+  token (dashboard surface: `#2F6BC4` light, `#5A92DC` dark), validated with the dataviz palette script (lightness band, chroma floor,
   ≥3:1 vs card surface); `primary` was too low-chroma for a data mark. Text never takes the series colour; every
   chart has a hover/focus tooltip and an sr-only table. Metrics live in `src/viewmodels/metrics.ts` (tested).
 - Sheets and dialogs that represent a URL state (`?reserva=`, `?nuevo=1`) are driven by the route query.

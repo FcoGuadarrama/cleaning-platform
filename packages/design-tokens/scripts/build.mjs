@@ -30,15 +30,24 @@ function contrastRatio(a, b) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-for (const mode of ["light", "dark"]) {
-  const palette = brand.color?.[mode] ?? {};
-  for (const [fg, bg] of brand.contrast ?? []) {
+function checkContrast(label, palette, pairs) {
+  for (const [fg, bg] of pairs) {
     if (!palette[fg] || !palette[bg]) {
-      errors.push(`contrast pair ${fg}/${bg} references unknown color in ${mode}`);
+      errors.push(`contrast pair ${fg}/${bg} references unknown color in ${label}`);
       continue;
     }
     const ratio = contrastRatio(palette[fg], palette[bg]);
-    if (ratio < 4.5) errors.push(`${mode}: ${fg} on ${bg} = ${ratio.toFixed(2)} < 4.5 (WCAG AA)`);
+    if (ratio < 4.5) errors.push(`${label}: ${fg} on ${bg} = ${ratio.toFixed(2)} < 4.5 (WCAG AA)`);
+  }
+}
+
+// A surface (e.g. the web dashboard) overrides part of the palette; every base pair must still pass on it.
+const surfaces = Object.entries(brand.surfaces ?? {});
+for (const mode of ["light", "dark"]) {
+  const base = brand.color?.[mode] ?? {};
+  checkContrast(mode, base, brand.contrast ?? []);
+  for (const [name, surface] of surfaces) {
+    checkContrast(`${name} ${mode}`, { ...base, ...surface[mode] }, [...(brand.contrast ?? []), ...(surface.contrast ?? [])]);
   }
 }
 for (const [name, variants] of Object.entries(brand.components ?? {})) {
@@ -66,6 +75,16 @@ const scale = (prefix, map, unit = px) =>
   Object.entries(map)
     .map(([k, v]) => `  --${prefix}-${k}: ${unit(v)};`)
     .join("\n");
+// Dark follows the OS unless the page pins a theme with <html data-theme="light|dark">.
+const darkBlocks = (palette) => `@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+${vars(palette).replace(/^/gm, "  ")}
+  }
+}
+:root[data-theme="dark"] {
+${vars(palette)}
+}
+`;
 const shadows = Object.entries(brand.elevation)
   .map(([k, e]) => `  --shadow-${k}: 0 ${e.y}px ${e.blur}px rgb(0 0 0 / ${e.opacity});`)
   .join("\n");
@@ -79,12 +98,7 @@ ${scale("radius", brand.radius)}
 ${shadows}
   --touch-target: ${px(brand.minTouchTarget)};
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-${vars(brand.color.dark).replace(/^/gm, "  ")}
-  }
-}
-`;
+${darkBlocks(brand.color.dark)}`;
 
 // Tailwind 4 theme: utilities reference the runtime CSS variables so dark mode follows tokens.css.
 const tailwindTheme = `${header}@theme inline {
@@ -136,10 +150,23 @@ const preset = {
 };
 const presetCjs = `${header}module.exports = ${JSON.stringify(preset, null, 2)};\n`;
 
+// Surface overrides load after tokens.css; colors the base palette lacks also get Tailwind utilities.
+const surfaceCss = (surface) => {
+  const added = Object.keys(surface.light).filter((k) => !(k in brand.color.light));
+  return `${header}:root {
+${vars(surface.light)}
+}
+${darkBlocks(surface.dark)}@theme inline {
+${added.map((k) => `  --color-${k}: var(--color-${k});`).join("\n")}
+}
+`;
+};
+
 mkdirSync(dist, { recursive: true });
+for (const [name, surface] of surfaces) writeFileSync(join(dist, `${name}.css`), surfaceCss(surface));
 writeFileSync(join(dist, "tokens.css"), tokensCss);
 writeFileSync(join(dist, "tailwind-theme.css"), tailwindTheme);
 writeFileSync(join(dist, "native.js"), nativeJs);
 writeFileSync(join(dist, "native.d.ts"), nativeDts);
 writeFileSync(join(dist, "nativewind-preset.cjs"), presetCjs);
-console.log("design-tokens: generated dist/ (tokens.css, tailwind-theme.css, native.js, nativewind-preset.cjs)");
+console.log(`design-tokens: generated dist/ (tokens.css, tailwind-theme.css, native.js, nativewind-preset.cjs${surfaces.map(([n]) => `, ${n}.css`).join("")})`);

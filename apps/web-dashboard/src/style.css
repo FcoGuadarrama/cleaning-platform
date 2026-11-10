@@ -2,6 +2,19 @@
 @import "tw-animate-css";
 @import "@repo/design-tokens/tokens.css";
 @import "@repo/design-tokens/tailwind-theme.css";
+@import "@repo/design-tokens/dashboard.css";
+
+/* `dark:` matches the pinned theme, or the OS when the user picked "Sistema". */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
 
 /*
  * shadcn-vue reads its own variable names. Each one aliases a brand token so the
@@ -32,6 +45,13 @@
 
 :root {
   --radius: var(--radius-md);
+  color-scheme: light dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 @layer base {
@@ -101,9 +121,11 @@
   }
 }
 
+:root[data-theme="dark"] :is(.panel, .grouped) {
+  box-shadow: none;
+}
 @media (prefers-color-scheme: dark) {
-  .panel,
-  .grouped {
+  :root:not([data-theme="light"]) :is(.panel, .grouped) {
     box-shadow: none;
   }
 }

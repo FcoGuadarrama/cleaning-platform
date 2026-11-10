@@ -6,7 +6,11 @@
   "exports": {
     "./tokens.css": "./dist/tokens.css",
     "./tailwind-theme.css": "./dist/tailwind-theme.css",
-    "./native": { "types": "./dist/native.d.ts", "default": "./dist/native.js" },
+    "./dashboard.css": "./dist/dashboard.css",
+    "./native": {
+      "types": "./dist/native.d.ts",
+      "default": "./dist/native.js"
+    },
     "./nativewind-preset": "./dist/nativewind-preset.cjs",
     "./brand.json": "./src/brand.json"
   },
@@ -15,5 +19,7 @@
     "test": "node --test scripts/build.test.mjs",
     "typecheck": "node scripts/build.mjs"
   },
-  "devDependencies": { "ajv": "8.20.0" }
+  "devDependencies": {
+    "ajv": "8.20.0"
+  }
 }
