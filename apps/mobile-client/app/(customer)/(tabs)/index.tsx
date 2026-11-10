@@ -141,7 +141,7 @@ export default function Home() {
             ))}
           </List>
         </StateView>
-        <TextLink label="Conoce el plan mensual" soon />
+        <TextLink label="Conoce los planes mensuales" onPress={() => router.push("/(customer)/plans")} />
       </View>
     </Screen>
   );
