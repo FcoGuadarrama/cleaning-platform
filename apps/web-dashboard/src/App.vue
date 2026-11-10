@@ -1,11 +1,15 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { Toaster } from "@/components/ui/sonner";
 import AppShell from "./components/AppShell.vue";
 import { useSession } from "./stores/session";
+import { useTheme } from "./theme";
 
 const session = useSession();
 const route = useRoute();
+const theme = useTheme();
+const toastTheme = computed(() => (theme.state.value === "dark" ? "dark" : "light"));
 </script>
 
 <template>
@@ -15,5 +19,5 @@ const route = useRoute();
   >Saltar al contenido</a>
   <AppShell v-if="session.user && !route.meta.public" />
   <RouterView v-else />
-  <Toaster position="bottom-right" />
+  <Toaster position="bottom-right" :theme="toastTheme" />
 </template>

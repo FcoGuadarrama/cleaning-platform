@@ -22,7 +22,7 @@ test("generation is deterministic", () => {
   const a = run(() => {});
   const b = run(() => {});
   assert.equal(a.result.status, 0, a.result.stderr);
-  for (const f of ["tokens.css", "tailwind-theme.css", "native.js", "nativewind-preset.cjs"]) {
+  for (const f of ["tokens.css", "tailwind-theme.css", "dashboard.css", "native.js", "nativewind-preset.cjs"]) {
     assert.equal(readFileSync(join(a.dir, "dist", f), "utf8"), readFileSync(join(b.dir, "dist", f), "utf8"));
   }
 });
@@ -37,6 +37,17 @@ test("fails on insufficient contrast", () => {
   const { result } = run((b) => { b.color.light["text-muted"] = "#C7C7CC"; });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /text-muted on background/);
+});
+
+test("surface overrides are emitted and contrast-checked", () => {
+  const ok = run((b) => { b.surfaces.dashboard.light.primary = "#1F4E79"; });
+  assert.equal(ok.result.status, 0, ok.result.stderr);
+  const css = readFileSync(join(ok.dir, "dist/dashboard.css"), "utf8");
+  assert.match(css, /--color-primary: #1F4E79/);
+  assert.match(css, /@theme inline \{\n  --color-sidebar: var\(--color-sidebar\);/);
+  const bad = run((b) => { b.surfaces.dashboard.dark["sidebar-muted"] = "#30343C"; });
+  assert.equal(bad.result.status, 1);
+  assert.match(bad.result.stderr, /dashboard dark: sidebar-muted on sidebar/);
 });
 
 test("fails on schema violations", () => {

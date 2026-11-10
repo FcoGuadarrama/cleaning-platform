@@ -93,5 +93,60 @@
     "logo": "assets/logo.svg",
     "appIcon": "assets/icon.png",
     "splash": "assets/splash.png"
+  },
+  "surfaces": {
+    "dashboard": {
+      "light": {
+        "background": "#FFFFFF",
+        "surface": "#F3F4F6",
+        "surface-raised": "#FFFFFF",
+        "border": "#DFE2E8",
+        "text": "#171A21",
+        "text-muted": "#585F6C",
+        "primary": "#2D46C8",
+        "on-primary": "#FFFFFF",
+        "primary-soft": "#E9EDFC",
+        "accent": "#2D46C8",
+        "on-accent": "#FFFFFF",
+        "accent-soft": "#E9EDFC",
+        "success": "#1B7A47",
+        "on-success": "#FFFFFF",
+        "success-soft": "#E3F3E9",
+        "focus": "#2D46C8",
+        "disabled": "#ECEEF2",
+        "on-disabled": "#5B6270",
+        "chart": "#2F6BC4",
+        "sidebar": "#15181F",
+        "on-sidebar": "#ECEEF3",
+        "sidebar-muted": "#9AA1AE",
+        "sidebar-active": "#A9B7FF"
+      },
+      "dark": {
+        "background": "#0D0F13",
+        "surface": "#111318",
+        "surface-raised": "#181B21",
+        "border": "#2B2F38",
+        "text": "#ECEEF2",
+        "text-muted": "#A1A7B3",
+        "primary": "#8FA2FF",
+        "on-primary": "#0B1442",
+        "primary-soft": "#1B2248",
+        "accent": "#8FA2FF",
+        "on-accent": "#0B1442",
+        "accent-soft": "#1B2248",
+        "success": "#63CB91",
+        "on-success": "#062311",
+        "success-soft": "#12281B",
+        "focus": "#8FA2FF",
+        "disabled": "#1F2229",
+        "on-disabled": "#A4AAB5",
+        "chart": "#5A92DC",
+        "sidebar": "#0A0B0E",
+        "on-sidebar": "#ECEEF3",
+        "sidebar-muted": "#9AA1AE",
+        "sidebar-active": "#A9B7FF"
+      },
+      "contrast": [["on-sidebar", "sidebar"], ["sidebar-muted", "sidebar"], ["sidebar-active", "sidebar"]]
+    }
   }
 }

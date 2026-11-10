@@ -44,6 +44,17 @@
     },
     "minTouchTarget": { "type": "number", "minimum": 44 },
     "components": { "type": "object" },
-    "assets": { "type": "object", "additionalProperties": { "type": "string" } }
+    "assets": { "type": "object", "additionalProperties": { "type": "string" } },
+    "surfaces": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object", "required": ["light", "dark"], "additionalProperties": false,
+        "properties": {
+          "light": { "type": "object", "additionalProperties": { "$ref": "#/$defs/hex" } },
+          "dark": { "type": "object", "additionalProperties": { "$ref": "#/$defs/hex" } },
+          "contrast": { "$ref": "#/properties/contrast" }
+        }
+      }
+    }
   }
 }
