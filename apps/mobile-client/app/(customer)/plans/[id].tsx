@@ -17,7 +17,7 @@ export default function PlanDetail() {
   return (
     <FlowScreen
       title={plan?.name ?? "Plan mensual"}
-      fallback="/(customer)/plans"
+      fallback="/(customer)/(tabs)/plans"
       footer={
         plan ? (
           <>

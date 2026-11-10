@@ -24,8 +24,10 @@ Admin configures monthly plans in the dashboard; customers see them in the app. 
 - Dashboard › Suscripciones: plan list, detail sheet (customer preview, monthly numbers, terms, previous versions),
   editor sheet with live numbers and customer preview. Hide has a Deshacer toast. Toasts stay clickable while a
   sheet is open (global fix in style.css).
-- Mobile: Inicio › "Conoce los planes mensuales" → plan list → plan detail with terms; "Contratar este plan" is
-  Próximamente. "Mi suscripción" in Cuenta stays Próximamente (no purchases exist).
+- Mobile: tab bar Inicio · Planes · Visitas · Cuenta. Inicio shows status only (next visit, or an empty card that
+  points to Planes first and to a single visit second). Planes lists the plans, then single services under
+  "¿Solo una vez?". Plan detail shows terms; "Contratar este plan" is Próximamente. "Mi suscripción" in Cuenta stays
+  Próximamente (no purchases exist).
 
 ## Out of scope
 Purchase, accepted-terms snapshot per purchase, cycles, renewal, Stripe checkout, weekday/cleaner selection.

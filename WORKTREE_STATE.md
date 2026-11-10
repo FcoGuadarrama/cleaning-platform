@@ -1,7 +1,7 @@
 # WORKTREE STATE & HANDOFF LOG
 - **Feature:** subscription plans catalog (docs/tasks/006-subscription-plans.md)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-10T21:09:59Z
+- **Last Updated:** 2026-11-10T21:19:03Z
 - **Branch / Worktree:** feature/suscripciones (main worktree), from origin/main ab48e83
 - **Base SHA:** ab48e83
 - **Contract Version:** docs/contracts/openapi.json sha256 0aaba04a5c0edddf122237a85dafae174449fe5549fa11094016d10148e005ab
@@ -27,6 +27,10 @@ Found and fixed: toasts were not clickable while a sheet/dialog was open (body p
 
 - 2026-11-10T21:09:59Z: owner asked to favour subscriptions over single visits. Inicio now shows plans before "Visita suelta";
   dashboard nav lists Suscripciones before Servicios. Mobile tsc + dashboard typecheck clean; checked in browser.
+
+- 2026-11-10T21:19:03Z: Inicio is status-only; new Planes tab (plans + single services). Mobile tsc clean; browser: Inicio,
+  Planes, plan detail and back (scroll kept), no console errors. The empty "no visits" card was not seen in the browser
+  (test customer has a visit).
 
 ## Partial work
 - None.
