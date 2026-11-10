@@ -1,7 +1,7 @@
 # WORKTREE STATE & HANDOFF LOG
 - **Feature:** subscription plans catalog (docs/tasks/006-subscription-plans.md)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-10T20:56:10Z
+- **Last Updated:** 2026-11-10T21:09:59Z
 - **Branch / Worktree:** feature/suscripciones (main worktree), from origin/main ab48e83
 - **Base SHA:** ab48e83
 - **Contract Version:** docs/contracts/openapi.json sha256 0aaba04a5c0edddf122237a85dafae174449fe5549fa11094016d10148e005ab
@@ -24,6 +24,9 @@ Found and fixed: toasts were not clickable while a sheet/dialog was open (body p
   pnpm check:drift clean. Browser (cp_f4bbf0f0): created plan, new version with history, hide + Deshacer keeps the
   sheet open, customer app lists the latest version and shows terms; no console errors.
 - aislop not run: the global install's symlink is broken (dist/cli.js missing).
+
+- 2026-11-10T21:09:59Z: owner asked to favour subscriptions over single visits. Inicio now shows plans before "Visita suelta";
+  dashboard nav lists Suscripciones before Servicios. Mobile tsc + dashboard typecheck clean; checked in browser.
 
 ## Partial work
 - None.

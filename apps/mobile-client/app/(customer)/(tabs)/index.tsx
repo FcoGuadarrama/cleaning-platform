@@ -8,6 +8,7 @@ import { BOOKING_LABELS, BOOKING_TONES, formatDuration, formatMoney, formatClock
 import { Icon } from "../../../src/icons";
 import { HomeScene } from "../../../src/illustrations";
 import { Rise } from "../../../src/motion";
+import { PlanCard } from "../../../src/PlanCard";
 import { Screen } from "../../../src/screen";
 import { serviceIcon, UPCOMING } from "../../../src/visits";
 import { Text } from "../../../src/text";
@@ -16,6 +17,9 @@ import { Avatar, Button, Card, Hairline, List, Row, SectionTitle, SkeletonCard, 
 import { useResource } from "../../../src/useResource";
 
 type Booking = Schemas["BookingOut"];
+
+/** Plans shown on Inicio before "Ver todos los planes". */
+const HOME_PLANS = 2;
 
 function NextVisit({ booking, offering, staffName }: { booking: Booking; offering?: Schemas["OfferingOut"]; staffName?: string }) {
   return (
@@ -43,18 +47,10 @@ function NextVisit({ booking, offering, staffName }: { booking: Booking; offerin
   );
 }
 
-function FirstVisit({ returning }: { returning: boolean }) {
-  return (
-    <Card className="gap-1">
-      <Text className="text-lg font-semibold text-text">{returning ? "No tienes visitas próximas" : "Aún no tienes visitas"}</Text>
-      <Text className="text-sm text-text-muted">Elige un servicio aquí abajo y reserva con la persona que prefieras.</Text>
-    </Card>
-  );
-}
-
 export default function Home() {
   const bookings = useResource(() => api.GET("/bookings"));
   const offerings = useResource(() => api.GET("/offerings"));
+  const plans = useResource(() => api.GET("/subscription-plans"));
   const staff = useResource(() => api.GET("/staff"));
   const addresses = useAddresses();
   const home = addresses.data?.find((a) => a.is_default);
@@ -67,6 +63,7 @@ export default function Home() {
   function refresh() {
     void bookings.refresh();
     void offerings.refresh();
+    void plans.refresh();
     void staff.refresh();
     void addresses.refresh();
   }
@@ -104,21 +101,42 @@ export default function Home() {
         <HomeScene />
       </View>
 
-      <View className="gap-3">
-        <SectionTitle title="Tu próxima visita" />
-        <Rise>
-          {bookings.loading ? (
+      {bookings.loading || next ? (
+        <View className="gap-3">
+          <SectionTitle title="Tu próxima visita" />
+          <Rise>
+            {next ? <NextVisit booking={next} offering={offeringOf(next.offering_id)} staffName={staffName(next.staff_id)} /> : <SkeletonCard />}
+          </Rise>
+        </View>
+      ) : null}
+
+      {plans.loading || plans.data?.length ? (
+        <View className="gap-3">
+          <View className="gap-1">
+            <SectionTitle title="Plan mensual" />
+            <Text className="text-sm text-text-muted">La misma persona, los mismos días y un precio fijo al mes.</Text>
+          </View>
+          {plans.loading ? (
             <SkeletonCard />
-          ) : next ? (
-            <NextVisit booking={next} offering={offeringOf(next.offering_id)} staffName={staffName(next.staff_id)} />
           ) : (
-            <FirstVisit returning={sorted.length > 0} />
+            (plans.data ?? []).slice(0, HOME_PLANS).map((p, i) => (
+              <Rise key={p.id} index={i + 1}>
+                <PlanCard plan={p} featured={i === 0} />
+              </Rise>
+            ))
           )}
-        </Rise>
-      </View>
+          <TextLink
+            label={(plans.data?.length ?? 0) > HOME_PLANS ? "Ver todos los planes" : "Ver planes y condiciones"}
+            onPress={() => router.push("/(customer)/plans")}
+          />
+        </View>
+      ) : null}
 
       <View className="gap-1">
-        <SectionTitle title="¿Qué necesita tu casa?" />
+        <View className="gap-1">
+          <SectionTitle title="Visita suelta" />
+          <Text className="text-sm text-text-muted">Un servicio cuando lo necesites, sin plan.</Text>
+        </View>
         <StateView
           loading={offerings.loading}
           error={offerings.error}
@@ -141,7 +159,6 @@ export default function Home() {
             ))}
           </List>
         </StateView>
-        <TextLink label="Conoce los planes mensuales" onPress={() => router.push("/(customer)/plans")} />
       </View>
     </Screen>
   );

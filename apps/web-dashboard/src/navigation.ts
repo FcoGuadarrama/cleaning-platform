@@ -21,8 +21,8 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { to: "/liquidaciones", label: "Liquidaciones", icon: Wallet },
       { to: "/personal", label: "Personal", icon: Users },
-      { to: "/servicios", label: "Servicios", icon: Tag },
       { to: "/suscripciones", label: "Suscripciones", icon: Repeat },
+      { to: "/servicios", label: "Servicios", icon: Tag },
     ],
   },
 ];
