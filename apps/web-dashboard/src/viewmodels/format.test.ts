@@ -62,6 +62,7 @@ describe("booking rows", () => {
     currency: "MXN",
     address: "Colima 214, Roma Norte",
     address_id: null,
+    subscription_cycle_id: null,
   };
   const lookups = {
     staffName: () => "Ana",
@@ -75,5 +76,9 @@ describe("booking rows", () => {
   });
   it("falls back to the customer id when the customer list has not loaded", () => {
     expect(toBookingRow({ ...booking, customer_id: 9 }, lookups)).toMatchObject({ customerName: "Cliente #9", customerEmail: null });
+  });
+  it("labels a subscription visit as part of its plan instead of a $0 sale", () => {
+    const row = toBookingRow({ ...booking, offering_id: null, subscription_cycle_id: 4, price_minor: 0 }, lookups);
+    expect(row).toMatchObject({ offeringName: "Visita de plan mensual", amount: "En plan" });
   });
 });

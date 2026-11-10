@@ -4,7 +4,8 @@ import { BOOKING_STATUS, businessDay, formatDayCompact, formatDayShort, formatWe
 type Booking = Schemas["BookingOut"];
 type BookingStatus = Schemas["BookingStatus"];
 
-/** Statuses whose payment went through: they count as sales. */
+/** Statuses whose payment went through: single visits count as sales. A subscription visit is paid with its
+ * cycle (price 0 on the booking), so it counts toward bookings and hours but not toward sales or the ticket. */
 const PAID: ReadonlySet<BookingStatus> = new Set(["confirmed", "in_progress", "pending_review", "completed", "disputed"]);
 const VOID: ReadonlySet<BookingStatus> = new Set(["cancelled", "expired"]);
 
@@ -58,9 +59,11 @@ function totals(list: Booking[]): Totals {
   for (const b of list) {
     if (!VOID.has(b.status)) t.bookings += 1;
     if (PAID.has(b.status)) {
-      t.sales += b.price_minor;
-      t.paidCount += 1;
       t.minutes += (Date.parse(b.ends_at) - Date.parse(b.starts_at)) / 60_000;
+      if (b.subscription_cycle_id === null) {
+        t.sales += b.price_minor;
+        t.paidCount += 1;
+      }
     }
   }
   return t;
@@ -112,7 +115,7 @@ export function computeMetrics(all: Booking[], today: string, rangeId: RangeId):
   const staff = new Map<number, { sales: number; count: number }>();
   for (const { b } of current) {
     statusCounts.set(b.status, (statusCounts.get(b.status) ?? 0) + 1);
-    if (PAID.has(b.status)) {
+    if (PAID.has(b.status) && b.subscription_cycle_id === null) {
       const s = staff.get(b.staff_id) ?? { sales: 0, count: 0 };
       s.sales += b.price_minor;
       s.count += 1;

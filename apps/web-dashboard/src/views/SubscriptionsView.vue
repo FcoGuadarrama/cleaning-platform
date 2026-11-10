@@ -5,12 +5,15 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { toast } from "vue-sonner";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, errorMessage } from "../api";
 import AsyncState from "../components/AsyncState.vue";
+import ContractedSubscriptions from "../components/ContractedSubscriptions.vue";
 import PageHeader from "../components/PageHeader.vue";
 import PlanEditor from "../components/PlanEditor.vue";
 import PlanSheet from "../components/PlanSheet.vue";
 import StatusBadge from "../components/StatusBadge.vue";
+import { useDirectory } from "../stores/directory";
 import { useResource } from "../useResource";
 import { formatMoney } from "../viewmodels/format";
 import { daysLabel, formatDuration, planFamilies } from "../viewmodels/subscriptionPlans";
@@ -19,8 +22,19 @@ const route = useRoute();
 const router = useRouter();
 const plans = useResource(() => api.GET("/admin/subscription-plans"));
 const toggling = ref(false);
+const directory = useDirectory();
 
-onMounted(() => plans.refresh());
+onMounted(() => {
+  void plans.refresh();
+  void directory.subscriptions.refresh();
+});
+
+type Section = "planes" | "contratadas";
+const section = computed<Section>({
+  get: () => (route.query.vista === "contratadas" ? "contratadas" : "planes"),
+  set: (v) => void router.replace({ query: { vista: v === "planes" ? undefined : v } }),
+});
+const activeCount = computed(() => directory.subscriptions.data?.filter((s) => s.status === "active").length);
 
 const families = computed(() => planFamilies(plans.data ?? []));
 const visibleCount = computed(() => families.value.filter((f) => f.current.is_active).length);
@@ -64,12 +78,25 @@ async function setVisibility(plan: Schemas["AdminSubscriptionPlanOut"], isActive
 <template>
   <PageHeader
     title="Suscripciones"
-    description="Planes mensuales que los clientes ven en la app. Por ahora solo pueden consultarlos: la contratación se abre cuando conectemos el cobro."
+    description="Planes mensuales que los clientes ven y contratan en la app. El cobro todavía es de prueba (sandbox)."
   >
-    <Button @click="setQuery({ nuevo: '1' })"><Plus />Nuevo plan</Button>
+    <Button v-if="section === 'planes'" @click="setQuery({ nuevo: '1' })"><Plus />Nuevo plan</Button>
   </PageHeader>
 
+  <Tabs v-model="section" class="mb-5">
+    <TabsList aria-label="Sección de suscripciones">
+      <TabsTrigger value="planes" class="px-3">Planes</TabsTrigger>
+      <TabsTrigger value="contratadas" class="px-3">
+        Contratadas
+        <span v-if="activeCount !== undefined" class="text-xs text-text-muted tabular-nums" :aria-label="`${activeCount} activas`">{{ activeCount }}</span>
+      </TabsTrigger>
+    </TabsList>
+  </Tabs>
+
+  <ContractedSubscriptions v-if="section === 'contratadas'" />
+
   <AsyncState
+    v-else
     :loading="plans.loading"
     :error="plans.error"
     :empty="families.length === 0"

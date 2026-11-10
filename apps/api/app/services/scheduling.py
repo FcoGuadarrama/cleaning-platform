@@ -1,5 +1,6 @@
 """Availability and reservation logic. Authoritative overlap check happens under a staff row lock."""
 
+from collections.abc import Sequence
 from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy import Select, and_, or_, select, update
@@ -11,11 +12,15 @@ from app.core.timeutil import utcnow
 from app.models import (
     Booking,
     BookingStatus,
+    CycleStatus,
     Payment,
     PaymentStatus,
     Role,
     ServiceOffering,
     StaffProfile,
+    Subscription,
+    SubscriptionCycle,
+    SubscriptionStatus,
     User,
 )
 from app.services import addresses, audit
@@ -44,6 +49,46 @@ def is_business_day(day: date) -> bool:
     return day.weekday() < 5
 
 
+def day_window(day: date) -> tuple[datetime, datetime]:
+    """Opening and closing time of a working day, in the business time zone."""
+    settings = get_settings()
+    tz = settings.business_tz
+    return (
+        datetime.combine(day, time(settings.workday_start_hour), tz),
+        datetime.combine(day, time(settings.workday_end_hour), tz),
+    )
+
+
+def clashes(existing: Sequence[Booking], start: datetime, end: datetime) -> bool:
+    buffer = timedelta(minutes=get_settings().travel_buffer_minutes)
+    return any(b.starts_at < end + buffer and b.ends_at > start - buffer for b in existing)
+
+
+def free_starts(existing: Sequence[Booking], day: date, duration: timedelta, now: datetime) -> list[datetime]:
+    """Future start times (UTC) on `day` where a visit of `duration` clashes with none of `existing`."""
+    if not is_business_day(day):
+        return []
+    day_start, day_end = day_window(day)
+    step = timedelta(minutes=get_settings().slot_step_minutes)
+    starts: list[datetime] = []
+    cursor = day_start
+    while cursor + duration <= day_end:
+        if cursor > now and not clashes(existing, cursor, cursor + duration):
+            starts.append(cursor.astimezone(UTC))
+        cursor += step
+    return starts
+
+
+async def blocking_bookings(
+    session: AsyncSession, staff_id: int, start: datetime, end: datetime, *, lock: bool = False
+) -> Sequence[Booking]:
+    """The staff member's bookings that block any visit inside [start, end), travel buffer included."""
+    stmt = _overlapping(staff_id, start, end, utcnow()).order_by(Booking.starts_at)
+    if lock:
+        stmt = stmt.with_for_update()
+    return (await session.execute(stmt)).scalars().all()
+
+
 async def get_active_staff(session: AsyncSession, staff_id: int, *, lock: bool = False) -> StaffProfile:
     stmt = select(StaffProfile).where(StaffProfile.id == staff_id, StaffProfile.is_active.is_(True))
     if lock:
@@ -64,45 +109,23 @@ async def get_active_offering(session: AsyncSession, offering_id: int) -> Servic
 async def availability(
     session: AsyncSession, staff_id: int, offering_id: int, day: date
 ) -> list[tuple[datetime, datetime]]:
-    settings = get_settings()
     await get_active_staff(session, staff_id)
     offering = await get_active_offering(session, offering_id)
     if not is_business_day(day):
         return []
-    tz = settings.business_tz
-    day_start = datetime.combine(day, time(settings.workday_start_hour), tz)
-    day_end = datetime.combine(day, time(settings.workday_end_hour), tz)
-    now = utcnow()
-    existing = (
-        (await session.execute(_overlapping(staff_id, day_start, day_end, now).order_by(Booking.starts_at)))
-        .scalars()
-        .all()
-    )
-    buffer = timedelta(minutes=settings.travel_buffer_minutes)
+    existing = await blocking_bookings(session, staff_id, *day_window(day))
     duration = timedelta(minutes=offering.duration_minutes)
-    step = timedelta(minutes=settings.slot_step_minutes)
-    slots: list[tuple[datetime, datetime]] = []
-    cursor = day_start
-    while cursor + duration <= day_end:
-        end = cursor + duration
-        clash = any(b.starts_at < end + buffer and b.ends_at > cursor - buffer for b in existing)
-        if cursor > now and not clash:
-            slots.append((cursor.astimezone(UTC), end.astimezone(UTC)))
-        cursor += step
-    return slots
+    return [(start, start + duration) for start in free_starts(existing, day, duration, utcnow())]
 
 
-def _validate_window(start: datetime, end: datetime) -> None:
-    settings = get_settings()
-    local_start = start.astimezone(settings.business_tz)
-    local_end = end.astimezone(settings.business_tz)
+def validate_window(start: datetime, end: datetime) -> None:
+    local_start = start.astimezone(get_settings().business_tz)
     if start <= utcnow():
         raise AppError(400, "start_in_past", "Start time must be in the future")
     if not is_business_day(local_start.date()):
         raise AppError(400, "not_business_day", "Services run Monday to Friday")
-    opens = datetime.combine(local_start.date(), time(settings.workday_start_hour), settings.business_tz)
-    closes = datetime.combine(local_start.date(), time(settings.workday_end_hour), settings.business_tz)
-    if local_start < opens or local_end > closes:
+    opens, closes = day_window(local_start.date())
+    if start < opens or end > closes:
         raise AppError(400, "outside_working_hours", "Outside working hours")
 
 
@@ -118,7 +141,7 @@ async def create_hold(
         address = await addresses.get_owned(session, customer, address_id)
         start = start.astimezone(UTC)
         end = start + timedelta(minutes=offering.duration_minutes)
-        _validate_window(start, end)
+        validate_window(start, end)
         now = utcnow()
         overlap = _overlapping(staff_id, start, end, now).limit(1).with_for_update()
         clash = (await session.execute(overlap)).first()
@@ -145,12 +168,40 @@ async def create_hold(
 
 
 async def expire_holds(session: AsyncSession) -> int:
+    """Releases lapsed holds: single-visit bookings, subscription visits, their cycle and, for a first
+    cycle, the subscription itself. Every update re-checks `held`, so a payment confirmed meanwhile is
+    never undone."""
     async with session.begin():
+        now = utcnow()
         result = await session.execute(
             update(Booking)
-            .where(Booking.status == BookingStatus.held, Booking.hold_expires_at <= utcnow())
+            .where(Booking.status == BookingStatus.held, Booking.hold_expires_at <= now)
             .values(status=BookingStatus.expired)
         )
+        lapsed = (
+            await session.execute(
+                select(SubscriptionCycle.id, SubscriptionCycle.subscription_id).where(
+                    SubscriptionCycle.status == CycleStatus.held, SubscriptionCycle.hold_expires_at <= now
+                )
+            )
+        ).all()
+        if lapsed:
+            await session.execute(
+                update(SubscriptionCycle)
+                .where(
+                    SubscriptionCycle.id.in_([c.id for c in lapsed]),
+                    SubscriptionCycle.status == CycleStatus.held,
+                )
+                .values(status=CycleStatus.expired)
+            )
+            await session.execute(
+                update(Subscription)
+                .where(
+                    Subscription.id.in_([c.subscription_id for c in lapsed]),
+                    Subscription.status == SubscriptionStatus.held,
+                )
+                .values(status=SubscriptionStatus.expired)
+            )
     return int(getattr(result, "rowcount", 0))
 
 
@@ -203,7 +254,13 @@ async def staff_profile_for(session: AsyncSession, user: User) -> StaffProfile:
 
 
 def visible_bookings_stmt(user: User, staff: StaffProfile | None) -> Select[Booking]:
+    """A lapsed subscription hold is listed only under its subscription; customers also see a pending one
+    there instead of as a pile of unpaid visits."""
     stmt = select(Booking).order_by(Booking.starts_at)
+    hidden = (
+        [BookingStatus.expired] if user.role == Role.admin else [BookingStatus.expired, BookingStatus.held]
+    )
+    stmt = stmt.where(or_(Booking.subscription_cycle_id.is_(None), Booking.status.not_in(hidden)))
     if user.role == Role.customer:
         return stmt.where(Booking.customer_id == user.id)
     if user.role == Role.staff:

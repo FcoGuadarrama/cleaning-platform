@@ -33,8 +33,20 @@ export function DayPicker({ days, selected, onSelect }: { days: string[]; select
   );
 }
 
-/** Open times in rows of three; null while loading. */
-export function SlotGrid({ slots, selected, onSelect, empty = "Sin horarios libres este día. Prueba con otro." }: { slots: Slot[] | null; selected?: string | null; onSelect: (iso: string) => void; empty?: string }) {
+/** Open times in rows of three; null while loading. `format` turns a slot's `starts_at` into its label. */
+export function SlotGrid({
+  slots,
+  selected,
+  onSelect,
+  empty = "Sin horarios libres este día. Prueba con otro.",
+  format = formatClock,
+}: {
+  slots: Slot[] | null;
+  selected?: string | null;
+  onSelect: (value: string) => void;
+  empty?: string;
+  format?: (value: string) => string;
+}) {
   if (slots === null)
     return (
       <View className="flex-row gap-2">
@@ -58,7 +70,7 @@ export function SlotGrid({ slots, selected, onSelect, empty = "Sin horarios libr
                 onPress={() => onSelect(s.starts_at)}
                 className={`min-h-12 flex-1 items-center justify-center rounded-md border active:opacity-80 ${on ? "border-primary bg-primary" : "border-border bg-background"}`}
               >
-                <Text className={`text-md font-medium ${on ? "text-on-primary" : "text-text"}`}>{formatClock(s.starts_at)}</Text>
+                <Text className={`text-md font-medium ${on ? "text-on-primary" : "text-text"}`}>{format(s.starts_at)}</Text>
               </Pressable>
             );
           })}

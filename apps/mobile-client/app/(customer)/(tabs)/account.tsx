@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { AccountScreen, AccountSection } from "../../../src/AccountScreen";
 import { useAddresses } from "../../../src/addresses";
 import { api } from "../../../src/api";
+import { SUBSCRIPTION_LABELS } from "../../../src/subscriptions";
 import { List, Row } from "../../../src/ui";
 import { useResource } from "../../../src/useResource";
 import { usualStaffId } from "../../../src/visits";
@@ -14,6 +15,8 @@ export default function CustomerAccount() {
   const addresses = useAddresses();
   const saved = addresses.data ?? [];
   const main = saved.find((a) => a.is_default);
+  const subscriptions = useResource(() => api.GET("/subscriptions"));
+  const plan = subscriptions.data?.find((s) => s.status === "active") ?? subscriptions.data?.[0];
 
   return (
     <AccountScreen>
@@ -36,7 +39,12 @@ export default function CustomerAccount() {
       </AccountSection>
       <AccountSection title="Pagos y plan">
         <List>
-          <Row icon="layers" title="Mi suscripción" subtitle="Plan mensual" soon />
+          <Row
+            icon="layers"
+            title="Mi suscripción"
+            subtitle={plan ? `${plan.plan_name} · ${SUBSCRIPTION_LABELS[plan.status].toLowerCase()}` : "Aún no tienes un plan"}
+            onPress={() => router.push("/(customer)/subscription")}
+          />
           <Row icon="card" title="Métodos de pago" soon />
           <Row icon="receipt" title="Recibos y facturas" soon />
         </List>

@@ -15,7 +15,11 @@ availability, sandbox payment, visit status, saved addresses (gap 7), "customer 
 
 ## 1. Subscription / monthly plan (screen 05, "Conoce el plan mensual", "Mi suscripción")
 - **Done (task 006):** versioned `SubscriptionPlan` catalog, admin view, customer list + detail with terms.
-  Decision 2 is settled (four visits per chosen weekday). Still missing below: purchase, cycles, renewal, checkout.
+  Decision 2 is settled (four visits per chosen weekday).
+- **Done (task 007):** contracting with sandbox checkout: `Subscription` with accepted-terms copy, `SubscriptionCycle`
+  (four weeks from the first visit), visits as bookings held together and confirmed by payment, "Mi suscripción",
+  admin list/detail. Still missing: renewal job and its charge, provisional replacement cleaner, pause/cancel, live
+  provider.
 - Design: 4 dated visits per cycle, same weekday, time and cleaner. Shows the dates before payment, renews
   automatically, and states "Sin quinta visita automática".
 - Blocked by: open decision 2 ("four monthly visits" vs "every selected weekday"; the design assumes four),

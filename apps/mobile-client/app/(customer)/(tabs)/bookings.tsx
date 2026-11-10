@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { api } from "../../../src/api";
 import { DateBlock } from "../../../src/DateBlock";
-import { BOOKING_LABELS, BOOKING_TONES, businessDayInstant, formatLongDay, formatMonthYear, formatMoney, formatRange, formatShortDay, sentenceCase, weekOf, ymdOf } from "../../../src/format";
+import { BOOKING_LABELS, BOOKING_TONES, businessDayInstant, formatLongDay, formatMonthYear, formatRange, formatShortDay, sentenceCase, weekOf, ymdOf } from "../../../src/format";
 import { Icon } from "../../../src/icons";
 import { Rise } from "../../../src/motion";
 import { Screen } from "../../../src/screen";
@@ -12,7 +12,7 @@ import { Text } from "../../../src/text";
 import { color } from "../../../src/theme";
 import { Avatar, Button, Callout, Card, Hairline, LargeTitle, List, Row, SectionTitle, SkeletonCard, StateView, StatusLine, TextLink, UnderlineTabs } from "../../../src/ui";
 import { useResource } from "../../../src/useResource";
-import { UPCOMING } from "../../../src/visits";
+import { UPCOMING, visitPrice, visitTitle } from "../../../src/visits";
 import { WeekStrip } from "../../../src/WeekStrip";
 
 type Booking = Schemas["BookingOut"];
@@ -28,7 +28,7 @@ function VisitCard({ booking, offering, staffName }: { booking: Booking; offerin
         <View className="w-px self-stretch bg-border" />
         <View className="flex-1 gap-0.5">
           <Text className="text-lg font-semibold text-text">{formatRange(booking.starts_at, booking.ends_at)}</Text>
-          {offering ? <Text className="text-sm text-text">{offering.name}</Text> : null}
+          {visitTitle(booking, offering) ? <Text className="text-sm text-text">{visitTitle(booking, offering)}</Text> : null}
           <Text className="text-sm text-text">{staffName ?? "Personal asignado"}</Text>
           <View className="pt-1">
             <StatusLine label={BOOKING_LABELS[booking.status]} tone={BOOKING_TONES[booking.status]} />
@@ -39,7 +39,7 @@ function VisitCard({ booking, offering, staffName }: { booking: Booking; offerin
       <View className="flex-row items-center gap-2">
         <Icon name="pin" size={18} color={color.text} strokeWidth={1.6} />
         <Text numberOfLines={1} className="flex-1 text-sm text-text">{booking.address}</Text>
-        <Text className="text-md font-semibold text-text">{formatMoney(booking.price_minor, booking.currency)}</Text>
+        <Text className="text-md font-semibold text-text">{visitPrice(booking)}</Text>
       </View>
       <View className="flex-row gap-3">
         <Button label="Ver detalle" variant="outline" className="flex-1" onPress={() => openVisit(booking)} />
@@ -55,7 +55,7 @@ function HistoryRow({ booking, offering }: { booking: Booking; offering?: Schema
       <DateBlock iso={booking.starts_at} size="sm" />
       <View className="flex-1 gap-1">
         <Text className="text-md font-semibold text-text">{formatRange(booking.starts_at, booking.ends_at)}</Text>
-        {offering ? <Text className="text-sm text-text-muted">{offering.name}</Text> : null}
+        {visitTitle(booking, offering) ? <Text className="text-sm text-text-muted">{visitTitle(booking, offering)}</Text> : null}
         <StatusLine label={BOOKING_LABELS[booking.status]} tone={BOOKING_TONES[booking.status]} />
       </View>
       <Icon name="arrow" size={20} color={color.text} strokeWidth={1.6} />
@@ -74,7 +74,7 @@ export default function Visits() {
   const sorted = [...(bookings.data ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const upcoming = sorted.filter((b) => UPCOMING.has(b.status));
   const history = sorted.filter((b) => !UPCOMING.has(b.status)).reverse();
-  const offeringOf = (id: number) => offerings.data?.find((o) => o.id === id);
+  const offeringOf = (id: number | null) => offerings.data?.find((o) => o.id === id);
   const staffName = (id: number) => staff.data?.find((s) => s.id === id)?.display_name;
 
   // Until the person picks a day, the strip opens on their next visit (or today).

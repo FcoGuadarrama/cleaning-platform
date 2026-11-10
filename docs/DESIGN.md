@@ -83,7 +83,9 @@ Screens use semantic tokens only; the token change also restyles the web dashboa
   sign-in use the same pieces.
 - **Not supported yet → "Próximamente":** designed features without backend are visible but cannot be tapped
   (`Soon`, the `soon` prop on `Row`/`Button`/`TextLink`). The full list, with the RFC/ADR each one needs, is in
-  `docs/rfc/brisa-feature-gaps.md`. Screen 05 (plan mensual) is the **Planes** tab (`app/(customer)/(tabs)/plans.tsx`); contracting is "Próximamente".
+  `docs/rfc/brisa-feature-gaps.md`. Screen 05 (plan mensual) is the **Planes** tab (`app/(customer)/(tabs)/plans.tsx`); plan detail → `subscribe.tsx`
+  (cleaner → weekdays, first visit, a time free on every visit → review with every date and the terms → sandbox pay)
+  → "Mi suscripción" (`subscription/index.tsx`). Plan visits read "Visita de tu plan" and "Incluida en tu plan".
   Owner, 2026-11-10: subscriptions over single visits, and Inicio shows only status. Inicio = next visit (or an empty
   card whose primary action is "Conoce los planes", single visit as a link); a "Tu plan" card joins it once purchases
   exist. Planes = plans (first one outlined), then "¿Solo una vez?" with the single services.

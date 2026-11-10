@@ -1,13 +1,13 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { Pressable, View } from "react-native";
 import { api } from "../../../src/api";
-import { BOOKING_LABELS, BOOKING_TONES, formatClock, formatMoney, formatRelativeDay, sentenceCase } from "../../../src/format";
+import { BOOKING_LABELS, BOOKING_TONES, formatClock, formatRelativeDay, sentenceCase } from "../../../src/format";
 import { Skeleton } from "../../../src/motion";
 import { FlowScreen } from "../../../src/screen";
 import { Text } from "../../../src/text";
 import { Avatar, Button, Callout, Hairline, InfoNote, List, Notice, Row, SectionTitle, SkeletonRows, Soon, StatusChip } from "../../../src/ui";
 import { useResource } from "../../../src/useResource";
-import { UPCOMING } from "../../../src/visits";
+import { isPlanVisit, UPCOMING, visitPrice, visitTitle } from "../../../src/visits";
 
 const SIDE_STATES: Record<string, string> = {
   cancelled: "Esta visita se canceló.",
@@ -44,7 +44,7 @@ export default function VisitDetail() {
               {sentenceCase(formatRelativeDay(b.starts_at))}, {formatClock(b.starts_at)}
             </Text>
             <Text className="text-md text-text">
-              {offering ? `${offering.name} · ` : ""}Hasta las {formatClock(b.ends_at)}
+              {visitTitle(b, offering) ? `${visitTitle(b, offering)} · ` : ""}Hasta las {formatClock(b.ends_at)}
             </Text>
           </View>
 
@@ -95,7 +95,11 @@ export default function VisitDetail() {
 
           <List>
             <Row icon="pin" title="Domicilio" subtitle={b.address} />
-            <Row icon="card" title="Total" value={formatMoney(b.price_minor, b.currency)} />
+            {isPlanVisit(b) ? (
+              <Row icon="layers" title="Plan mensual" value="Incluida" onPress={() => router.push("/(customer)/subscription")} />
+            ) : (
+              <Row icon="card" title="Total" value={visitPrice(b)} />
+            )}
             {upcoming ? <Row icon="calendar" title="Cambiar fecha" soon /> : null}
             {upcoming ? <Row icon="person" title="Solicitar reemplazo" soon /> : null}
           </List>

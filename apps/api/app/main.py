@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
 from app.core.errors import AppError, app_error_handler
-from app.routers import addresses, admin, auth, bookings, catalog, staff_self
+from app.routers import addresses, admin, auth, bookings, catalog, staff_self, subscriptions
 
 
 def _operation_id(route: APIRoute) -> str:
@@ -28,6 +28,7 @@ def create_app() -> FastAPI:
         catalog.router,
         addresses.router,
         bookings.router,
+        subscriptions.router,
         staff_self.router,
         admin.router,
     ):

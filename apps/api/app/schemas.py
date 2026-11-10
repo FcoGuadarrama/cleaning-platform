@@ -1,6 +1,6 @@
 """Pydantic transport models (the public contract). Kept separate from ORM models."""
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator
@@ -9,11 +9,13 @@ from app.models import (
     AttendanceKind,
     BookingStatus,
     CaptureStatus,
+    CycleStatus,
     EarningStatus,
     ExceptionStatus,
     PaymentStatus,
     Role,
     SettlementStatus,
+    SubscriptionStatus,
 )
 
 Money = Annotated[int, Field(ge=0, description="Amount in minor units (centavos)")]
@@ -208,7 +210,10 @@ class BookingOut(Out):
     id: int
     customer_id: int
     staff_id: int
-    offering_id: int
+    offering_id: Annotated[int | None, Field(description="Set for a single visit")]
+    subscription_cycle_id: Annotated[
+        int | None, Field(description="Set for a subscription visit; price_minor is 0, the cycle is charged")
+    ]
     starts_at: datetime
     ends_at: datetime
     status: BookingStatus
@@ -229,8 +234,11 @@ class BookingCancelOut(BaseModel):
 
 
 class PaymentOut(Out):
+    """Exactly one of booking_id and subscription_cycle_id is set."""
+
     id: int
-    booking_id: int
+    booking_id: int | None
+    subscription_cycle_id: int | None
     provider: str
     provider_ref: str
     status: PaymentStatus
@@ -245,6 +253,81 @@ class SandboxOutcomeRequest(Strict):
 class WebhookAck(BaseModel):
     received: bool
     duplicate: bool
+
+
+# contracted subscriptions
+Weekday = Annotated[int, Field(ge=0, le=4, description="0=Monday … 4=Friday")]
+
+
+class SubscriptionScheduleOut(BaseModel):
+    """The first cycle a choice of cleaner, weekdays and first visit gives. Advisory: the hold re-checks."""
+
+    plan_id: int
+    staff_id: int
+    timezone: str
+    starts_on: Annotated[date, Field(description="First visit; the cycle starts here")]
+    ends_on: Annotated[date, Field(description="Last day of the cycle (four weeks), inclusive")]
+    renews_on: Annotated[date, Field(description="Next cycle's first day: renewal and charge")]
+    visit_dates: list[date]
+    start_times: Annotated[list[time], Field(description="Local start times free on every visit date")]
+
+
+class SubscriptionCreateRequest(Strict):
+    plan_id: int
+    staff_id: int
+    address_id: Annotated[int, Field(description="One of the customer's saved addresses")]
+    weekdays: Annotated[list[Weekday], Field(min_length=1, max_length=5)]
+    starts_on: Annotated[date, Field(description="First visit; must fall on one of the weekdays")]
+    visit_start: Annotated[time, Field(description="Local start time, the same for every visit")]
+    accept_terms: Annotated[Literal[True], Field(description="The customer accepted the plan's terms")]
+
+    @field_validator("weekdays")
+    @classmethod
+    def _distinct(cls, value: list[int]) -> list[int]:
+        if len(set(value)) != len(value):
+            raise ValueError("weekdays must be different")
+        return sorted(value)
+
+
+class SubscriptionCycleOut(Out):
+    id: int
+    sequence: int
+    starts_on: date
+    ends_on: Annotated[date, Field(description="Last day of the cycle, inclusive")]
+    status: CycleStatus
+    hold_expires_at: datetime | None
+    price_minor: int
+    currency: str
+    visits: list[BookingOut]
+
+
+class SubscriptionOut(Out):
+    """A contracted plan with the price and terms copied when the customer accepted them."""
+
+    id: int
+    status: SubscriptionStatus
+    plan_id: int
+    plan_name: str
+    staff_id: int
+    weekdays: list[int]
+    visit_start: Annotated[time, Field(description="Local start time of every visit")]
+    address: Annotated[str, Field(description="Address text as it was when the plan was contracted")]
+    address_id: int | None
+    days_per_week: int
+    visits_per_cycle: int
+    visit_duration_minutes: int
+    price_minor: Annotated[int, Field(description="Accepted price per cycle")]
+    currency: str
+    terms: Annotated[str, Field(description="Accepted terms")]
+    terms_accepted_at: datetime
+    created_at: datetime
+    renews_on: Annotated[date | None, Field(description="Start of the next cycle while active")]
+    cycles: list[SubscriptionCycleOut]
+
+
+class AdminSubscriptionOut(SubscriptionOut):
+    customer_id: int
+    staff_earning_minor: Annotated[int, Field(description="Accepted cleaner pay per completed visit")]
 
 
 # attendance
