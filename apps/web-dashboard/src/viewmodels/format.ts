@@ -136,13 +136,13 @@ export const BOOKING_STATUS: Record<BookingStatus, { label: string; tone: Tone }
 };
 
 export const BOOKING_FILTERS = [
-  { id: "proximas", label: "Próximas", statuses: ["held", "confirmed"], soonestFirst: true },
-  { id: "en-curso", label: "En curso", statuses: ["in_progress"], soonestFirst: true },
-  { id: "revisar", label: "Por revisar", statuses: ["pending_review", "disputed"], soonestFirst: false },
-  { id: "completadas", label: "Completadas", statuses: ["completed"], soonestFirst: false },
-  { id: "canceladas", label: "Canceladas", statuses: ["cancelled", "expired"], soonestFirst: false },
-  { id: "todas", label: "Todas", statuses: Object.keys(BOOKING_STATUS), soonestFirst: false },
-] as const satisfies readonly { id: string; label: string; statuses: readonly string[]; soonestFirst: boolean }[];
+  { id: "proximas", label: "Próximas", statuses: ["held", "confirmed"] },
+  { id: "en-curso", label: "En curso", statuses: ["in_progress"] },
+  { id: "revisar", label: "Por revisar", statuses: ["pending_review", "disputed"] },
+  { id: "completadas", label: "Completadas", statuses: ["completed"] },
+  { id: "canceladas", label: "Canceladas", statuses: ["cancelled", "expired"] },
+  { id: "todas", label: "Todas", statuses: Object.keys(BOOKING_STATUS) },
+] as const satisfies readonly { id: string; label: string; statuses: readonly string[] }[];
 
 export type BookingFilterId = (typeof BOOKING_FILTERS)[number]["id"];
 
@@ -177,6 +177,7 @@ export interface BookingRow {
   endMinutes: number;
   startsAt: number;
   amount: string;
+  priceMinor: number;
   address: string;
   staffId: number;
   staffName: string;
@@ -203,6 +204,7 @@ export function toBookingRow(b: Schemas["BookingOut"], lookups: Lookups): Bookin
     endMinutes: businessDay(end) === day ? minutesIntoDay(end) : 24 * 60,
     startsAt: start.getTime(),
     amount: formatMoney(b.price_minor, b.currency),
+    priceMinor: b.price_minor,
     address: b.address,
     staffId: b.staff_id,
     staffName: lookups.staffName(b.staff_id),
