@@ -1,4 +1,4 @@
-import { ClipboardList, LayoutDashboard, MapPinOff, Tag, Users, Wallet } from "@lucide/vue";
+import { ClipboardList, LayoutDashboard, MapPinOff, Repeat, Tag, Users, Wallet } from "@lucide/vue";
 import type { Component } from "vue";
 
 export interface NavItem {
@@ -22,6 +22,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { to: "/liquidaciones", label: "Liquidaciones", icon: Wallet },
       { to: "/personal", label: "Personal", icon: Users },
       { to: "/servicios", label: "Servicios", icon: Tag },
+      { to: "/suscripciones", label: "Suscripciones", icon: Repeat },
     ],
   },
 ];
