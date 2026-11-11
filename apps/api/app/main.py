@@ -1,4 +1,5 @@
 import contextlib
+import logging
 import os
 from collections.abc import AsyncIterator
 
@@ -18,7 +19,9 @@ def _operation_id(route: APIRoute) -> str:
 
 @contextlib.asynccontextmanager
 async def _lifespan(_: FastAPI) -> AsyncIterator[None]:
-    """Background jobs (hold sweep, outbox dispatch, housekeeping) run next to the API."""
+    """Background jobs (hold sweep, outbox dispatch, housekeeping) run next to the API. Their INFO logs (and
+    the outbox's log channel) need a handler: uvicorn only configures its own loggers."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s %(message)s")
     tasks = jobs.start(get_settings())
     yield
     await jobs.stop(tasks)
