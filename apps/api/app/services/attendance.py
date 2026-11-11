@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.db import retry_on_lock_conflict
 from app.core.errors import AppError, conflict, not_found
 from app.core.timeutil import utcnow
 from app.models import (
@@ -48,6 +49,7 @@ def _validate_capture(req: AttendanceRequest) -> None:
         raise AppError(400, "gps_inconsistent", "Coordinates sent with a failed capture status")
 
 
+@retry_on_lock_conflict
 async def record_attendance(
     session: AsyncSession, staff_user: User, booking_id: int, kind: AttendanceKind, req: AttendanceRequest
 ) -> Attendance:
@@ -99,6 +101,7 @@ async def _insert_attendance(session: AsyncSession, attendance: Attendance) -> N
         raise conflict("attendance_exists", "Attendance already recorded") from exc
 
 
+@retry_on_lock_conflict
 async def record_manual(
     session: AsyncSession,
     admin: User,
@@ -170,6 +173,7 @@ async def _complete(session: AsyncSession, booking: Booking, actor_id: int) -> N
     audit.record(session, actor_id, "booking.completed", "booking", booking.id)
 
 
+@retry_on_lock_conflict
 async def resolve_exception(
     session: AsyncSession, admin: User, exception_id: int, approve: bool, note: str
 ) -> AttendanceException:

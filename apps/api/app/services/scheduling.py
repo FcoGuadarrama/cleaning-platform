@@ -7,6 +7,7 @@ from sqlalchemy import Select, and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.db import retry_on_lock_conflict
 from app.core.errors import AppError, conflict, forbidden, not_found
 from app.core.timeutil import utcnow
 from app.models import (
@@ -23,7 +24,8 @@ from app.models import (
     SubscriptionStatus,
     User,
 )
-from app.services import addresses, audit
+from app.schemas import BookingCreateRequest
+from app.services import addresses, audit, idempotency
 
 BLOCKING = (BookingStatus.confirmed, BookingStatus.in_progress, BookingStatus.pending_review)
 
@@ -129,17 +131,28 @@ def validate_window(start: datetime, end: datetime) -> None:
         raise AppError(400, "outside_working_hours", "Outside working hours")
 
 
+@retry_on_lock_conflict
 async def create_hold(
-    session: AsyncSession, customer: User, staff_id: int, offering_id: int, start: datetime, address_id: int
+    session: AsyncSession, customer: User, body: BookingCreateRequest, idempotency_key: str | None = None
 ) -> Booking:
-    """Single transaction: lock staff row → check overlaps → insert hold."""
+    """Single transaction: claim the idempotency key → lock staff row → check overlaps → insert hold."""
+    staff_id = body.staff_id
     async with session.begin():
-        # Lock first: under REPEATABLE READ the snapshot starts at the first read, and only
-        # locking reads see rows committed by the transaction that held the lock before us.
+        key = (
+            await idempotency.claim(session, customer, idempotency_key, "booking", body)
+            if idempotency_key
+            else None
+        )
+        if key is not None and key.resource_id is not None:
+            replayed = await session.get(Booking, key.resource_id)
+            assert replayed is not None
+            return replayed
+        # Lock before any plain read: under REPEATABLE READ the snapshot starts at the first plain read, so it
+        # then includes every booking committed by the transaction that held the lock before us.
         await get_active_staff(session, staff_id, lock=True)
-        offering = await get_active_offering(session, offering_id)
-        address = await addresses.get_owned(session, customer, address_id)
-        start = start.astimezone(UTC)
+        offering = await get_active_offering(session, body.offering_id)
+        address = await addresses.get_owned(session, customer, body.address_id)
+        start = body.starts_at.astimezone(UTC)
         end = start + timedelta(minutes=offering.duration_minutes)
         validate_window(start, end)
         now = utcnow()
@@ -163,28 +176,32 @@ async def create_hold(
         )
         session.add(booking)
         await session.flush()
+        if key is not None:
+            key.resource_id = booking.id
         audit.record(session, customer.id, "booking.hold_created", "booking", booking.id)
     return booking
 
 
+@retry_on_lock_conflict
 async def expire_holds(session: AsyncSession) -> int:
     """Releases lapsed holds: single-visit bookings, subscription visits, their cycle and, for a first
     cycle, the subscription itself. Every update re-checks `held`, so a payment confirmed meanwhile is
     never undone."""
     async with session.begin():
         now = utcnow()
+        # Cycles before their visits, the lock order of payments._confirm_cycle, so the two cannot deadlock.
+        lapsed = (
+            await session.execute(
+                select(SubscriptionCycle.id, SubscriptionCycle.subscription_id)
+                .where(SubscriptionCycle.status == CycleStatus.held, SubscriptionCycle.hold_expires_at <= now)
+                .with_for_update()
+            )
+        ).all()
         result = await session.execute(
             update(Booking)
             .where(Booking.status == BookingStatus.held, Booking.hold_expires_at <= now)
             .values(status=BookingStatus.expired)
         )
-        lapsed = (
-            await session.execute(
-                select(SubscriptionCycle.id, SubscriptionCycle.subscription_id).where(
-                    SubscriptionCycle.status == CycleStatus.held, SubscriptionCycle.hold_expires_at <= now
-                )
-            )
-        ).all()
         if lapsed:
             await session.execute(
                 update(SubscriptionCycle)
@@ -208,6 +225,7 @@ async def expire_holds(session: AsyncSession) -> int:
 CANCELLABLE = (BookingStatus.held, BookingStatus.confirmed)
 
 
+@retry_on_lock_conflict
 async def cancel(session: AsyncSession, admin: User, booking_id: int, reason: str) -> tuple[Booking, bool]:
     """Admin cancel of a held/confirmed booking. A captured payment is only flagged for refund here:
     refund execution and late-cancellation compensation are open product decisions."""

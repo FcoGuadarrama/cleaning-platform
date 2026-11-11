@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query
 
 from app.core.errors import ERROR_RESPONSES
-from app.deps import CustomerDep, SessionDep, UserDep
+from app.deps import CustomerDep, IdempotencyKeyHeader, SessionDep, UserDep
 from app.schemas import (
     PaymentOut,
     SubscriptionCreateRequest,
@@ -32,11 +32,15 @@ async def schedule(
 
 @router.post("/subscriptions", status_code=201, name="subscriptions_create_hold")
 async def create_hold(
-    body: SubscriptionCreateRequest, session: SessionDep, user: CustomerDep
+    body: SubscriptionCreateRequest,
+    session: SessionDep,
+    user: CustomerDep,
+    idempotency_key: IdempotencyKeyHeader = None,
 ) -> SubscriptionOut:
     """Holds every visit of the first cycle for the checkout TTL. 409 `visits_unavailable` lists the dates
-    that are taken (`details.dates`)."""
-    subscription_id = await contracting.create_hold(session, user, body)
+    that are taken (`details.dates`). A retry with the same `Idempotency-Key` returns the first attempt's
+    hold."""
+    subscription_id = await contracting.create_hold(session, user, body, idempotency_key)
     return await contracting.get_for_customer(session, user, subscription_id)
 
 

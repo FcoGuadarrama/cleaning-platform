@@ -1,34 +1,35 @@
 # WORKTREE STATE & HANDOFF LOG
-- **Feature:** staff app review — Servicios agenda; late earnings in an already-settled week could not be approved
+- **Feature:** 008 idempotent creates, lock-conflict retries, precise webhook dedupe (docs/tasks/008-idempotency-lock-retry.md)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-11T00:24:27Z
-- **Branch / Worktree:** fix/panel-personal-agenda (main worktree), from feature/contratar-suscripcion 3f1252d (= content merged as PR #10)
-- **Base SHA:** 3f1252d
-- **Contract Version:** docs/contracts/openapi.json — EarningsSummaryOut gains `settlements: SettlementOut[]`
-- **Database:** compose project cp_f4bbf0f0 (app + app_test at alembic 0005: settlements (staff_id, week_start) no longer unique)
+- **Last Updated:** 2026-11-11T14:55:53Z
+- **Branch / Worktree:** feature/idempotency-lock-retry (main worktree), from fix/panel-personal-agenda d435c29
+- **Base SHA:** d435c29
+- **Contract Version:** docs/contracts/openapi.json sha256 a8acac2d34d6e410a0075042d0233d681ef217ec7a34ea89c227bcb06b09e557
+- **Database:** compose project cp_f4bbf0f0 (app_test at alembic 0006: idempotency_keys; app DB not migrated yet)
 
 ## Microtask checklist
-- [x] 1. Review staff panel: API (/auth/me, /bookings, /me/earnings, /offerings) works for test+ana@test.com.
-- [x] 2. Servicios: Próximos / Historial tabs. Próximos = confirmed + in progress (next service card + agenda);
-      Historial = everything else, newest first. Before: one list of 62 rows, oldest (Sept) first, cancelled/expired mixed in.
-- [x] 3. Settlements: several per staff-week (migration 0005), summary lists them, dashboard pays the unpaid one from
-      server data (not session memory), approve enabled whenever earned_minor > 0; app Ganancias shows the week total.
-- [ ] 4. Visual check in the browser as a staff user (needs an owner login: auto mode blocks reading the demo password).
+- [x] 1. API: Idempotency-Key on POST /bookings and POST /subscriptions (table idempotency_keys, migration 0006).
+- [x] 2. API: retry_on_lock_conflict (1213/1205, 3 attempts, then 503 database_busy) on every single-transaction
+      write service; request user detached from the session; expire_holds locks cycles before visits.
+- [x] 3. API: webhook dedupe only on the WebhookEvent duplicate-key insert (savepoint); other failures propagate.
+- [x] 4. Contract exported, api-client schema regenerated.
+- [ ] 5. Mobile: send a per-body Idempotency-Key from book.tsx and subscribe.tsx.
+- [ ] 6. Docs (DOMAIN invariants, ADR note), app DB migration, rebuild stack.
 
 ## Immediate context / Handoff notes
-Staff screens: app/(staff)/(tabs)/{index,earnings,account}.tsx, app/(staff)/job/[id].tsx. Not implemented yet (by design,
-"Próximamente"): Soporte e incidencias, Notificaciones; earnings only current week; earnings rows read "Servicio #id".
-The mobile container has no bind mount and compose watch had stopped; the edited file was copied in with docker cp.
+Previous feature's handoff archived to docs/tasks/panel-personal-agenda/handoff.md (its microtask 4, a visual check
+as staff, is still open). pnpm is not on PATH in this shell: the client was regenerated with
+packages/api-client/node_modules/.bin/openapi-typescript (same args as the generate script).
 
 ## Verification
-- 2026-11-11T00:17:59Z: mobile tsc --noEmit clean; Expo web bundle rebuilt and contains the new tabs. Browser not exercised (no login).
-
-- 2026-11-11T00:24:27Z: pytest 51 passed (new: late booking in a settled week gets its own settlement); ruff/format/mypy clean;
-  alembic downgrade/upgrade + check clean on app_test; dashboard vue-tsc + vitest 30 passed; mobile tsc clean;
-  stack rebuilt (`docker compose ... up --build --detach --wait api web mobile`, volumes kept), app DB at 0005.
+- 2026-11-11T14:55:53Z: pytest 62 passed (11 new: tests/test_idempotency.py, tests/test_lock_retry.py incl. a real InnoDB deadlock
+  retried); ruff check/format clean; mypy app clean; alembic check on app_test clean.
 
 ## Partial work
-- None.
+- Modified or new files: apps/api (core/db.py, deps.py, models.py, routers, services, migration 0006, tests),
+  docs/contracts/openapi.json, packages/api-client/src/schema.d.ts, docs/tasks/008-*.md
+- Operations in progress: none
+- Blockers: none
 
 ## Exact next action
-- Owner logs in as a staff demo user to check Servicios visually; then PR (push/merge need owner approval).
+- Add apps/mobile-client/src/idempotency.ts and pass the header from book.tsx and subscribe.tsx.

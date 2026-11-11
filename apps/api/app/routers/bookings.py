@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Header, Request
 
 from app.core.errors import ERROR_RESPONSES
-from app.deps import CustomerDep, SessionDep, StaffDep, UserDep
+from app.deps import CustomerDep, IdempotencyKeyHeader, SessionDep, StaffDep, UserDep
 from app.models import AttendanceKind, Role
 from app.schemas import (
     AttendanceOut,
@@ -18,10 +18,14 @@ router = APIRouter(tags=["bookings"], responses=ERROR_RESPONSES)
 
 
 @router.post("/bookings", status_code=201, name="bookings_create_hold")
-async def create_hold(body: BookingCreateRequest, session: SessionDep, user: CustomerDep) -> BookingOut:
-    booking = await scheduling.create_hold(
-        session, user, body.staff_id, body.offering_id, body.starts_at, body.address_id
-    )
+async def create_hold(
+    body: BookingCreateRequest,
+    session: SessionDep,
+    user: CustomerDep,
+    idempotency_key: IdempotencyKeyHeader = None,
+) -> BookingOut:
+    """A retry with the same `Idempotency-Key` returns the hold the first attempt created."""
+    booking = await scheduling.create_hold(session, user, body, idempotency_key)
     return BookingOut.model_validate(booking)
 
 

@@ -3,10 +3,10 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.db import insert_unless_duplicate, retry_on_lock_conflict
 from app.core.errors import AppError, conflict, not_found
 from app.core.security import verify_signature
 from app.core.timeutil import utcnow
@@ -56,6 +56,7 @@ async def _pending_or_new(
     return payment
 
 
+@retry_on_lock_conflict
 async def start_checkout(session: AsyncSession, customer: User, booking_id: int) -> Payment:
     async with session.begin():
         booking = await get_visible_booking(session, customer, booking_id, lock=True)
@@ -86,6 +87,7 @@ async def _owned_subscription(
     return subscription
 
 
+@retry_on_lock_conflict
 async def start_subscription_checkout(session: AsyncSession, customer: User, subscription_id: int) -> Payment:
     """Charges the subscription's held cycle (the first one, while contracting)."""
     async with session.begin():
@@ -107,18 +109,18 @@ async def start_subscription_checkout(session: AsyncSession, customer: User, sub
         )
 
 
+@retry_on_lock_conflict
 async def handle_sandbox_webhook(session: AsyncSession, body: bytes, signature: str) -> bool:
-    """Returns True when the event was a replay. Signature is verified before parsing."""
+    """Returns True when the event was a replay. Signature is verified before parsing. Only the event-id
+    insert can mean "replay": any other failure rolls the whole event back, so a redelivery applies it."""
     if not verify_signature(body, signature, get_settings().sandbox_webhook_secret):
         raise AppError(400, "invalid_signature", "Invalid webhook signature")
     event: dict[str, Any] = json.loads(body)
-    try:
-        async with session.begin():
-            session.add(WebhookEvent(provider=sandbox.PROVIDER, event_id=str(event["id"]), payload=event))
-            await session.flush()
-            await _apply_event(session, event)
-    except IntegrityError:
-        return True
+    async with session.begin():
+        received = WebhookEvent(provider=sandbox.PROVIDER, event_id=str(event["id"]), payload=event)
+        if not await insert_unless_duplicate(session, received):
+            return True
+        await _apply_event(session, event)
     return False
 
 

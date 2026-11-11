@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.db import retry_on_lock_conflict
 from app.core.errors import AppError, not_found
 from app.core.timeutil import utcnow
 from app.models import (
@@ -31,7 +32,7 @@ from app.schemas import (
     SubscriptionOut,
     SubscriptionScheduleOut,
 )
-from app.services import addresses, audit
+from app.services import addresses, audit, idempotency
 from app.services.recurrence import cycle_dates, cycle_end
 from app.services.scheduling import (
     blocking_bookings,
@@ -95,11 +96,21 @@ async def schedule(
     )
 
 
-async def create_hold(session: AsyncSession, customer: User, body: SubscriptionCreateRequest) -> int:
+@retry_on_lock_conflict
+async def create_hold(
+    session: AsyncSession, customer: User, body: SubscriptionCreateRequest, idempotency_key: str | None = None
+) -> int:
     """One transaction under the cleaner's row lock (same order as single bookings): check every visit, then
     insert the subscription with a copy of the plan, its first cycle and one held booking per visit."""
     settings = get_settings()
     async with session.begin():
+        key = (
+            await idempotency.claim(session, customer, idempotency_key, "subscription", body)
+            if idempotency_key
+            else None
+        )
+        if key is not None and key.resource_id is not None:
+            return key.resource_id
         await get_active_staff(session, body.staff_id, lock=True)
         plan = await _visible_plan(session, body.plan_id)
         address = await addresses.get_owned(session, customer, body.address_id)
@@ -183,6 +194,8 @@ async def create_hold(session: AsyncSession, customer: User, body: SubscriptionC
             cycle_id=cycle.id,
             visits=len(visits),
         )
+        if key is not None:
+            key.resource_id = subscription.id
     return subscription.id
 
 
