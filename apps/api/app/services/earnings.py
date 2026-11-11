@@ -3,13 +3,12 @@
 from datetime import date
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, conflict, not_found
 from app.core.timeutil import utcnow
 from app.models import Earning, EarningStatus, Settlement, SettlementStatus, User
-from app.schemas import EarningOut, EarningsSummaryOut
+from app.schemas import EarningOut, EarningsSummaryOut, SettlementOut
 from app.services import audit
 
 
@@ -25,6 +24,17 @@ async def summary(session: AsyncSession, staff_id: int, week_start: date) -> Ear
         .scalars()
         .all()
     )
+    settlements = (
+        (
+            await session.execute(
+                select(Settlement)
+                .where(Settlement.staff_id == staff_id, Settlement.week_start == week_start)
+                .order_by(Settlement.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
     totals = {status: sum(e.amount_minor for e in rows if e.status == status) for status in EarningStatus}
     return EarningsSummaryOut(
         staff_id=staff_id,
@@ -34,6 +44,7 @@ async def summary(session: AsyncSession, staff_id: int, week_start: date) -> Ear
         approved_minor=totals[EarningStatus.approved],
         paid_minor=totals[EarningStatus.paid],
         items=[EarningOut.model_validate(e) for e in rows],
+        settlements=[SettlementOut.model_validate(s) for s in settlements],
     )
 
 
@@ -69,11 +80,10 @@ async def approve_week(session: AsyncSession, admin: User, staff_id: int, week_s
             status=SettlementStatus.approved,
             approved_by=admin.id,
         )
+        # A week can hold several settlements, one per approval, each covering what was earned since the last.
+        # The row locks above keep two concurrent approvals from settling the same earnings twice.
         session.add(settlement)
-        try:
-            await session.flush()
-        except IntegrityError as exc:
-            raise conflict("settlement_exists", "Week already settled for this staff member") from exc
+        await session.flush()
         for e in earnings:
             e.status, e.settlement_id = EarningStatus.approved, settlement.id
         audit.record(

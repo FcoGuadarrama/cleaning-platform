@@ -22,7 +22,9 @@
 - **Attendance**: check-in / check-out record with GPS evidence or an explicit capture failure.
 - **AttendanceException**: admin resolution of a failed/absent GPS capture (audit trail).
 - **Earning**: amount owed to staff for a completed booking (rate snapshot). Belongs to an ISO week (business tz).
-- **Settlement**: admin approval of a staff member's earnings for one ISO week. **Payout**: recorded transfer for a settlement.
+- **Settlement**: admin approval of a staff member's earnings for one ISO week. A week can hold several: each approval
+  covers what was earned since the last one (e.g. a booking completed after the week was approved).
+  **Payout**: recorded transfer for a settlement.
 - **AuditLog**: append-only actor/action/entity/payload record.
 
 ## States

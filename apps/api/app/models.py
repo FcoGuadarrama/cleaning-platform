@@ -13,6 +13,7 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -333,7 +334,8 @@ class AttendanceException(TimestampMixin, Base):
 
 class Settlement(TimestampMixin, Base):
     __tablename__ = "settlements"
-    __table_args__ = (UniqueConstraint("staff_id", "week_start"),)
+    # Not unique: a booking completed after its week was approved is settled by a further settlement.
+    __table_args__ = (Index("ix_settlements_staff_week", "staff_id", "week_start"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     staff_id: Mapped[int] = mapped_column(ForeignKey("staff_profiles.id"))
     week_start: Mapped[date] = mapped_column(Date)

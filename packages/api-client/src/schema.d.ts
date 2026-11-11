@@ -1072,6 +1072,8 @@ export interface components {
             items: components["schemas"]["EarningOut"][];
             /** Paid Minor */
             paid_minor: number;
+            /** Settlements */
+            settlements: components["schemas"]["SettlementOut"][];
             /** Staff Id */
             staff_id: number;
             /**
