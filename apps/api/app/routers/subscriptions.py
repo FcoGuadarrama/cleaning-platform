@@ -73,3 +73,9 @@ async def cancel(subscription_id: int, session: SessionDep, user: CustomerDep) -
     awaiting payment is dropped. 409 `subscription_not_cancellable` unless active and not yet cancelled."""
     await contracting.cancel(session, user, subscription_id)
     return await contracting.get_for_customer(session, user, subscription_id)
+
+
+@router.get("/subscriptions/{subscription_id}/payment", name="subscriptions_pending_payment")
+async def pending_payment(subscription_id: int, session: SessionDep, user: CustomerDep) -> PaymentOut:
+    """The pending payment of the held cycle (first one or a renewal). 404 if none."""
+    return payments.present(await payments.pending_payment(session, user, subscription_id=subscription_id))

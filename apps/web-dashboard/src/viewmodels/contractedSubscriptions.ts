@@ -7,18 +7,36 @@ type SubscriptionStatus = Schemas["SubscriptionStatus"];
 
 const WEEKDAYS_SHORT = ["Lun", "Mar", "Mié", "Jue", "Vie"];
 
-export const SUBSCRIPTION_STATUS: Record<SubscriptionStatus, { label: string; tone: Tone }> = {
+const SUBSCRIPTION_STATUS: Record<SubscriptionStatus, { label: string; tone: Tone }> = {
   active: { label: "Activa", tone: "success" },
   held: { label: "Pago pendiente", tone: "warning" },
   expired: { label: "Apartado vencido", tone: "neutral" },
+  ended: { label: "Terminada", tone: "neutral" },
 };
+
+/** Badge: a cancelled plan stays active until its paid visits end; an ended one says why. */
+export function subscriptionStatus(s: Subscription): { label: string; tone: Tone } {
+  if (s.status === "active" && s.cancelled_at) return { label: "Cancela al cierre", tone: "warning" };
+  if (s.status === "active" && pendingRenewal(s)) return { label: "Renovación sin pagar", tone: "warning" };
+  if (s.status === "ended") return { label: s.end_reason === "unpaid" ? "Terminada sin pago" : "Cancelada", tone: "neutral" };
+  return SUBSCRIPTION_STATUS[s.status];
+}
+
+/** A renewal cycle created on its charge day and not paid yet; it lapses at its `hold_expires_at`. */
+export function pendingRenewal(s: Subscription): Cycle | undefined {
+  const last = s.cycles.at(-1);
+  return last && last.sequence > 1 && last.status === "held" ? last : undefined;
+}
 
 export const SUBSCRIPTION_FILTERS = [
   { id: "activas", label: "Activas", statuses: ["active"] },
   { id: "pendientes", label: "Pago pendiente", statuses: ["held"] },
+  { id: "terminadas", label: "Terminadas", statuses: ["ended"] },
   { id: "vencidas", label: "Apartados vencidos", statuses: ["expired"] },
-  { id: "todas", label: "Todas", statuses: ["active", "held", "expired"] },
+  { id: "todas", label: "Todas", statuses: ["active", "held", "ended", "expired"] },
 ] as const satisfies readonly { id: string; label: string; statuses: readonly SubscriptionStatus[] }[];
+
+export const PAYMENT_METHOD_LABEL: Record<Schemas["PaymentMethod"], string> = { card: "Tarjeta", spei: "Transferencia SPEI" };
 
 export type SubscriptionFilterId = (typeof SUBSCRIPTION_FILTERS)[number]["id"];
 
@@ -48,6 +66,7 @@ export interface SubscriptionRow {
   schedule: string;
   cycle: string;
   renews: string | null;
+  nextCharge: string | null;
   price: string;
   visitsDone: number;
   visitsTotal: number;
@@ -56,7 +75,7 @@ export interface SubscriptionRow {
 export function toSubscriptionRow(s: Subscription, lookups: Pick<Lookups, "staffName" | "customer">): SubscriptionRow {
   const customer = lookups.customer(s.customer_id);
   const cycle = currentCycle(s);
-  const meta = SUBSCRIPTION_STATUS[s.status];
+  const meta = subscriptionStatus(s);
   return {
     id: s.id,
     status: s.status,
@@ -69,6 +88,7 @@ export function toSubscriptionRow(s: Subscription, lookups: Pick<Lookups, "staff
     schedule: scheduleLabel(s.weekdays, s.visit_start),
     cycle: cycle ? cycleLabel(cycle) : "—",
     renews: s.renews_on ? formatDayShort(s.renews_on) : null,
+    nextCharge: s.next_charge_on ? formatDayShort(s.next_charge_on) : null,
     price: formatMoney(s.price_minor, s.currency),
     visitsDone: cycle?.visits.filter((v) => v.status === "completed").length ?? 0,
     visitsTotal: cycle?.visits.length ?? 0,

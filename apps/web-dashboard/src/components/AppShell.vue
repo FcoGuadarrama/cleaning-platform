@@ -27,6 +27,7 @@ const visibility = useDocumentVisibility();
 
 onMounted(() => {
   void directory.exceptions.refresh();
+  void directory.transfers.refresh();
 });
 
 useIntervalFn(() => {

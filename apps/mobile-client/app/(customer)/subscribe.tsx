@@ -9,6 +9,7 @@ import { api, errorMessage } from "../../src/api";
 import { businessDayInstant, formatDuration, formatLongDay, formatMoney } from "../../src/format";
 import { Icon } from "../../src/icons";
 import { IdempotencyKeys } from "../../src/idempotency";
+import { type Payment, type PaymentMethod, PaymentMethodPicker, paymentError, settle, TransferDetails } from "../../src/payment";
 import { daysLabel } from "../../src/plans";
 import { FlowScreen } from "../../src/screen";
 import { DayPicker, SlotGrid } from "../../src/SlotPicker";
@@ -132,6 +133,24 @@ function Activated({ name, subscription }: { name: string; subscription: Schemas
   );
 }
 
+/** SPEI: every visit of the first cycle is held while an agent confirms the transfer. */
+function AwaitingTransfer({ subscription, payment }: { subscription: Schemas["SubscriptionOut"]; payment: Payment }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View className="flex-1 gap-8 bg-background px-6" style={{ paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }}>
+      <View className="gap-2">
+        <Text accessibilityRole="header" className="text-2xl font-bold tracking-[-1px] text-text">Te apartamos tu plan</Text>
+        <Text className="text-md text-text-muted">Haz la transferencia y activamos tu plan en cuanto la confirmemos.</Text>
+      </View>
+      {payment.transfer ? <TransferDetails transfer={payment.transfer} payBy={subscription.cycles[0]?.hold_expires_at} /> : null}
+      <View className="gap-3">
+        <Button label="Ver mi suscripción" onPress={() => router.replace("/(customer)/subscription")} />
+        <Button label="Volver al inicio" variant="outline" onPress={() => router.replace("/(customer)/(tabs)")} />
+      </View>
+    </View>
+  );
+}
+
 export default function Subscribe() {
   const { planId } = useLocalSearchParams<{ planId: string }>();
   const plans = useResource(() => api.GET("/subscription-plans"));
@@ -152,7 +171,8 @@ export default function Subscribe() {
   const [accepted, setAccepted] = useState(false);
   const [subscription, setSubscription] = useState<Schemas["SubscriptionOut"] | null>(null);
   const [holdKeys] = useState(() => new IdempotencyKeys());
-  const [payment, setPayment] = useState<Schemas["PaymentOut"] | null>(null);
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [method, setMethod] = useState<PaymentMethod>("card");
   const [paid, setPaid] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -249,26 +269,29 @@ export default function Subscribe() {
       setSubscription(held);
     }
     let checkout = payment;
-    if (!checkout) {
-      const r = await api.POST("/subscriptions/{subscription_id}/checkout", { params: { path: { subscription_id: held.id } } });
+    if (!checkout || checkout.method !== method) {
+      const r = await api.POST("/subscriptions/{subscription_id}/checkout", { params: { path: { subscription_id: held.id } }, body: { method } });
       if (!r.data) {
         setBusy(false);
         if ((r.error as { code?: string } | undefined)?.code === "hold_expired") backToTimes();
-        setError(subscriptionError(r.error) ?? errorMessage(r.error));
+        setError(subscriptionError(r.error) ?? paymentError(r.error));
         return;
       }
       checkout = r.data;
       setPayment(checkout);
     }
-    const r = await api.POST("/payments/{payment_id}/sandbox-outcome", { params: { path: { payment_id: checkout.id } }, body: { outcome: "succeeded" } });
-    if (r.data?.status !== "succeeded") {
+    const result = await settle(checkout);
+    if (!result.payment) {
       setBusy(false);
-      setError(errorMessage(r.error));
+      setError(result.error ?? null);
       return;
     }
     const confirmed = await api.GET("/subscriptions/{subscription_id}", { params: { path: { subscription_id: held.id } } });
     setBusy(false);
-    if (confirmed.data?.status === "active") {
+    if (result.payment.method === "spei" && confirmed.data) {
+      setSubscription(confirmed.data);
+      setPaid(true);
+    } else if (confirmed.data?.status === "active") {
       setSubscription(confirmed.data);
       setPaid(true);
     } else {
@@ -277,6 +300,7 @@ export default function Subscribe() {
     }
   }
 
+  if (subscription && paid && payment?.method === "spei") return <AwaitingTransfer subscription={subscription} payment={payment} />;
   if (subscription && paid) return <Activated name={person?.display_name ?? ""} subscription={subscription} />;
 
   if (!plan)
@@ -400,7 +424,7 @@ export default function Subscribe() {
       footer={
         <>
           {!accepted ? <Text className="text-center text-sm text-text-muted">Acepta las condiciones para continuar</Text> : null}
-          <Button label={`Pagar ${formatMoney(plan.price_minor, plan.currency)}`} busy={busy} disabled={!ready} onPress={pay} />
+          <Button label={method === "spei" ? "Pagar por transferencia" : `Pagar ${formatMoney(plan.price_minor, plan.currency)}`} busy={busy} disabled={!ready} onPress={pay} />
         </>
       }
     >
@@ -445,7 +469,7 @@ export default function Subscribe() {
         <View className="gap-3">
           <SectionTitle title={`Tus ${schedule.visit_dates.length} visitas`} />
           <Text className="text-sm text-text-muted">
-            Del {formatYmd(schedule.starts_on)} al {formatYmd(schedule.ends_on)}, a las {formatTime(time)}. Se renueva el {formatLongDay(businessDayInstant(schedule.renews_on))}.
+            Del {formatYmd(schedule.starts_on)} al {formatYmd(schedule.ends_on)}, a las {formatTime(time)}. El día de tu última visita te avisamos que renovaremos el cobro al siguiente día hábil; puedes cancelar antes.
           </Text>
           <VisitDates dates={schedule.visit_dates} time={time} />
         </View>
@@ -476,9 +500,11 @@ export default function Subscribe() {
         <Text className="text-sm text-text-muted">Cubre las {plan.visits_per_cycle} visitas de estas cuatro semanas.</Text>
       </View>
 
-      <List>
-        <Row icon="card" title="Método de pago" subtitle="Pago de prueba (sandbox): no se hace ningún cobro real" soon />
-      </List>
+      <View className="gap-1">
+        <SectionTitle title="Método de pago" />
+        <PaymentMethodPicker value={method} onChange={setMethod} />
+        <Text className="text-sm text-text-muted">Las renovaciones se cobran con el mismo método.</Text>
+      </View>
 
       {error ? <Notice tone="danger" text={error} /> : null}
     </FlowScreen>

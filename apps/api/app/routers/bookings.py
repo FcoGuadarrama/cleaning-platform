@@ -55,6 +55,12 @@ async def checkout(
     return payments.present(await payments.start_checkout(session, user, booking_id, method))
 
 
+@router.get("/bookings/{booking_id}/payment", name="bookings_pending_payment")
+async def pending_payment(booking_id: int, session: SessionDep, user: CustomerDep) -> PaymentOut:
+    """The pending payment of a held booking, e.g. to show transfer instructions again. 404 if none."""
+    return payments.present(await payments.pending_payment(session, user, booking_id=booking_id))
+
+
 @router.post("/payments/{payment_id}/sandbox-outcome", name="payments_sandbox_outcome")
 async def sandbox_outcome(
     payment_id: int, body: SandboxOutcomeRequest, session: SessionDep, user: CustomerDep

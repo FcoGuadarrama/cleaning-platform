@@ -10,6 +10,7 @@ import { useDaySlots, useNextSlots } from "../../src/availability";
 import { formatAmount, formatClock, formatDuration, formatLongDay, formatMoney, formatRelativeDay, formatShortDay, nextBusinessDays } from "../../src/format";
 import { Icon } from "../../src/icons";
 import { IdempotencyKeys } from "../../src/idempotency";
+import { type Payment, type PaymentMethod, PaymentMethodPicker, paymentError, settle, TransferDetails } from "../../src/payment";
 import { HomeScene } from "../../src/illustrations";
 import { Skeleton } from "../../src/motion";
 import { FlowScreen } from "../../src/screen";
@@ -82,6 +83,26 @@ function NextSlotText({ slot }: { slot: { starts_at: string } | null | undefined
   );
 }
 
+/** SPEI: the visit is held while an agent confirms the transfer. */
+function AwaitingTransfer({ booking, payment }: { booking: Schemas["BookingOut"]; payment: Payment }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View className="flex-1 gap-8 bg-background px-6" style={{ paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }}>
+      <View className="gap-2">
+        <Text accessibilityRole="header" className="text-2xl font-bold tracking-[-1px] text-text">Te apartamos tu visita</Text>
+        <Text className="text-md text-text-muted">
+          {formatLongDay(booking.starts_at)}, a las {formatClock(booking.starts_at)}. Haz la transferencia y la confirmamos en cuanto la veamos.
+        </Text>
+      </View>
+      {payment.transfer ? <TransferDetails transfer={payment.transfer} payBy={booking.hold_expires_at} /> : null}
+      <View className="gap-3">
+        <Button label="Ver mi visita" onPress={() => router.replace({ pathname: "/(customer)/booking/[id]", params: { id: String(booking.id) } })} />
+        <Button label="Volver al inicio" variant="outline" onPress={() => router.replace("/(customer)/(tabs)")} />
+      </View>
+    </View>
+  );
+}
+
 function Confirmed({ name, booking }: { name: string; booking: Schemas["BookingOut"] }) {
   const insets = useSafeAreaInsets();
   return (
@@ -117,7 +138,8 @@ export default function Book() {
   const [choosingAddress, setChoosingAddress] = useState(false);
   const [booking, setBooking] = useState<Schemas["BookingOut"] | null>(null);
   const [holdKeys] = useState(() => new IdempotencyKeys());
-  const [payment, setPayment] = useState<Schemas["PaymentOut"] | null>(null);
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [method, setMethod] = useState<PaymentMethod>("card");
   const [paid, setPaid] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -191,22 +213,28 @@ export default function Book() {
       setBooking(held);
     }
     let checkout = payment;
-    if (!checkout) {
-      const r = await api.POST("/bookings/{booking_id}/checkout", { params: { path: { booking_id: held.id } } });
+    if (!checkout || checkout.method !== method) {
+      const r = await api.POST("/bookings/{booking_id}/checkout", { params: { path: { booking_id: held.id } }, body: { method } });
       if (!r.data) {
         setBusy(false);
-        setError(errorMessage(r.error));
+        setError(paymentError(r.error));
         return;
       }
       checkout = r.data;
       setPayment(checkout);
     }
-    const r = await api.POST("/payments/{payment_id}/sandbox-outcome", { params: { path: { payment_id: checkout.id } }, body: { outcome: "succeeded" } });
+    const result = await settle(checkout);
+    if (result.payment?.method === "spei") {
+      // The hold now runs 24 h: show the new deadline with the instructions.
+      const refreshed = await api.GET("/bookings/{booking_id}", { params: { path: { booking_id: held.id } } });
+      if (refreshed.data) setBooking(refreshed.data);
+    }
     setBusy(false);
-    if (r.data?.status === "succeeded") setPaid(true);
-    else setError(errorMessage(r.error));
+    if (result.payment) setPaid(true);
+    else setError(result.error ?? null);
   }
 
+  if (booking && paid && payment?.method === "spei") return <AwaitingTransfer booking={booking} payment={payment} />;
   if (booking && paid) return <Confirmed name={person?.display_name ?? ""} booking={booking} />;
 
   const back = step > 1 ? () => go((step - 1) as Step) : undefined;
@@ -300,7 +328,14 @@ export default function Book() {
       title={TITLES[3]}
       fallback="/(customer)/(tabs)"
       onBack={back}
-      footer={<Button label={total !== undefined ? `Pagar ${formatMoney(total, currency)}` : "Pagar"} busy={busy} disabled={!offering || !slot || !address} onPress={pay} />}
+      footer={
+        <Button
+          label={method === "spei" ? "Pagar por transferencia" : total !== undefined ? `Pagar ${formatMoney(total, currency)}` : "Pagar"}
+          busy={busy}
+          disabled={!offering || !slot || !address}
+          onPress={pay}
+        />
+      }
     >
       <StepHeading step={3} title={`Todo listo para\nrecibir a ${BRAND_NAME}.`} />
 
@@ -365,9 +400,10 @@ export default function Book() {
 
       <InfoNote text="Puedes cambiar la fecha sin cargo con al menos 24 h de anticipación." />
 
-      <List>
-        <Row icon="card" title="Método de pago" subtitle="Pago de prueba (sandbox): no se hace ningún cobro real" soon />
-      </List>
+      <View className="gap-1">
+        <SectionTitle title="Método de pago" />
+        <PaymentMethodPicker value={method} onChange={setMethod} />
+      </View>
 
       {error ? <Notice tone="danger" text={error} /> : null}
     </FlowScreen>

@@ -11,6 +11,7 @@ export const router = createRouter({
     { path: "/servicios", component: () => import("./views/OfferingsView.vue"), meta: { title: "Servicios" } },
     { path: "/suscripciones", component: () => import("./views/SubscriptionsView.vue"), meta: { title: "Suscripciones" } },
     { path: "/asistencia", component: () => import("./views/ExceptionsView.vue"), meta: { title: "Asistencia" } },
+    { path: "/transferencias", component: () => import("./views/TransfersView.vue"), meta: { title: "Transferencias" } },
     { path: "/liquidaciones", component: () => import("./views/SettlementsView.vue"), meta: { title: "Liquidaciones" } },
     { path: "/:rest(.*)*", redirect: "/" },
   ],

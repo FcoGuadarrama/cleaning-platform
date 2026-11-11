@@ -12,6 +12,7 @@ export const useDirectory = defineStore("directory", () => {
   const customers = useResource(() => api.GET("/admin/customers"));
   const exceptions = useResource(() => api.GET("/admin/attendance-exceptions"));
   const subscriptions = useResource(() => api.GET("/admin/subscriptions"));
+  const transfers = useResource(() => api.GET("/admin/transfers"));
 
   const staffById = computed(() => new Map((staff.data ?? []).map((s) => [s.id, s])));
   const offeringById = computed(() => new Map((offerings.data ?? []).map((o) => [o.id, o])));
@@ -36,7 +37,7 @@ export const useDirectory = defineStore("directory", () => {
 
   /** Polled while the panel is visible so bookings and plans contracted in the mobile app show up without a reload. */
   async function refreshLive(): Promise<void> {
-    const live = [bookings, customers, exceptions, subscriptions].filter((r) => r.loaded);
+    const live = [bookings, customers, exceptions, subscriptions, transfers].filter((r) => r.loaded);
     await Promise.all(live.map((r) => r.refresh({ background: true })));
   }
 
@@ -47,6 +48,7 @@ export const useDirectory = defineStore("directory", () => {
     customers,
     exceptions,
     subscriptions,
+    transfers,
     staffById,
     offeringById,
     customerById,

@@ -1,7 +1,7 @@
 # WORKTREE STATE & HANDOFF LOG
 - **Feature:** 011 subscription renewal, cancellation, card + SPEI (docs/tasks/011-renewal-spei.md)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-11T19:40:00Z
+- **Last Updated:** 2026-11-11T20:20:00Z
 - **Branch / Worktree:** feature/renewal-spei (main worktree), from feature/outbox-housekeeping f074e68
 - **Base SHA:** f074e68
 - **Contract Version:** docs/contracts/openapi.json exported (checkout method, cancel, admin transfers); client regenerated
@@ -18,8 +18,11 @@
 - [x] 5. Renewal job `app/services/renewals.py` (notice, charge, daily retry/reminder, end unpaid/cancelled);
       `Payment.charge_on` (one card attempt per business day). tests/test_renewals.py (7) incl. concurrent runs.
 - [x] 6. Contract + client regen (mobile/dashboard typecheck pending their microtasks).
-- [ ] 7. Mobile: method choice, SPEI instructions, Mi suscripción renewal/cancel/pay now.
-- [ ] 8. Dashboard: Transferencias queue; subscription statuses.
+- [x] 7. Mobile: method choice + SPEI instructions (book, subscribe, visit detail), Mi suscripción renewal notice,
+      next charge, pending renewal (pay by card / transfer details), cancel with in-place confirmation.
+      API: GET /bookings/{id}/payment and /subscriptions/{id}/payment.
+- [x] 8. Dashboard: Transferencias queue (confirm / reject, menu counter); subscription statuses (cancela al cierre,
+      renovación sin pagar, terminada), payment method and next charge in the sheet.
 - [ ] 9. Docs (PRODUCT confirmed decisions, ADR 0010, DOMAIN), rebuild, e2e.
 
 ## Immediate context / Handoff notes
@@ -30,6 +33,7 @@ edited before leaving the machine (added payments.charge_on); the local app DB w
 failed downgrade by hand (only this task's columns) and re-upgrading; 0008→0007→0008 round trip verified.
 
 ## Verification
+- 2026-11-11T20:18:00Z: mobile tsc clean; dashboard vue-tsc clean, vitest 33 passed, vite build ok; API test_spei 6 passed.
 - 2026-11-11T19:38:00Z: pytest 97 passed (13 new since last checkpoint); ruff/mypy clean; alembic check clean; a real
   double-charge race found by the concurrent-runs test and fixed (cleaner lock before any plain read).
 - 2026-11-11T18:28:00Z: pytest 84 passed (4 new); ruff/mypy clean; alembic check clean on app (0008).
@@ -39,4 +43,4 @@ failed downgrade by hand (only this task's columns) and re-upgrading; 0008→000
 - Blockers: none
 
 ## Exact next action
-- Microtask 7 (mobile), then 8 (dashboard).
+- Microtask 9: docs, rebuild the stack, e2e (card + SPEI + renewal + cancel) on the local stack.

@@ -290,6 +290,33 @@ async def _confirm_cycle(session: AsyncSession, payment: Payment) -> bool:
     return True
 
 
+async def pending_payment(
+    session: AsyncSession,
+    customer: User,
+    *,
+    booking_id: int | None = None,
+    subscription_id: int | None = None,
+) -> Payment:
+    """The customer's pending payment for a held booking or a subscription's held cycle (to show a transfer's
+    instructions again)."""
+    async with session.begin():
+        if booking_id is not None:
+            await get_visible_booking(session, customer, booking_id)
+            target = Payment.booking_id == booking_id
+        else:
+            assert subscription_id is not None
+            await _owned_subscription(session, customer, subscription_id)
+            held = select(SubscriptionCycle.id).where(
+                SubscriptionCycle.subscription_id == subscription_id,
+                SubscriptionCycle.status == CycleStatus.held,
+            )
+            target = Payment.subscription_cycle_id.in_(held)
+        payment = await session.scalar(select(Payment).where(target, Payment.status == PaymentStatus.pending))
+        if payment is None:
+            raise not_found("Pending payment")
+        return payment
+
+
 async def charge_saved_card(session: AsyncSession, payment_id: int) -> None:
     """Renewal charge of the card on file, outside any transaction. The sandbox answers with
     `SANDBOX_RENEWAL_OUTCOME` through the webhook path, as a provider would; a live provider charges a

@@ -3,7 +3,7 @@ import type { Schemas } from "@repo/api-client";
 import { computed } from "vue";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useDirectory } from "../stores/directory";
-import { currentCycle, cycleLabel, scheduleLabel, SUBSCRIPTION_STATUS } from "../viewmodels/contractedSubscriptions";
+import { currentCycle, cycleLabel, PAYMENT_METHOD_LABEL, pendingRenewal, scheduleLabel, subscriptionStatus } from "../viewmodels/contractedSubscriptions";
 import { BOOKING_STATUS, businessDay, formatDateTime, formatDayLong, formatDayShort, formatMoney, formatTime } from "../viewmodels/format";
 import { formatDuration } from "../viewmodels/subscriptionPlans";
 import StatusBadge from "./StatusBadge.vue";
@@ -25,13 +25,19 @@ const linkable = (visit: Schemas["BookingOut"]) => visit.status !== "expired";
     <SheetContent class="w-full gap-0 overflow-y-auto sm:max-w-md">
       <template v-if="s && customer">
         <SheetHeader class="gap-2 border-b border-hairline p-6 pr-12">
-          <StatusBadge :tone="SUBSCRIPTION_STATUS[s.status].tone" :label="SUBSCRIPTION_STATUS[s.status].label" />
+          <StatusBadge :tone="subscriptionStatus(s).tone" :label="subscriptionStatus(s).label" />
           <SheetTitle class="title-section">{{ customer.name }}</SheetTitle>
           <SheetDescription>{{ s.plan_name }} · contratada el {{ formatDateTime(s.created_at) }}</SheetDescription>
         </SheetHeader>
 
         <p v-if="s.status === 'held' && cycle?.hold_expires_at" class="border-b border-hairline bg-warning-soft px-6 py-3 text-warning">
-          Horarios apartados hasta las {{ formatTime(cycle.hold_expires_at) }}. Si el cliente no paga, se liberan.
+          Horarios apartados hasta el {{ formatDateTime(cycle.hold_expires_at) }}. Si el cliente no paga, se liberan.
+        </p>
+        <p v-if="pendingRenewal(s)?.hold_expires_at" class="border-b border-hairline bg-warning-soft px-6 py-3 text-warning">
+          La renovación no está pagada. Si no se paga antes del {{ formatDateTime(pendingRenewal(s)!.hold_expires_at!) }}, la suscripción termina y la persona queda libre.
+        </p>
+        <p v-if="s.status === 'active' && s.cancelled_at" class="border-b border-hairline bg-muted px-6 py-3 text-muted-foreground">
+          El cliente canceló el {{ formatDateTime(s.cancelled_at) }}. No se renueva; termina al cierre del ciclo pagado.
         </p>
 
         <section class="grid gap-3 p-6" aria-labelledby="subscription-sheet-plan">
@@ -43,6 +49,12 @@ const linkable = (visit: Schemas["BookingOut"]) => visit.status !== "expired";
             <dd class="text-right">{{ s.visits_per_cycle }} de {{ formatDuration(s.visit_duration_minutes) }}</dd>
             <dt class="text-muted-foreground">Pago a la persona</dt>
             <dd class="text-right tabular-nums">{{ formatMoney(s.staff_earning_minor, s.currency) }} por visita</dd>
+            <dt class="text-muted-foreground">Método de pago</dt>
+            <dd class="text-right">{{ PAYMENT_METHOD_LABEL[s.payment_method] }}</dd>
+            <template v-if="s.next_charge_on">
+              <dt class="text-muted-foreground">Próximo cargo</dt>
+              <dd class="text-right">{{ formatDayLong(s.next_charge_on) }}</dd>
+            </template>
             <dt class="text-muted-foreground">Persona</dt>
             <dd class="text-right">{{ directory.lookups.staffName(s.staff_id) }}</dd>
             <dt class="text-muted-foreground">Días y hora</dt>

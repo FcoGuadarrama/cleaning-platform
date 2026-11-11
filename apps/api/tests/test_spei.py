@@ -48,6 +48,8 @@ async def test_spei_checkout_holds_the_slot_a_day_and_gives_transfer_instruction
     assert 23.9 < _hours_left((await _booking(client, customer, booking["id"]))["hold_expires_at"]) <= 24
     again = await client.post(f"/bookings/{booking['id']}/checkout", headers=customer, json=SPEI)
     assert again.json()["id"] == payment["id"]
+    shown = await client.get(f"/bookings/{booking['id']}/payment", headers=customer)
+    assert shown.json()["transfer"] == payment["transfer"]
 
     card = await client.post(f"/bookings/{booking['id']}/checkout", headers=customer)
     assert card.status_code == 409 and card.json()["code"] == "payment_in_progress"
@@ -125,7 +127,11 @@ async def test_spei_for_a_plan_holds_every_visit_a_day_and_renews_by_spei(
         cycle_expiry = await session.scalar(select(SubscriptionCycle.hold_expires_at))
     assert expiries == {cycle_expiry} and 23.9 < _hours_left(cycle_expiry.isoformat()) <= 24
 
+    shown = await client.get(f"/subscriptions/{subscription['id']}/payment", headers=customer)
+    assert shown.json()["id"] == r.json()["id"]
     await client.post(f"/admin/payments/{r.json()['id']}/confirm-transfer", headers=admin, json={})
+    gone = await client.get(f"/subscriptions/{subscription['id']}/payment", headers=customer)
+    assert gone.status_code == 404
     mine = (await client.get(f"/subscriptions/{subscription['id']}", headers=customer)).json()
     assert (mine["status"], mine["payment_method"]) == ("active", "spei")
 
