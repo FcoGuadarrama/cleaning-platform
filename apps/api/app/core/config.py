@@ -42,6 +42,9 @@ def get_settings() -> Settings:
     provider = os.environ.get("PAYMENT_PROVIDER", "sandbox")
     if provider != "sandbox":
         raise RuntimeError("Only the sandbox payment provider is enabled until the provider decision is made")
+    renewal_outcome = os.environ.get("SANDBOX_RENEWAL_OUTCOME", "succeeded")
+    if renewal_outcome not in ("succeeded", "failed"):
+        raise RuntimeError("SANDBOX_RENEWAL_OUTCOME must be succeeded or failed")
     channel = os.environ.get("NOTIFICATION_CHANNEL", "log")
     if channel != "log":
         raise RuntimeError("Only the log notification channel is enabled until the channel decision is made")
@@ -61,7 +64,7 @@ def get_settings() -> Settings:
         spei_clabe=os.environ.get("SPEI_CLABE", ""),
         spei_bank=os.environ.get("SPEI_BANK", ""),
         spei_beneficiary=os.environ.get("SPEI_BENEFICIARY", ""),
-        sandbox_renewal_outcome=os.environ.get("SANDBOX_RENEWAL_OUTCOME", "succeeded"),
+        sandbox_renewal_outcome=renewal_outcome,
         travel_buffer_minutes=_int("TRAVEL_BUFFER_MINUTES", 60),
         workday_start_hour=_int("WORKDAY_START_HOUR", 8),
         workday_end_hour=_int("WORKDAY_END_HOUR", 18),

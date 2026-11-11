@@ -330,6 +330,9 @@ class Payment(TimestampMixin, Base):
     )
     reviewed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     review_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    charge_on: Mapped[date | None] = mapped_column(
+        Date, nullable=True, comment="Business day of an automatic renewal charge: at most one a day"
+    )
 
 
 class WebhookEvent(TimestampMixin, Base):

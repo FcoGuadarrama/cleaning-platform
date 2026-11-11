@@ -12,9 +12,11 @@ from app.models import (
     CycleStatus,
     EarningStatus,
     ExceptionStatus,
+    PaymentMethod,
     PaymentStatus,
     Role,
     SettlementStatus,
+    SubscriptionEndReason,
     SubscriptionStatus,
 )
 
@@ -233,17 +235,55 @@ class BookingCancelOut(BaseModel):
     refund_required: bool
 
 
+class TransferInstructions(BaseModel):
+    """Where and how to send a SPEI transfer; the agent matches it by `reference`."""
+
+    clabe: str
+    bank: str
+    beneficiary: str
+    reference: Annotated[str, Field(description="Concept to write in the transfer")]
+    amount_minor: int
+    currency: str
+
+
 class PaymentOut(Out):
     """Exactly one of booking_id and subscription_cycle_id is set."""
 
     id: int
     booking_id: int | None
     subscription_cycle_id: int | None
+    method: PaymentMethod
     provider: str
     provider_ref: str
     status: PaymentStatus
     amount_minor: int
     currency: str
+    created_at: datetime
+    transfer: Annotated[TransferInstructions | None, Field(description="Set for a SPEI payment")] = None
+
+
+class CheckoutRequest(Strict):
+    method: Annotated[
+        PaymentMethod,
+        Field(description="card: paid at once. spei: holds the slot 24 h until an agent confirms it"),
+    ] = PaymentMethod.card
+
+
+class AdminTransferOut(PaymentOut):
+    customer_id: int
+    subscription_id: int | None
+    pay_by: Annotated[
+        datetime | None,
+        Field(description="When the hold lapses; null once it has (confirming then flags a refund)"),
+    ]
+
+
+class TransferConfirmRequest(Strict):
+    note: Annotated[str | None, Field(max_length=500)] = None
+
+
+class TransferRejectRequest(Strict):
+    note: Annotated[str, Field(min_length=3, max_length=500)]
 
 
 class SandboxOutcomeRequest(Strict):
@@ -321,7 +361,17 @@ class SubscriptionOut(Out):
     terms: Annotated[str, Field(description="Accepted terms")]
     terms_accepted_at: datetime
     created_at: datetime
-    renews_on: Annotated[date | None, Field(description="Start of the next cycle while active")]
+    renews_on: Annotated[date | None, Field(description="Start of the next cycle while it renews")]
+    renewal_notice_on: Annotated[
+        date | None, Field(description="Last visit day of the paid cycle: the renewal notice goes out")
+    ] = None
+    next_charge_on: Annotated[
+        date | None, Field(description="Business day the renewal is charged; cancel before it to stop it")
+    ] = None
+    payment_method: PaymentMethod
+    cancelled_at: Annotated[datetime | None, Field(description="Cancelled: ends after the paid cycles")]
+    ended_at: datetime | None
+    end_reason: SubscriptionEndReason | None
     cycles: list[SubscriptionCycleOut]
 
 

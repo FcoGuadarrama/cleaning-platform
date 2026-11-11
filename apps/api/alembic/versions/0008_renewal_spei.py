@@ -32,6 +32,15 @@ def upgrade() -> None:
     )
     op.add_column("payments", sa.Column("reviewed_at", mysql.DATETIME(fsp=6), nullable=True))
     op.add_column("payments", sa.Column("review_note", sa.String(length=500), nullable=True))
+    op.add_column(
+        "payments",
+        sa.Column(
+            "charge_on",
+            sa.Date(),
+            nullable=True,
+            comment="Business day of an automatic renewal charge: at most one a day",
+        ),
+    )
     op.create_foreign_key("fk_payments_reviewed_by_users", "payments", "users", ["reviewed_by"], ["id"])
     op.add_column(
         "subscriptions",
@@ -67,5 +76,5 @@ def downgrade() -> None:
     for column in ("end_reason", "ended_at", "cancelled_at", "payment_method"):
         op.drop_column("subscriptions", column)
     op.drop_constraint("fk_payments_reviewed_by_users", "payments", type_="foreignkey")
-    for column in ("review_note", "reviewed_at", "reviewed_by", "method"):
+    for column in ("charge_on", "review_note", "reviewed_at", "reviewed_by", "method"):
         op.drop_column("payments", column)

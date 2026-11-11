@@ -148,6 +148,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/payments/{payment_id}/confirm-transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin Confirm Transfer
+         * @description The deposit arrived: confirms the booking or cycle. Past its hold, it is flagged for refund.
+         */
+        post: operations["admin_confirm_transfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/payments/{payment_id}/reject-transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin Reject Transfer
+         * @description No matching deposit: the payment fails; the hold keeps running so the customer can transfer again.
+         */
+        post: operations["admin_reject_transfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/settlements": {
         parameters: {
             query?: never;
@@ -312,6 +352,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin List Transfers
+         * @description SPEI transfers awaiting an agent, oldest first.
+         */
+        get: operations["admin_list_transfers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -456,7 +516,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Bookings Checkout */
+        /**
+         * Bookings Checkout
+         * @description Card by default. SPEI keeps the hold 24 h and returns the transfer instructions; 409 `spei_unavailable`
+         *     until the business account is configured, `payment_in_progress` while the other method is pending.
+         */
         post: operations["bookings_checkout"];
         delete?: never;
         options?: never;
@@ -675,6 +739,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/subscriptions/{subscription_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Subscriptions Cancel
+         * @description No further charge; the paid visits stay (no refund) and the subscription ends after them. A renewal
+         *     awaiting payment is dropped. 409 `subscription_not_cancellable` unless active and not yet cancelled.
+         */
+        post: operations["subscriptions_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/subscriptions/{subscription_id}/checkout": {
         parameters: {
             query?: never;
@@ -684,7 +769,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Subscriptions Checkout */
+        /**
+         * Subscriptions Checkout
+         * @description Pays the held cycle (first one, or a renewal awaiting payment) and sets the method renewals use.
+         *     SPEI holds the first cycle 24 h; a renewal keeps its deadline.
+         */
         post: operations["subscriptions_checkout"];
         delete?: never;
         options?: never;
@@ -796,6 +885,11 @@ export interface components {
             /** Address Id */
             address_id: number | null;
             /**
+             * Cancelled At
+             * @description Cancelled: ends after the paid cycles
+             */
+            cancelled_at: string | null;
+            /**
              * Created At
              * Format: date-time
              */
@@ -808,8 +902,17 @@ export interface components {
             cycles: components["schemas"]["SubscriptionCycleOut"][];
             /** Days Per Week */
             days_per_week: number;
+            end_reason: components["schemas"]["SubscriptionEndReason"] | null;
+            /** Ended At */
+            ended_at: string | null;
             /** Id */
             id: number;
+            /**
+             * Next Charge On
+             * @description Business day the renewal is charged; cancel before it to stop it
+             */
+            next_charge_on?: string | null;
+            payment_method: components["schemas"]["PaymentMethod"];
             /** Plan Id */
             plan_id: number;
             /** Plan Name */
@@ -820,8 +923,13 @@ export interface components {
              */
             price_minor: number;
             /**
+             * Renewal Notice On
+             * @description Last visit day of the paid cycle: the renewal notice goes out
+             */
+            renewal_notice_on?: string | null;
+            /**
              * Renews On
-             * @description Start of the next cycle while active
+             * @description Start of the next cycle while it renews
              */
             renews_on: string | null;
             /**
@@ -892,6 +1000,41 @@ export interface components {
              * @description Visits per monthly cycle: four per chosen weekday
              */
             visits_per_cycle: number;
+        };
+        /** AdminTransferOut */
+        AdminTransferOut: {
+            /** Amount Minor */
+            amount_minor: number;
+            /** Booking Id */
+            booking_id: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /** Customer Id */
+            customer_id: number;
+            /** Id */
+            id: number;
+            method: components["schemas"]["PaymentMethod"];
+            /**
+             * Pay By
+             * @description When the hold lapses; null once it has (confirming then flags a refund)
+             */
+            pay_by: string | null;
+            /** Provider */
+            provider: string;
+            /** Provider Ref */
+            provider_ref: string;
+            status: components["schemas"]["PaymentStatus"];
+            /** Subscription Cycle Id */
+            subscription_cycle_id: number | null;
+            /** Subscription Id */
+            subscription_id: number | null;
+            /** @description Set for a SPEI payment */
+            transfer?: components["schemas"]["TransferInstructions"] | null;
         };
         /** AttendanceExceptionOut */
         AttendanceExceptionOut: {
@@ -1044,6 +1187,14 @@ export interface components {
          * @enum {string}
          */
         CaptureStatus: "captured" | "permission_denied" | "unavailable" | "network_error" | "admin_manual";
+        /** CheckoutRequest */
+        CheckoutRequest: {
+            /**
+             * @description card: paid at once. spei: holds the slot 24 h until an agent confirms it
+             * @default card
+             */
+            method?: components["schemas"]["PaymentMethod"];
+        };
         /**
          * CycleStatus
          * @enum {string}
@@ -1184,6 +1335,12 @@ export interface components {
             staff_earning_minor: number;
         };
         /**
+         * PaymentMethod
+         * @description Owner decision 2026-11-11: card and SPEI only. A SPEI transfer is confirmed by an agent.
+         * @enum {string}
+         */
+        PaymentMethod: "card" | "spei";
+        /**
          * PaymentOut
          * @description Exactly one of booking_id and subscription_cycle_id is set.
          */
@@ -1192,10 +1349,16 @@ export interface components {
             amount_minor: number;
             /** Booking Id */
             booking_id: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
             /** Currency */
             currency: string;
             /** Id */
             id: number;
+            method: components["schemas"]["PaymentMethod"];
             /** Provider */
             provider: string;
             /** Provider Ref */
@@ -1203,6 +1366,8 @@ export interface components {
             status: components["schemas"]["PaymentStatus"];
             /** Subscription Cycle Id */
             subscription_cycle_id: number | null;
+            /** @description Set for a SPEI payment */
+            transfer?: components["schemas"]["TransferInstructions"] | null;
         };
         /**
          * PaymentStatus
@@ -1373,6 +1538,11 @@ export interface components {
             visits: components["schemas"]["BookingOut"][];
         };
         /**
+         * SubscriptionEndReason
+         * @enum {string}
+         */
+        SubscriptionEndReason: "cancelled" | "unpaid";
+        /**
          * SubscriptionOut
          * @description A contracted plan with the price and terms copied when the customer accepted them.
          */
@@ -1385,6 +1555,11 @@ export interface components {
             /** Address Id */
             address_id: number | null;
             /**
+             * Cancelled At
+             * @description Cancelled: ends after the paid cycles
+             */
+            cancelled_at: string | null;
+            /**
              * Created At
              * Format: date-time
              */
@@ -1395,8 +1570,17 @@ export interface components {
             cycles: components["schemas"]["SubscriptionCycleOut"][];
             /** Days Per Week */
             days_per_week: number;
+            end_reason: components["schemas"]["SubscriptionEndReason"] | null;
+            /** Ended At */
+            ended_at: string | null;
             /** Id */
             id: number;
+            /**
+             * Next Charge On
+             * @description Business day the renewal is charged; cancel before it to stop it
+             */
+            next_charge_on?: string | null;
+            payment_method: components["schemas"]["PaymentMethod"];
             /** Plan Id */
             plan_id: number;
             /** Plan Name */
@@ -1407,8 +1591,13 @@ export interface components {
              */
             price_minor: number;
             /**
+             * Renewal Notice On
+             * @description Last visit day of the paid cycle: the renewal notice goes out
+             */
+            renewal_notice_on?: string | null;
+            /**
              * Renews On
-             * @description Start of the next cycle while active
+             * @description Start of the next cycle while it renews
              */
             renews_on: string | null;
             /** Staff Id */
@@ -1551,7 +1740,7 @@ export interface components {
          * SubscriptionStatus
          * @enum {string}
          */
-        SubscriptionStatus: "held" | "active" | "expired";
+        SubscriptionStatus: "held" | "active" | "expired" | "ended";
         /** TokenOut */
         TokenOut: {
             /** Access Token */
@@ -1567,6 +1756,37 @@ export interface components {
              */
             token_type?: string;
             user: components["schemas"]["UserOut"];
+        };
+        /** TransferConfirmRequest */
+        TransferConfirmRequest: {
+            /** Note */
+            note?: string | null;
+        };
+        /**
+         * TransferInstructions
+         * @description Where and how to send a SPEI transfer; the agent matches it by `reference`.
+         */
+        TransferInstructions: {
+            /** Amount Minor */
+            amount_minor: number;
+            /** Bank */
+            bank: string;
+            /** Beneficiary */
+            beneficiary: string;
+            /** Clabe */
+            clabe: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Reference
+             * @description Concept to write in the transfer
+             */
+            reference: string;
+        };
+        /** TransferRejectRequest */
+        TransferRejectRequest: {
+            /** Note */
+            note: string;
         };
         /** UserOut */
         UserOut: {
@@ -2375,6 +2595,184 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OfferingOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_confirm_transfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_reject_transfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferRejectRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentOut"];
                 };
             };
             /** @description Bad Request */
@@ -3364,6 +3762,80 @@ export interface operations {
             };
         };
     };
+    admin_list_transfers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTransferOut"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     auth_login: {
         parameters: {
             query?: never;
@@ -4048,7 +4520,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CheckoutRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             201: {
@@ -5053,7 +5529,7 @@ export interface operations {
             };
         };
     };
-    subscriptions_checkout: {
+    subscriptions_cancel: {
         parameters: {
             query?: never;
             header?: never;
@@ -5063,6 +5539,95 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    subscriptions_checkout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CheckoutRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             201: {

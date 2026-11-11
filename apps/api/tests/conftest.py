@@ -12,6 +12,9 @@ from sqlalchemy import text
 
 os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
 os.environ.setdefault("SANDBOX_WEBHOOK_SECRET", "test-only-secret")
+os.environ.setdefault("SPEI_CLABE", "000000000000000000")
+os.environ.setdefault("SPEI_BANK", "Banco de prueba")
+os.environ.setdefault("SPEI_BENEFICIARY", "Cuenta de prueba")
 
 from app.core.config import get_settings  # noqa: E402
 from app.core.db import get_engine, get_sessionmaker  # noqa: E402

@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from datetime import UTC, date, datetime, time, timedelta
 
-from sqlalchemy import Select, or_, select, update
+from sqlalchemy import Select, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -21,6 +21,7 @@ from app.models import (
     StaffProfile,
     Subscription,
     SubscriptionCycle,
+    SubscriptionEndReason,
     SubscriptionStatus,
     User,
 )
@@ -175,35 +176,41 @@ async def create_hold(
 
 @retry_on_lock_conflict
 async def expire_holds(session: AsyncSession) -> int:
-    """Releases lapsed holds: single-visit bookings, subscription visits, their cycle and, for a first
-    cycle, the subscription itself. Returns the number of bookings released.
+    """Releases lapsed holds: single-visit bookings, and subscription cycles with their visits. A lapsed first
+    cycle expires its subscription; a lapsed renewal (unpaid by the day before its first visit, owner decision
+    2026-11-11) ends it and frees the cleaner. Returns the number of bookings released.
 
     Runs from the background sweeper and before every read that reports hold status, so it must stay cheap
     and out of the way of writers: candidates come from a plain read (no locks when nothing has lapsed), then
-    are locked by primary key with SKIP LOCKED. A row another transaction holds, such as a payment
-    confirming it, is left for the next sweep instead of waited on; with no range scan under a lock, no gap
-    is locked against new holds either. Rows are re-checked as `held` once locked, so a payment confirmed
-    meanwhile is never undone."""
+    are locked by primary key with SKIP LOCKED in the global order subscription, cycle, visits. A row another
+    transaction holds, such as a payment confirming it, is left for the next sweep instead of waited on; with
+    no range scan under a lock, no gap is locked against new holds either. Rows are re-checked once locked,
+    so a payment confirmed meanwhile is never undone."""
     async with session.begin():
         now = utcnow()
-        # Cycles before their visits, the lock order of payments._confirm_cycle.
-        lapsed_cycles = set(
-            await session.scalars(
-                select(SubscriptionCycle.id).where(
+        lapsed = list(
+            await session.execute(
+                select(SubscriptionCycle.id, SubscriptionCycle.subscription_id).where(
                     SubscriptionCycle.status == CycleStatus.held, SubscriptionCycle.hold_expires_at <= now
                 )
             )
         )
+        subscriptions = {
+            s.id: s
+            for s in await _lock_free(
+                session, select(Subscription).where(Subscription.id.in_({c.subscription_id for c in lapsed}))
+            )
+        }
         cycles = await _lock_free(
             session,
             select(SubscriptionCycle).where(
-                SubscriptionCycle.id.in_(lapsed_cycles),
+                SubscriptionCycle.id.in_([c.id for c in lapsed if c.subscription_id in subscriptions]),
                 SubscriptionCycle.status == CycleStatus.held,
                 SubscriptionCycle.hold_expires_at <= now,
             ),
         )
         # The visits of a cycle someone else holds stay with that cycle: confirming it confirms them too.
-        busy_cycles = lapsed_cycles - {c.id for c in cycles}
+        busy_cycles = {c.id for c in lapsed} - {c.id for c in cycles}
         lapsed_bookings = [
             b.id
             for b in await session.execute(
@@ -225,19 +232,32 @@ async def expire_holds(session: AsyncSession) -> int:
             booking.status = BookingStatus.expired
         for cycle in cycles:
             cycle.status = CycleStatus.expired
-        if cycles:
-            await session.execute(
-                update(Subscription)
-                .where(
-                    Subscription.id.in_([c.subscription_id for c in cycles]),
-                    Subscription.status == SubscriptionStatus.held,
-                )
-                .values(status=SubscriptionStatus.expired)
-            )
+            _lapse_subscription(session, subscriptions[cycle.subscription_id], cycle, now)
     return len(bookings)
 
 
-async def _lock_free[M: (Booking, SubscriptionCycle)](session: AsyncSession, stmt: Select[M]) -> list[M]:
+def _lapse_subscription(
+    session: AsyncSession, subscription: Subscription, cycle: SubscriptionCycle, now: datetime
+) -> None:
+    if cycle.sequence == 1 and subscription.status == SubscriptionStatus.held:
+        subscription.status = SubscriptionStatus.expired
+    elif cycle.sequence > 1 and subscription.status == SubscriptionStatus.active:
+        end_subscription(session, subscription, SubscriptionEndReason.unpaid, now)
+
+
+def end_subscription(
+    session: AsyncSession, subscription: Subscription, reason: SubscriptionEndReason, now: datetime
+) -> None:
+    """Deactivates a subscription: it stops blocking its cleaner. Call with the subscription locked."""
+    subscription.status = SubscriptionStatus.ended
+    subscription.end_reason, subscription.ended_at = reason, now
+    audit.record(session, None, "subscription.ended", "subscription", subscription.id, reason=reason.value)
+    outbox.publish(session, "subscription.ended", subscription.id, subscription_id=subscription.id)
+
+
+async def _lock_free[M: (Booking, Subscription, SubscriptionCycle)](
+    session: AsyncSession, stmt: Select[M]
+) -> list[M]:
     """The rows of `stmt` no other transaction holds, locked for this one."""
     return list(await session.scalars(stmt.with_for_update(skip_locked=True)))
 

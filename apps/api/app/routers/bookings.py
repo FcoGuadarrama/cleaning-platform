@@ -8,6 +8,7 @@ from app.schemas import (
     AttendanceRequest,
     BookingCreateRequest,
     BookingOut,
+    CheckoutRequest,
     PaymentOut,
     SandboxOutcomeRequest,
     WebhookAck,
@@ -45,8 +46,13 @@ async def get_booking(booking_id: int, session: SessionDep, user: UserDep) -> Bo
 
 
 @router.post("/bookings/{booking_id}/checkout", status_code=201, name="bookings_checkout")
-async def checkout(booking_id: int, session: SessionDep, user: CustomerDep) -> PaymentOut:
-    return PaymentOut.model_validate(await payments.start_checkout(session, user, booking_id))
+async def checkout(
+    booking_id: int, session: SessionDep, user: CustomerDep, body: CheckoutRequest | None = None
+) -> PaymentOut:
+    """Card by default. SPEI keeps the hold 24 h and returns the transfer instructions; 409 `spei_unavailable`
+    until the business account is configured, `payment_in_progress` while the other method is pending."""
+    method = (body or CheckoutRequest()).method
+    return payments.present(await payments.start_checkout(session, user, booking_id, method))
 
 
 @router.post("/payments/{payment_id}/sandbox-outcome", name="payments_sandbox_outcome")
@@ -55,7 +61,7 @@ async def sandbox_outcome(
 ) -> PaymentOut:
     """Sandbox only: emits a signed provider event through the real webhook path."""
     payment = await payments.simulate_outcome(session, user, payment_id, body.outcome.value)
-    return PaymentOut.model_validate(payment)
+    return payments.present(payment)
 
 
 @router.post("/payments/webhooks/sandbox", name="payments_sandbox_webhook")

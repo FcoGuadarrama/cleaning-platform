@@ -6,6 +6,7 @@ from fastapi import APIRouter, Query
 from app.core.errors import ERROR_RESPONSES
 from app.deps import CustomerDep, IdempotencyKeyHeader, SessionDep, UserDep
 from app.schemas import (
+    CheckoutRequest,
     PaymentOut,
     SubscriptionCreateRequest,
     SubscriptionOut,
@@ -56,6 +57,19 @@ async def get_subscription(subscription_id: int, session: SessionDep, user: Cust
 
 
 @router.post("/subscriptions/{subscription_id}/checkout", status_code=201, name="subscriptions_checkout")
-async def checkout(subscription_id: int, session: SessionDep, user: CustomerDep) -> PaymentOut:
-    payment = await payments.start_subscription_checkout(session, user, subscription_id)
-    return PaymentOut.model_validate(payment)
+async def checkout(
+    subscription_id: int, session: SessionDep, user: CustomerDep, body: CheckoutRequest | None = None
+) -> PaymentOut:
+    """Pays the held cycle (first one, or a renewal awaiting payment) and sets the method renewals use.
+    SPEI holds the first cycle 24 h; a renewal keeps its deadline."""
+    method = (body or CheckoutRequest()).method
+    payment = await payments.start_subscription_checkout(session, user, subscription_id, method)
+    return payments.present(payment)
+
+
+@router.post("/subscriptions/{subscription_id}/cancel", name="subscriptions_cancel")
+async def cancel(subscription_id: int, session: SessionDep, user: CustomerDep) -> SubscriptionOut:
+    """No further charge; the paid visits stay (no refund) and the subscription ends after them. A renewal
+    awaiting payment is dropped. 409 `subscription_not_cancellable` unless active and not yet cancelled."""
+    await contracting.cancel(session, user, subscription_id)
+    return await contracting.get_for_customer(session, user, subscription_id)

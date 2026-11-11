@@ -8,12 +8,13 @@ channel only logs the key and ids."""
 
 import asyncio
 import logging
-from datetime import timedelta
+from datetime import date, timedelta
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.db import insert_unless_duplicate
 from app.core.timeutil import utcnow
 from app.models import OutboxMessage, OutboxStatus
 
@@ -31,6 +32,14 @@ def publish(session: AsyncSession, topic: str, subject_id: int, /, **ids: int) -
     """Queues `topic` about `subject_id` in the caller's transaction. One message per topic and subject: the
     unique key turns a second publish of the same event into an integrity error, as for any duplicate."""
     session.add(OutboxMessage(key=f"{topic}:{subject_id}", topic=topic, payload=ids))
+
+
+async def publish_once(
+    session: AsyncSession, topic: str, subject_id: int, /, *, day: date | None = None, **ids: int
+) -> bool:
+    """For a job that may run many times: False when the event (for `day`, if given) was already queued."""
+    key = f"{topic}:{subject_id}" + (f":{day.isoformat()}" if day else "")
+    return await insert_unless_duplicate(session, OutboxMessage(key=key, topic=topic, payload=ids))
 
 
 async def dispatch(session: AsyncSession) -> int:

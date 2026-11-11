@@ -7,12 +7,12 @@ from collections.abc import Sequence
 from datetime import date, datetime, time, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import retry_on_lock_conflict
-from app.core.errors import AppError, not_found
+from app.core.errors import AppError, conflict, not_found
 from app.core.timeutil import utcnow
 from app.models import (
     Booking,
@@ -32,9 +32,9 @@ from app.schemas import (
     SubscriptionOut,
     SubscriptionScheduleOut,
 )
-from app.services import addresses, audit, commitments, idempotency
+from app.services import addresses, audit, commitments, idempotency, outbox
 from app.services.commitments import Pattern, clashes, local_instant
-from app.services.recurrence import cycle_dates, cycle_end
+from app.services.recurrence import cycle_dates, cycle_end, renewal_dates
 from app.services.scheduling import (
     blocking_bookings,
     day_window,
@@ -255,9 +255,22 @@ async def _present[S: SubscriptionOut](
     for s in subscriptions:
         own = cycles_by_subscription[s.id]
         paid = [c for c in own if c.status == CycleStatus.confirmed]
-        active = s.status == SubscriptionStatus.active and paid
-        renews_on = paid[-1].ends_on + timedelta(days=1) if active else None
-        out.append(model.model_validate({**_columns(s), "cycles": own, "renews_on": renews_on}))
+        renewing = s.status == SubscriptionStatus.active and s.cancelled_at is None and paid
+        renews_on = paid[-1].ends_on + timedelta(days=1) if renewing else None
+        # Before the next cycle exists: when the notice goes out and the charge is made.
+        upcoming = renewing and own[-1].status == CycleStatus.confirmed
+        notice_on, charge_on = renewal_dates(paid[-1].starts_on, s.weekdays) if upcoming else (None, None)
+        out.append(
+            model.model_validate(
+                {
+                    **_columns(s),
+                    "cycles": own,
+                    "renews_on": renews_on,
+                    "renewal_notice_on": notice_on,
+                    "next_charge_on": charge_on,
+                }
+            )
+        )
     return out
 
 
@@ -307,3 +320,51 @@ async def get_any(session: AsyncSession, subscription_id: int) -> AdminSubscript
         if row is None:
             raise not_found("Subscription")
         return (await _present(session, [row], AdminSubscriptionOut))[0]
+
+
+@retry_on_lock_conflict
+async def cancel(session: AsyncSession, customer: User, subscription_id: int) -> None:
+    """Owner decision 2026-11-11: no further charge; the paid visits stay and nothing is refunded; the
+    cleaner is free once the paid cycles end. A renewal still awaiting payment is dropped now (a late payment
+    for it is flagged for refund). Lock order: subscription, cycle, visits."""
+    async with session.begin():
+        subscription = await session.scalar(
+            select(Subscription)
+            .where(Subscription.id == subscription_id, Subscription.customer_id == customer.id)
+            .with_for_update()
+        )
+        if subscription is None:
+            raise not_found("Subscription")
+        if subscription.status != SubscriptionStatus.active or subscription.cancelled_at is not None:
+            raise conflict("subscription_not_cancellable", "Only an active subscription can be cancelled")
+        subscription.cancelled_at = utcnow()
+        unpaid = list(
+            await session.scalars(
+                select(SubscriptionCycle)
+                .where(
+                    SubscriptionCycle.subscription_id == subscription.id,
+                    SubscriptionCycle.status == CycleStatus.held,
+                )
+                .with_for_update()
+            )
+        )
+        for cycle in unpaid:
+            cycle.status = CycleStatus.expired
+        if unpaid:
+            await session.execute(
+                update(Booking)
+                .where(
+                    Booking.subscription_cycle_id.in_([c.id for c in unpaid]),
+                    Booking.status == BookingStatus.held,
+                )
+                .values(status=BookingStatus.expired)
+            )
+        audit.record(
+            session,
+            customer.id,
+            "subscription.cancelled",
+            "subscription",
+            subscription.id,
+            dropped_cycle_ids=[c.id for c in unpaid],
+        )
+        outbox.publish(session, "subscription.cancelled", subscription.id, subscription_id=subscription.id)

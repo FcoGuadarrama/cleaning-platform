@@ -32,3 +32,10 @@ def next_business_day(day: date) -> date:
     while not is_business_day(following):
         following += timedelta(days=1)
     return following
+
+
+def renewal_dates(starts_on: date, weekdays: list[int]) -> tuple[date, date]:
+    """Owner decision 2026-11-11: the renewal notice goes out on the cycle's last visit day, and the renewal
+    is charged on the next business day. Returns (notice day, charge day)."""
+    last_visit = cycle_dates(starts_on, weekdays)[-1]
+    return last_visit, next_business_day(last_visit)
