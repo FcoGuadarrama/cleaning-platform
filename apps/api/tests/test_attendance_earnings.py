@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from httpx import AsyncClient
 
 from app.services.attendance import week_start_for
-from tests.conftest import future_weekday, paid_booking
+from tests.conftest import future_weekday, hold, paid_booking
 
 GPS = {"capture_status": "captured", "latitude": 19.18, "longitude": -96.14, "accuracy_m": 12.0}
 
@@ -45,6 +45,38 @@ async def test_happy_path_completion_creates_earning_then_settle_and_pay(
         f"/admin/settlements/{s.json()['id']}/payout", headers=admin, json={"reference": "x"}
     )
     assert again.status_code == 409
+
+
+async def _complete(client: AsyncClient, staff: dict[str, str], bid: int) -> None:
+    for step in ("check-in", "check-out"):
+        r = await client.post(f"/bookings/{bid}/{step}", headers=staff, json={**GPS, "occurred_at": _now()})
+        assert r.status_code == 201, r.text
+
+
+async def test_booking_completed_after_its_week_was_settled_gets_its_own_settlement(
+    client: AsyncClient, admin, customer, world
+) -> None:
+    staff, week = world["staff"], week_start_for(future_weekday()).isoformat()
+    first = await paid_booking(client, customer, world)
+    await _complete(client, staff, first)
+    body = {"staff_id": world["staff_id"], "week_start": week}
+    s1 = (await client.post("/admin/settlements", headers=admin, json=body)).json()
+    await client.post(f"/admin/settlements/{s1['id']}/payout", headers=admin, json={"reference": "TRF-1"})
+
+    late = (await hold(client, customer, world, future_weekday(hour=15))).json()
+    payment = (await client.post(f"/bookings/{late['id']}/checkout", headers=customer)).json()
+    await client.post(f"/payments/{payment['id']}/sandbox-outcome", headers=customer, json={})
+    await _complete(client, staff, late["id"])
+
+    s2 = await client.post("/admin/settlements", headers=admin, json=body)
+    assert s2.status_code == 201 and s2.json()["total_minor"] == 4000 and s2.json()["id"] != s1["id"]
+    again = await client.post("/admin/settlements", headers=admin, json=body)
+    assert again.status_code == 409 and again.json()["code"] == "nothing_to_settle"
+
+    summary = (await client.get("/me/earnings", headers=staff, params={"week_start": week})).json()
+    assert (summary["earned_minor"], summary["approved_minor"], summary["paid_minor"]) == (0, 4000, 4000)
+    settled = [(s["id"], s["status"]) for s in summary["settlements"]]
+    assert settled == [(s1["id"], "paid"), (s2.json()["id"], "approved")]
 
 
 async def test_failed_gps_is_never_recorded_as_success(client: AsyncClient, admin, customer, world) -> None:

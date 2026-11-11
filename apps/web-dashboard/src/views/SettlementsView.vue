@@ -20,7 +20,6 @@ const directory = useDirectory();
 const thisWeek = mondayOf(new Date());
 const week = ref(thisWeek);
 const summaries = ref<Record<number, Schemas["EarningsSummaryOut"]>>({});
-const settlements = ref<Record<number, Schemas["SettlementOut"]>>({});
 const loadingSummaries = ref(false);
 const busyId = ref<number | null>(null);
 const error = ref<string | null>(null);
@@ -47,10 +46,7 @@ async function load(): Promise<void> {
 }
 
 onMounted(load);
-watch(week, () => {
-  settlements.value = {};
-  void loadSummaries();
-});
+watch(week, () => void loadSummaries());
 
 const currency = computed(() => Object.values(summaries.value)[0]?.currency ?? "MXN");
 const totals = computed(() =>
@@ -61,7 +57,7 @@ const totals = computed(() =>
 );
 
 const stats = computed(() => {
-  const pendingPeople = Object.values(summaries.value).filter((s) => s.earned_minor > s.approved_minor).length;
+  const pendingPeople = Object.values(summaries.value).filter((s) => s.earned_minor > 0).length;
   return [
     { label: "Generado", value: formatMoney(totals.value.earned, currency.value), hint: "Servicios completados en la semana" },
     { label: "Aprobado", value: formatMoney(totals.value.approved, currency.value) },
@@ -72,10 +68,22 @@ const stats = computed(() => {
 
 const payingName = computed(() => directory.staffById.get(payingId.value ?? -1)?.display_name ?? "");
 
+/** earned_minor only counts amounts not yet in a settlement, so anything above zero can still be approved. */
 function canApprove(id: number): boolean {
-  const s = summaries.value[id];
-  return !!s && s.earned_minor > s.approved_minor;
+  return (summaries.value[id]?.earned_minor ?? 0) > 0;
 }
+
+/** A week can hold several settlements; the one awaiting its payout comes from the server, not from this session. */
+function unpaidSettlement(id: number | null): Schemas["SettlementOut"] | undefined {
+  return id === null ? undefined : summaries.value[id]?.settlements.find((s) => s.status === "approved");
+}
+
+function fullyPaid(id: number): boolean {
+  const s = summaries.value[id];
+  return !!s && s.paid_minor > 0 && s.earned_minor === 0 && s.approved_minor === 0;
+}
+
+const payingSettlement = computed(() => unpaidSettlement(payingId.value));
 
 async function approve(staffId: number): Promise<void> {
   busyId.value = staffId;
@@ -83,14 +91,13 @@ async function approve(staffId: number): Promise<void> {
   busyId.value = null;
   error.value = e ? errorMessage(e) : null;
   if (!data) return;
-  settlements.value[staffId] = data;
   toast.success(`Semana aprobada para ${directory.staffById.get(staffId)?.display_name ?? "la persona"}`);
   await loadSummaries();
 }
 
 async function pay(): Promise<void> {
   const staffId = payingId.value;
-  const settlement = staffId === null ? undefined : settlements.value[staffId];
+  const settlement = payingSettlement.value;
   if (staffId === null || !settlement) return;
   busyId.value = staffId;
   const { data, error: e } = await api.POST("/admin/settlements/{settlement_id}/payout", {
@@ -100,7 +107,6 @@ async function pay(): Promise<void> {
   busyId.value = null;
   error.value = e ? errorMessage(e) : null;
   if (!data) return;
-  settlements.value[staffId] = data;
   toast.success("Pago registrado");
   payingId.value = null;
   payoutRef.value = "";
@@ -152,15 +158,10 @@ async function pay(): Promise<void> {
             <TableCell v-else colspan="3" class="text-right text-muted-foreground">Sin datos de la semana</TableCell>
             <TableCell class="pr-4">
               <div class="flex justify-end gap-2">
-                <StatusBadge v-if="settlements[s.id]?.status === 'paid'" tone="success" label="Pagada" />
+                <Button v-if="unpaidSettlement(s.id)" size="sm" variant="outline" @click="payingId = s.id">Registrar pago</Button>
+                <StatusBadge v-if="fullyPaid(s.id)" tone="success" label="Pagada" />
                 <Button
-                  v-else-if="settlements[s.id]?.status === 'approved'"
-                  size="sm"
-                  variant="outline"
-                  @click="payingId = s.id"
-                >Registrar pago</Button>
-                <Button
-                  v-else
+                  v-else-if="canApprove(s.id) || !unpaidSettlement(s.id)"
                   size="sm"
                   :variant="canApprove(s.id) ? 'outline' : 'ghost'"
                   :disabled="!canApprove(s.id) || busyId === s.id"
@@ -190,9 +191,7 @@ async function pay(): Promise<void> {
         <DialogTitle class="title-section">Registrar pago</DialogTitle>
         <DialogDescription>
           {{ payingName }}, semana del {{ formatWeekRange(week) }}
-          <template v-if="payingId !== null && settlements[payingId]">
-            por {{ formatMoney(settlements[payingId]!.total_minor, settlements[payingId]!.currency) }}
-          </template>
+          <template v-if="payingSettlement">por {{ formatMoney(payingSettlement.total_minor, payingSettlement.currency) }}</template>
         </DialogDescription>
       </DialogHeader>
       <form id="payout-form" class="grid gap-2" @submit.prevent="pay">

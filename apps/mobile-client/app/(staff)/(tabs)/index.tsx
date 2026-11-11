@@ -1,5 +1,6 @@
 import type { Schemas } from "@repo/api-client";
 import { router } from "expo-router";
+import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { api } from "../../../src/api";
 import { attendLabel, canAttend, openDirections, useAttendance } from "../../../src/attendance";
@@ -11,10 +12,11 @@ import { Screen } from "../../../src/screen";
 import { useSession } from "../../../src/session";
 import { Text } from "../../../src/text";
 import { color } from "../../../src/theme";
-import { Button, Card, Hairline, LargeTitle, List, Notice, SectionTitle, SkeletonCard, StateView, StatusChip, StatusLine } from "../../../src/ui";
+import { Button, Card, EmptyState, Hairline, LargeTitle, List, Notice, SectionTitle, SkeletonCard, StateView, StatusChip, StatusLine, UnderlineTabs } from "../../../src/ui";
 import { useResource } from "../../../src/useResource";
 
 type Booking = Schemas["BookingOut"];
+type Tab = "upcoming" | "history";
 
 const openJob = (b: Booking) => router.push({ pathname: "/(staff)/job/[id]", params: { id: String(b.id) } });
 
@@ -73,11 +75,14 @@ export default function StaffHome() {
   const { user } = useSession();
   const bookings = useResource(() => api.GET("/bookings"));
   const { attend, busyId, notice } = useAttendance(() => void bookings.refresh());
+  const [tab, setTab] = useState<Tab>("upcoming");
 
   const sorted = [...(bookings.data ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
-  const next = sorted.find((b) => b.status === "in_progress") ?? sorted.find((b) => b.status === "confirmed");
-  const rest = sorted.filter((b) => b.id !== next?.id);
-  const pending = sorted.filter(canAttend).length;
+  const upcoming = sorted.filter(canAttend);
+  // Newest first: the services just finished matter more than the ones from months ago.
+  const history = sorted.filter((b) => !canAttend(b)).reverse();
+  const next = upcoming.find((b) => b.status === "in_progress") ?? upcoming[0];
+  const rest = upcoming.filter((b) => b.id !== next?.id);
   const done = sorted.filter((b) => b.status === "completed" || b.status === "pending_review").length;
   const firstName = user?.full_name.split(/\s+/)[0] ?? "";
 
@@ -86,9 +91,10 @@ export default function StaffHome() {
       <View className="gap-5">
         <LargeTitle overline={`Hola, ${firstName}`} title="Tus servicios" />
         <View className="flex-row gap-3">
-          <Stat value={pending} label="Por hacer" />
+          <Stat value={upcoming.length} label="Por hacer" />
           <Stat value={done} label="Terminados" />
         </View>
+        <UnderlineTabs<Tab> value={tab} onChange={setTab} options={[{ value: "upcoming", label: "Próximos" }, { value: "history", label: "Historial" }]} />
       </View>
       {notice ? <Notice tone={notice.tone} text={notice.text} /> : null}
       <StateView
@@ -101,23 +107,35 @@ export default function StaffHome() {
         onRetry={bookings.refresh}
         skeleton={<SkeletonCard />}
       >
-        <View className="gap-7">
-          {next ? (
-            <Rise>
-              <NextService booking={next} busy={busyId === next.id} onAttend={() => attend(next)} />
-            </Rise>
-          ) : null}
-          {rest.length ? (
-            <View className="gap-1">
-              <SectionTitle title="Agenda" trailing={<Text className="text-sm text-text-muted">{rest.length} más</Text>} />
-              <List>
-                {rest.map((b) => (
-                  <AgendaRow key={b.id} booking={b} />
-                ))}
-              </List>
-            </View>
-          ) : null}
-        </View>
+        {tab === "upcoming" ? (
+          <View className="gap-7">
+            {next ? (
+              <Rise>
+                <NextService booking={next} busy={busyId === next.id} onAttend={() => attend(next)} />
+              </Rise>
+            ) : (
+              <EmptyState icon="calendar" title="No tienes servicios próximos" text="Cuando administración te asigne una visita aparecerá aquí." />
+            )}
+            {rest.length ? (
+              <View className="gap-1">
+                <SectionTitle title="Agenda" trailing={<Text className="text-sm text-text-muted">{rest.length} más</Text>} />
+                <List>
+                  {rest.map((b) => (
+                    <AgendaRow key={b.id} booking={b} />
+                  ))}
+                </List>
+              </View>
+            ) : null}
+          </View>
+        ) : history.length ? (
+          <List>
+            {history.map((b) => (
+              <AgendaRow key={b.id} booking={b} />
+            ))}
+          </List>
+        ) : (
+          <EmptyState icon="calendar" title="Aún no tienes historial" text="Los servicios terminados o cancelados aparecerán aquí." />
+        )}
       </StateView>
     </Screen>
   );

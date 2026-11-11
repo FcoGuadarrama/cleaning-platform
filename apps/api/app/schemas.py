@@ -382,16 +382,6 @@ class EarningOut(Out):
     status: EarningStatus
 
 
-class EarningsSummaryOut(BaseModel):
-    staff_id: int
-    week_start: date
-    currency: str
-    earned_minor: int
-    approved_minor: int
-    paid_minor: int
-    items: list[EarningOut]
-
-
 class SettlementCreateRequest(Strict):
     staff_id: int
     week_start: date
@@ -409,3 +399,14 @@ class SettlementOut(Out):
     currency: str
     status: SettlementStatus
     payout_reference: str | None
+
+
+class EarningsSummaryOut(BaseModel):
+    staff_id: int
+    week_start: date
+    currency: str
+    earned_minor: int
+    approved_minor: int
+    paid_minor: int
+    items: list[EarningOut]
+    settlements: list[SettlementOut]

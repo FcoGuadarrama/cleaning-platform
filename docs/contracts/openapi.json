@@ -972,6 +972,13 @@
             "title": "Paid Minor",
             "type": "integer"
           },
+          "settlements": {
+            "items": {
+              "$ref": "#/components/schemas/SettlementOut"
+            },
+            "title": "Settlements",
+            "type": "array"
+          },
           "staff_id": {
             "title": "Staff Id",
             "type": "integer"
@@ -989,7 +996,8 @@
           "earned_minor",
           "approved_minor",
           "paid_minor",
-          "items"
+          "items",
+          "settlements"
         ],
         "title": "EarningsSummaryOut",
         "type": "object"
