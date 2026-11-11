@@ -10,6 +10,11 @@ class Settings:
     business_tz: ZoneInfo
     hold_ttl_minutes: int
     hold_sweep_interval_seconds: float
+    outbox_dispatch_interval_seconds: float
+    housekeeping_interval_seconds: float
+    idempotency_key_ttl_hours: int
+    outbox_retention_days: int
+    notification_channel: str
     travel_buffer_minutes: int
     workday_start_hour: int
     workday_end_hour: int
@@ -31,11 +36,19 @@ def get_settings() -> Settings:
     provider = os.environ.get("PAYMENT_PROVIDER", "sandbox")
     if provider != "sandbox":
         raise RuntimeError("Only the sandbox payment provider is enabled until the provider decision is made")
+    channel = os.environ.get("NOTIFICATION_CHANNEL", "log")
+    if channel != "log":
+        raise RuntimeError("Only the log notification channel is enabled until the channel decision is made")
     return Settings(
         database_url=os.environ["DATABASE_URL"],
         business_tz=ZoneInfo(os.environ.get("BUSINESS_TZ", "America/Mexico_City")),
         hold_ttl_minutes=_int("HOLD_TTL_MINUTES", 15),
         hold_sweep_interval_seconds=float(os.environ.get("HOLD_SWEEP_INTERVAL_SECONDS", "30")),
+        outbox_dispatch_interval_seconds=float(os.environ.get("OUTBOX_DISPATCH_INTERVAL_SECONDS", "5")),
+        housekeeping_interval_seconds=float(os.environ.get("HOUSEKEEPING_INTERVAL_SECONDS", "3600")),
+        idempotency_key_ttl_hours=_int("IDEMPOTENCY_KEY_TTL_HOURS", 24),
+        outbox_retention_days=_int("OUTBOX_RETENTION_DAYS", 7),
+        notification_channel=channel,
         travel_buffer_minutes=_int("TRAVEL_BUFFER_MINUTES", 60),
         workday_start_hour=_int("WORKDAY_START_HOUR", 8),
         workday_end_hour=_int("WORKDAY_END_HOUR", 18),

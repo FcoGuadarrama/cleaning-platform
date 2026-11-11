@@ -23,7 +23,7 @@ from app.models import (
     WebhookEvent,
 )
 from app.payments import sandbox
-from app.services import audit
+from app.services import audit, outbox
 from app.services.scheduling import get_visible_booking
 
 
@@ -137,6 +137,7 @@ async def _apply_event(session: AsyncSession, event: dict[str, Any]) -> None:
     if event["type"] == "payment.failed":
         payment.status = PaymentStatus.failed
         audit.record(session, None, "payment.failed", "payment", payment.id)
+        outbox.publish(session, "payment.failed", payment.id, payment_id=payment.id)
         return
     payment.status = PaymentStatus.succeeded
     confirmed = await (
@@ -145,6 +146,7 @@ async def _apply_event(session: AsyncSession, event: dict[str, Any]) -> None:
     if not confirmed:
         payment.needs_refund = True
         audit.record(session, None, "payment.late_success_needs_refund", "payment", payment.id)
+        outbox.publish(session, "payment.needs_refund", payment.id, payment_id=payment.id)
 
 
 def _hold_valid(status: object, held: object, expires_at: datetime | None) -> bool:
@@ -160,6 +162,7 @@ async def _confirm_booking(session: AsyncSession, payment: Payment) -> bool:
     booking.status = BookingStatus.confirmed
     booking.hold_expires_at = None
     audit.record(session, None, "booking.confirmed", "booking", booking.id, payment_id=payment.id)
+    outbox.publish(session, "booking.confirmed", booking.id, booking_id=booking.id, payment_id=payment.id)
     return True
 
 
@@ -201,6 +204,14 @@ async def _confirm_cycle(session: AsyncSession, payment: Payment) -> bool:
         cycle_id=cycle.id,
         payment_id=payment.id,
         visits=len(visits),
+    )
+    outbox.publish(
+        session,
+        "subscription.cycle_confirmed",
+        cycle.id,
+        subscription_id=subscription.id,
+        cycle_id=cycle.id,
+        payment_id=payment.id,
     )
     return True
 

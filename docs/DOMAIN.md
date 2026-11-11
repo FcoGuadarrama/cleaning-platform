@@ -20,7 +20,10 @@
   `provider`, `provider_ref`, status, amount).
 - **WebhookEvent**: received provider event, unique on (`provider`, `event_id`) → idempotency.
 - **IdempotencyKey**: a client's `Idempotency-Key` for one create, unique per user; maps a retry to the resource the
-  first attempt created.
+  first attempt created. Deleted after `IDEMPOTENCY_KEY_TTL_HOURS` (24).
+- **OutboxMessage**: an event for the outside world (`booking.confirmed`, `booking.cancelled`, `booking.completed`,
+  `subscription.cycle_confirmed`, `payment.failed`, `payment.needs_refund`, `attendance.exception_opened`,
+  `settlement.paid`), written with the change that caused it; key `topic:subject id`, payload ids only.
 - **Attendance**: check-in / check-out record with GPS evidence or an explicit capture failure.
 - **AttendanceException**: admin resolution of a failed/absent GPS capture (audit trail).
 - **Earning**: amount owed to staff for a completed booking (rate snapshot). Belongs to an ISO week (business tz).
@@ -66,3 +69,5 @@ Settlement: `approved → paid`.
     capture wins) and is rejected when someone else did; it never opens a second exception or a second earning.
 16. Releasing lapsed holds never waits on, or undoes, a transaction working on the same hold: a held row is skipped
     and swept later, and a cycle being confirmed keeps its visits.
+17. An outbox message exists if and only if the change that caused it committed, at most one per topic and subject.
+    It is delivered at least once and in no guaranteed order; a message that keeps failing ends `dead`, never lost.

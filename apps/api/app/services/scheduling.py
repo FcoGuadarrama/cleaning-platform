@@ -25,7 +25,7 @@ from app.models import (
     User,
 )
 from app.schemas import BookingCreateRequest
-from app.services import addresses, audit, idempotency
+from app.services import addresses, audit, idempotency, outbox
 
 BLOCKING = (BookingStatus.confirmed, BookingStatus.in_progress, BookingStatus.pending_review)
 
@@ -288,6 +288,7 @@ async def cancel(session: AsyncSession, admin: User, booking_id: int, reason: st
             previous_status=previous.value,
             refund_payment_ids=[p.id for p in paid],
         )
+        outbox.publish(session, "booking.cancelled", booking.id, booking_id=booking.id)
     return booking, bool(paid)
 
 

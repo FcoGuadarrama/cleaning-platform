@@ -26,7 +26,7 @@ from app.models import (
     User,
 )
 from app.schemas import AttendanceRequest
-from app.services import audit
+from app.services import audit, outbox
 from app.services.scheduling import get_visible_booking
 
 _EXPECTED_STATUS = {
@@ -83,6 +83,13 @@ async def record_attendance(
                     reason=req.capture_status.value,
                     status=ExceptionStatus.open,
                 )
+            )
+            outbox.publish(
+                session,
+                "attendance.exception_opened",
+                attendance.id,
+                booking_id=booking.id,
+                attendance_id=attendance.id,
             )
         audit.record(
             session,
@@ -184,6 +191,7 @@ async def _complete(session: AsyncSession, booking: Booking, actor_id: int) -> N
         )
     )
     audit.record(session, actor_id, "booking.completed", "booking", booking.id)
+    outbox.publish(session, "booking.completed", booking.id, booking_id=booking.id)
 
 
 @retry_on_lock_conflict

@@ -1,34 +1,28 @@
 # WORKTREE STATE & HANDOFF LOG
-- **Feature:** 009 replayable check-in/out, non-blocking hold sweeper (docs/tasks/009-attendance-replay-hold-sweeper.md)
+- **Feature:** 010 transactional outbox, housekeeping (docs/tasks/010-outbox-housekeeping.md)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-11T17:02:00Z
-- **Branch / Worktree:** feature/attendance-replay-hold-sweeper (main worktree), from feature/idempotency-lock-retry 19844f9
-- **Base SHA:** 19844f9
-- **Contract Version:** docs/contracts/openapi.json (descriptions only changed)
-- **Database:** compose project cp_f4bbf0f0 (app + app_test at alembic 0006; no migration in this task)
+- **Last Updated:** 2026-11-11T17:40:00Z
+- **Branch / Worktree:** feature/outbox-housekeeping (main worktree), from feature/attendance-replay-hold-sweeper c6e8c4b
+- **Base SHA:** c6e8c4b
+- **Contract Version:** docs/contracts/openapi.json unchanged
+- **Database:** compose project cp_f4bbf0f0 (app at alembic 0007: outbox_messages; app_test migrated by the suite)
 
 ## Microtask checklist
-- [x] 1. API: CORS allows `Idempotency-Key` (task 008 regression: Expo web preflight answered 400).
-- [x] 2. API: check-in/out and admin manual attendance return the stored record on a replay by the same user;
-      409 `attendance_exists` when someone else recorded it. Broad IntegrityError catch removed.
-- [x] 3. API: `expire_holds` = plain candidate read + PK lock with SKIP LOCKED; background sweeper in the lifespan
-      (`HOLD_SWEEP_INTERVAL_SECONDS`, default 30).
-- [x] 4. Contract exported, api-client regenerated; mobile offline notice invites a retry.
-- [x] 5. Docs: ADR 0008 (+ CORS note in 0007), ARCHITECTURE, DOMAIN 15–16, task 009, .env.prod.example.
-- [x] 6. Local stack rebuilt (volumes kept); preflight with `idempotency-key` answers 200 (was 400).
-- [ ] 7. Owner: retry a check-in with no signal in the app; try a purchase from Expo web.
+- [x] 1. Model + migration 0007 (`outbox_messages`, index on `idempotency_keys.created_at`); settings.
+- [x] 2. `outbox.publish` at 8 transitions; `outbox.dispatch` (SKIP LOCKED claim, lease, backoff, dead letter).
+- [x] 3. `housekeeping.prune` (keys > 24 h, sent messages > 7 days, batched).
+- [x] 4. `app.jobs` runs hold sweep, outbox dispatch and housekeeping from the lifespan.
+- [x] 5. Docs: ADR 0009 (+ 0007 note), ARCHITECTURE, DOMAIN glossary + invariant 17, task 010, .env.prod.example.
+- [ ] 6. Rebuild the stack; check the jobs run in the API container.
+- [ ] 7. Owner: choose the notification channel (PRODUCT decision 6); then a real channel replaces `_log_channel`.
 
 ## Immediate context / Handoff notes
-Task 008's handoff archived to docs/tasks/008-idempotency-lock-retry/handoff.md (its microtask 7, a purchase on a
-flaky connection, is still open). pnpm is not on PATH in this shell: the client was regenerated with
-packages/api-client/node_modules/.bin/openapi-typescript (same args as the generate script).
+Task 009's handoff archived to docs/tasks/009-attendance-replay-hold-sweeper/handoff.md (its microtask 7, owner
+checks, is still open). pnpm is not on PATH in this shell.
 
 ## Verification
-- 2026-11-11T17:02:00Z: `compose up --build --detach --wait api web mobile` healthy; preflight 200; app DB has 0
-  lapsed holds still `held`.
-- 2026-11-11T16:50:00Z: pytest 70 passed (8 new); the new tests fail against the previous code (checked by swapping
-  the old service files in temporarily). ruff check/format clean; mypy app clean; alembic check clean.
-  mobile tsc, api-client tsc, dashboard vue-tsc clean; dashboard vitest 30 passed.
+- 2026-11-11T17:38:00Z: pytest 80 passed (10 new); ruff check/format clean; mypy app clean; alembic check clean on
+  app (0007); openapi export unchanged.
 
 ## Partial work
 - Modified or new files: see git status.
@@ -36,4 +30,4 @@ packages/api-client/node_modules/.bin/openapi-typescript (same args as the gener
 - Blockers: none
 
 ## Exact next action
-- Owner review (microtask 7); push/PR only with owner approval.
+- Microtask 6: rebuild api container (volumes kept), look for job logs, query outbox_messages read-only.

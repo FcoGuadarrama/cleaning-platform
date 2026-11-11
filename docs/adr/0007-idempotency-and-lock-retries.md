@@ -9,7 +9,7 @@ customer retrying their own request: a hold created by an attempt whose response
 under a savepoint. Same key and body → the first attempt's resource (201). Same key, different body → 409
 `idempotency_key_reused`. A failed attempt rolls its key back, so retrying it runs again. Concurrent attempts wait
 on the unique index; replays read the row with a shared lock (`FOR SHARE`), which never deadlocks among
-themselves. Keys are kept; pruning is a later job. The mobile app keeps one key per distinct request body and drops
+themselves. Keys are deleted after 24 h by the housekeeping job (ADR 0009). The mobile app keeps one key per distinct request body and drops
 it when the hold is dropped. CORS must allow the header: the Expo web app is another origin, and a preflight
 without it never lets the browser send the POST.
 

@@ -10,7 +10,7 @@ from app.core.errors import AppError, conflict, not_found
 from app.core.timeutil import utcnow
 from app.models import Earning, EarningStatus, Settlement, SettlementStatus, User
 from app.schemas import EarningOut, EarningsSummaryOut, SettlementOut
-from app.services import audit
+from app.services import audit, outbox
 
 
 async def summary(session: AsyncSession, staff_id: int, week_start: date) -> EarningsSummaryOut:
@@ -120,4 +120,5 @@ async def record_payout(session: AsyncSession, admin: User, settlement_id: int, 
         for e in earnings:
             e.status = EarningStatus.paid
         audit.record(session, admin.id, "settlement.paid", "settlement", settlement.id, reference=reference)
+        outbox.publish(session, "settlement.paid", settlement.id, settlement_id=settlement.id)
     return settlement

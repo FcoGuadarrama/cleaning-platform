@@ -374,7 +374,10 @@ class IdempotencyKey(TimestampMixin, Base):
     of a second resource; the fingerprint rejects reusing the key for a different request."""
 
     __tablename__ = "idempotency_keys"
-    __table_args__ = (UniqueConstraint("user_id", "key", name="uq_idempotency_keys_user_id_key"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "key", name="uq_idempotency_keys_user_id_key"),
+        Index("ix_idempotency_keys_created_at", "created_at"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     key: Mapped[str] = mapped_column(String(64))
@@ -382,3 +385,30 @@ class IdempotencyKey(TimestampMixin, Base):
         String(64), comment="sha256 of the endpoint scope and request body"
     )
     resource_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class OutboxStatus(enum.StrEnum):
+    pending = "pending"
+    sent = "sent"
+    dead = "dead"
+
+
+class OutboxMessage(TimestampMixin, Base):
+    """An event for the outside world, written in the transaction that caused it and delivered afterwards by
+    the dispatcher, at least once. The payload carries ids only: the sender loads current data."""
+
+    __tablename__ = "outbox_messages"
+    __table_args__ = (Index("ix_outbox_messages_status_available_at", "status", "available_at"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(
+        String(128), unique=True, comment="topic:subject id; receivers use it as their idempotency key"
+    )
+    topic: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    status: Mapped[OutboxStatus] = mapped_column(_enum(OutboxStatus), default=OutboxStatus.pending)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    available_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utcnow, comment="Not delivered before this: retry backoff or a claim's lease"
+    )
+    last_error: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
