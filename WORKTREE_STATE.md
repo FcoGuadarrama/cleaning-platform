@@ -1,7 +1,7 @@
 # WORKTREE STATE & HANDOFF LOG
 - **Feature:** 011 subscription renewal, cancellation, card + SPEI (docs/tasks/011-renewal-spei.md)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-11T20:20:00Z
+- **Last Updated:** 2026-11-11T20:45:00Z
 - **Branch / Worktree:** feature/renewal-spei (main worktree), from feature/outbox-housekeeping f074e68
 - **Base SHA:** f074e68
 - **Contract Version:** docs/contracts/openapi.json exported (checkout method, cancel, admin transfers); client regenerated
@@ -23,7 +23,10 @@
       API: GET /bookings/{id}/payment and /subscriptions/{id}/payment.
 - [x] 8. Dashboard: Transferencias queue (confirm / reject, menu counter); subscription statuses (cancela al cierre,
       renovación sin pagar, terminada), payment method and next charge in the sheet.
-- [ ] 9. Docs (PRODUCT confirmed decisions, ADR 0010, DOMAIN), rebuild, e2e.
+- [x] 9. Docs (PRODUCT confirmed decisions, ADR 0010, DOMAIN 18–21, ARCHITECTURE, env example, compose
+      placeholder SPEI account), stack rebuilt, local e2e OK.
+- [ ] 10. Owner: visual check of the new screens (app: payment method, SPEI details, Mi suscripción; panel:
+      Transferencias) — not looked at in a browser here.
 
 ## Immediate context / Handoff notes
 Task 010's handoff archived to docs/tasks/010-outbox-housekeeping/handoff.md. tests/conftest.py now truncates after
@@ -33,6 +36,11 @@ edited before leaving the machine (added payments.charge_on); the local app DB w
 failed downgrade by hand (only this task's columns) and re-upgrading; 0008→0007→0008 round trip verified.
 
 ## Verification
+- 2026-11-11T20:44:00Z: pytest 97 passed; ruff/mypy/alembic check clean; contract unchanged on re-export; mobile tsc,
+  dashboard vue-tsc + vitest 33 clean. Local stack e2e (scratchpad script, demo customer): SPEI visit 215 held 24 h,
+  listed in /admin/transfers, confirmed by admin; plan subscription 4 blocked its cleaner in cycle 2, cancelled,
+  slot then bookable (booking 220); outbox delivered booking.confirmed, subscription.cycle_confirmed,
+  subscription.cancelled.
 - 2026-11-11T20:18:00Z: mobile tsc clean; dashboard vue-tsc clean, vitest 33 passed, vite build ok; API test_spei 6 passed.
 - 2026-11-11T19:38:00Z: pytest 97 passed (13 new since last checkpoint); ruff/mypy clean; alembic check clean; a real
   double-charge race found by the concurrent-runs test and fixed (cleaner lock before any plain read).
@@ -43,4 +51,4 @@ failed downgrade by hand (only this task's columns) and re-upgrading; 0008→000
 - Blockers: none
 
 ## Exact next action
-- Microtask 9: docs, rebuild the stack, e2e (card + SPEI + renewal + cancel) on the local stack.
+- Owner review (microtask 10); push/PR only with owner approval.

@@ -46,3 +46,8 @@
 - Business day = Monday–Friday (as everywhere in the app); public holidays are not considered.
 - Card renewals charge a saved card: the sandbox simulates it; a real provider needs a tokenized card (decision 3).
 - The agent role is `admin` (permission levels are still open, decision 6).
+
+## Acceptance
+- tests/test_commitments.py (4), tests/test_spei.py (6), tests/test_renewals.py (7) incl. concurrent runs.
+- Mobile: tsc clean. Dashboard: vue-tsc clean, vitest (transfers + subscription statuses), vite build.
+- Local stack e2e: card visit, SPEI visit confirmed in Transferencias, renewal by job, cancellation.
