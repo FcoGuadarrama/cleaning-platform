@@ -19,6 +19,8 @@
 - **Payment**: provider-agnostic record of a charge attempt for a booking or for a subscription cycle (exactly one;
   `provider`, `provider_ref`, status, amount).
 - **WebhookEvent**: received provider event, unique on (`provider`, `event_id`) → idempotency.
+- **IdempotencyKey**: a client's `Idempotency-Key` for one create, unique per user; maps a retry to the resource the
+  first attempt created.
 - **Attendance**: check-in / check-out record with GPS evidence or an explicit capture failure.
 - **AttendanceException**: admin resolution of a failed/absent GPS capture (audit trail).
 - **Earning**: amount owed to staff for a completed booking (rate snapshot). Belongs to an ISO week (business tz).
@@ -56,3 +58,7 @@ Settlement: `approved → paid`.
     refund. A lapsed hold expires the cycle, its visits and (for the first cycle) the subscription.
 12. A subscription keeps the price and terms it accepted; later plan versions never change it. Customers see only
     their own subscriptions and never the cleaner's pay.
+13. A retried hold creation with the same `Idempotency-Key` and body never creates a second hold; it returns the
+    first. The same key with a different body is rejected.
+14. Only a duplicate `WebhookEvent` is acknowledged as a replay; any other failure while applying an event leaves no
+    trace, so a redelivery applies it.

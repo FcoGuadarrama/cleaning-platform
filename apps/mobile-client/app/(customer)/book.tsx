@@ -5,10 +5,11 @@ import { Pressable, View } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { type Address, shortAddress, useAddresses } from "../../src/addresses";
-import { api, errorMessage } from "../../src/api";
+import { api, errorCode, errorMessage } from "../../src/api";
 import { useDaySlots, useNextSlots } from "../../src/availability";
 import { formatAmount, formatClock, formatDuration, formatLongDay, formatMoney, formatRelativeDay, formatShortDay, nextBusinessDays } from "../../src/format";
 import { Icon } from "../../src/icons";
+import { IdempotencyKeys } from "../../src/idempotency";
 import { HomeScene } from "../../src/illustrations";
 import { Skeleton } from "../../src/motion";
 import { FlowScreen } from "../../src/screen";
@@ -115,6 +116,7 @@ export default function Book() {
   const [addressId, setAddressId] = useState<number | null>(null);
   const [choosingAddress, setChoosingAddress] = useState(false);
   const [booking, setBooking] = useState<Schemas["BookingOut"] | null>(null);
+  const [holdKeys] = useState(() => new IdempotencyKeys());
   const [payment, setPayment] = useState<Schemas["PaymentOut"] | null>(null);
   const [paid, setPaid] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -151,6 +153,7 @@ export default function Book() {
     if (id !== addressId) {
       setBooking(null);
       setPayment(null);
+      holdKeys.reset();
     }
     setAddressId(id);
     setChoosingAddress(false);
@@ -160,6 +163,7 @@ export default function Book() {
     // Changing an earlier choice drops a pending hold; it expires on its own.
     setBooking(null);
     setPayment(null);
+    holdKeys.reset();
     setError(null);
     setStep(next);
   }
@@ -170,11 +174,16 @@ export default function Book() {
     setError(null);
     let held = booking;
     if (!held) {
-      const r = await api.POST("/bookings", { body: { staff_id: staffId, offering_id: offering.id, starts_at: slot, address_id: addressId } });
+      const body = { staff_id: staffId, offering_id: offering.id, starts_at: slot, address_id: addressId };
+      // A lost response is retried with the same key, so the customer gets their own hold back instead of a 409.
+      const r = await api.POST("/bookings", { body, params: { header: { "idempotency-key": holdKeys.for(body) } } });
       if (!r.data) {
         setBusy(false);
-        setSlot(null);
-        setStep(2);
+        // Without an answer the hold may exist: keep the choice so "Pagar" retries with the same key.
+        if (errorCode(r.error) !== "network_error") {
+          setSlot(null);
+          setStep(2);
+        }
         setError(errorMessage(r.error));
         return;
       }

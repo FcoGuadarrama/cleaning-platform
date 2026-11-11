@@ -22,6 +22,10 @@ export const tokenStore = {
 const baseUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 export const api = createApiClient({ baseUrl, getToken: () => cached });
 
+export function errorCode(error: unknown): string | undefined {
+  return (error as Partial<ApiError> | undefined)?.code;
+}
+
 export function errorMessage(error: unknown): string {
   const e = error as Partial<ApiError> | undefined;
   return e?.message ?? "Ocurrió un error inesperado. Intenta de nuevo.";

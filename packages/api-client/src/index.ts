@@ -19,7 +19,15 @@ export function createApiClient({ baseUrl, getToken }: ApiClientOptions) {
       return request;
     },
   };
-  client.use(auth);
+  // A request that never got an answer (offline, timeout) resolves as an error response instead of throwing, so
+  // callers keep their state and can retry; creates are safe to retry with their Idempotency-Key.
+  const network: Middleware = {
+    onError() {
+      const body: ApiError = { code: "network_error", message: "No hay conexión con el servidor. Intenta de nuevo." };
+      return new Response(JSON.stringify(body), { status: 503, headers: { "Content-Type": "application/json" } });
+    },
+  };
+  client.use(auth, network);
   return client;
 }
 

@@ -8,6 +8,7 @@ import { type Address, shortAddress, useAddresses } from "../../src/addresses";
 import { api, errorMessage } from "../../src/api";
 import { businessDayInstant, formatDuration, formatLongDay, formatMoney } from "../../src/format";
 import { Icon } from "../../src/icons";
+import { IdempotencyKeys } from "../../src/idempotency";
 import { daysLabel } from "../../src/plans";
 import { FlowScreen } from "../../src/screen";
 import { DayPicker, SlotGrid } from "../../src/SlotPicker";
@@ -150,6 +151,7 @@ export default function Subscribe() {
   const [choosingAddress, setChoosingAddress] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [subscription, setSubscription] = useState<Schemas["SubscriptionOut"] | null>(null);
+  const [holdKeys] = useState(() => new IdempotencyKeys());
   const [payment, setPayment] = useState<Schemas["PaymentOut"] | null>(null);
   const [paid, setPaid] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -205,6 +207,7 @@ export default function Subscribe() {
   function dropHold() {
     setSubscription(null);
     setPayment(null);
+    holdKeys.reset();
   }
 
   function chooseAddress(id: number | null) {
@@ -233,9 +236,8 @@ export default function Subscribe() {
     setError(null);
     let held = subscription;
     if (!held) {
-      const r = await api.POST("/subscriptions", {
-        body: { plan_id: plan.id, staff_id: staffId, address_id: addressId, weekdays, starts_on: startsOn, visit_start: time, accept_terms: true },
-      });
+      const body = { plan_id: plan.id, staff_id: staffId, address_id: addressId, weekdays, starts_on: startsOn, visit_start: time, accept_terms: true as const };
+      const r = await api.POST("/subscriptions", { body, params: { header: { "idempotency-key": holdKeys.for(body) } } });
       if (!r.data) {
         setBusy(false);
         const message = subscriptionError(r.error) ?? errorMessage(r.error);

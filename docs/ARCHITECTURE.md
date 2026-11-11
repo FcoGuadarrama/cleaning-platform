@@ -21,6 +21,7 @@ Routers never touch ORM internals beyond calling services; services own transact
 - 0003 Contract-first client generation + CI drift check.
 - 0004 Per-worktree Docker Compose isolation.
 - 0005 Auth: opaque random bearer tokens, SHA-256 hashed at rest, expiring; mobile stores in SecureStore.
+- 0007 `Idempotency-Key` on hold creation; write services retry InnoDB deadlocks/lock timeouts (then 503).
 
 ## Time and money
 UTC `DATETIME(6)` in DB; API emits RFC 3339 with `Z`. Weekday/week rules evaluated in `America/Mexico_City`.
