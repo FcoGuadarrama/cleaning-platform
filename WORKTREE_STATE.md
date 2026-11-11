@@ -1,7 +1,7 @@
 # WORKTREE STATE & HANDOFF LOG
 - **Feature:** 009 replayable check-in/out, non-blocking hold sweeper (docs/tasks/009-attendance-replay-hold-sweeper.md)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-11T16:55:00Z
+- **Last Updated:** 2026-11-11T17:02:00Z
 - **Branch / Worktree:** feature/attendance-replay-hold-sweeper (main worktree), from feature/idempotency-lock-retry 19844f9
 - **Base SHA:** 19844f9
 - **Contract Version:** docs/contracts/openapi.json (descriptions only changed)
@@ -15,7 +15,7 @@
       (`HOLD_SWEEP_INTERVAL_SECONDS`, default 30).
 - [x] 4. Contract exported, api-client regenerated; mobile offline notice invites a retry.
 - [x] 5. Docs: ADR 0008 (+ CORS note in 0007), ARCHITECTURE, DOMAIN 15–16, task 009, .env.prod.example.
-- [ ] 6. Rebuild the local stack and check the preflight against the running API.
+- [x] 6. Local stack rebuilt (volumes kept); preflight with `idempotency-key` answers 200 (was 400).
 - [ ] 7. Owner: retry a check-in with no signal in the app; try a purchase from Expo web.
 
 ## Immediate context / Handoff notes
@@ -24,6 +24,8 @@ flaky connection, is still open). pnpm is not on PATH in this shell: the client 
 packages/api-client/node_modules/.bin/openapi-typescript (same args as the generate script).
 
 ## Verification
+- 2026-11-11T17:02:00Z: `compose up --build --detach --wait api web mobile` healthy; preflight 200; app DB has 0
+  lapsed holds still `held`.
 - 2026-11-11T16:50:00Z: pytest 70 passed (8 new); the new tests fail against the previous code (checked by swapping
   the old service files in temporarily). ruff check/format clean; mypy app clean; alembic check clean.
   mobile tsc, api-client tsc, dashboard vue-tsc clean; dashboard vitest 30 passed.
@@ -34,4 +36,4 @@ packages/api-client/node_modules/.bin/openapi-typescript (same args as the gener
 - Blockers: none
 
 ## Exact next action
-- Microtask 6: rebuild api/web/mobile containers (volumes kept) and re-run the CORS preflight with curl.
+- Owner review (microtask 7); push/PR only with owner approval.
