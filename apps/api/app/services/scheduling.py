@@ -185,41 +185,70 @@ async def create_hold(
 @retry_on_lock_conflict
 async def expire_holds(session: AsyncSession) -> int:
     """Releases lapsed holds: single-visit bookings, subscription visits, their cycle and, for a first
-    cycle, the subscription itself. Every update re-checks `held`, so a payment confirmed meanwhile is
-    never undone."""
+    cycle, the subscription itself. Returns the number of bookings released.
+
+    Runs from the background sweeper and before every read that reports hold status, so it must stay cheap
+    and out of the way of writers: candidates come from a plain read (no locks when nothing has lapsed), then
+    are locked by primary key with SKIP LOCKED. A row another transaction holds, such as a payment
+    confirming it, is left for the next sweep instead of waited on; with no range scan under a lock, no gap
+    is locked against new holds either. Rows are re-checked as `held` once locked, so a payment confirmed
+    meanwhile is never undone."""
     async with session.begin():
         now = utcnow()
-        # Cycles before their visits, the lock order of payments._confirm_cycle, so the two cannot deadlock.
-        lapsed = (
-            await session.execute(
-                select(SubscriptionCycle.id, SubscriptionCycle.subscription_id)
-                .where(SubscriptionCycle.status == CycleStatus.held, SubscriptionCycle.hold_expires_at <= now)
-                .with_for_update()
-            )
-        ).all()
-        result = await session.execute(
-            update(Booking)
-            .where(Booking.status == BookingStatus.held, Booking.hold_expires_at <= now)
-            .values(status=BookingStatus.expired)
-        )
-        if lapsed:
-            await session.execute(
-                update(SubscriptionCycle)
-                .where(
-                    SubscriptionCycle.id.in_([c.id for c in lapsed]),
-                    SubscriptionCycle.status == CycleStatus.held,
+        # Cycles before their visits, the lock order of payments._confirm_cycle.
+        lapsed_cycles = set(
+            await session.scalars(
+                select(SubscriptionCycle.id).where(
+                    SubscriptionCycle.status == CycleStatus.held, SubscriptionCycle.hold_expires_at <= now
                 )
-                .values(status=CycleStatus.expired)
             )
+        )
+        cycles = await _lock_free(
+            session,
+            select(SubscriptionCycle).where(
+                SubscriptionCycle.id.in_(lapsed_cycles),
+                SubscriptionCycle.status == CycleStatus.held,
+                SubscriptionCycle.hold_expires_at <= now,
+            ),
+        )
+        # The visits of a cycle someone else holds stay with that cycle: confirming it confirms them too.
+        busy_cycles = lapsed_cycles - {c.id for c in cycles}
+        lapsed_bookings = [
+            b.id
+            for b in await session.execute(
+                select(Booking.id, Booking.subscription_cycle_id).where(
+                    Booking.status == BookingStatus.held, Booking.hold_expires_at <= now
+                )
+            )
+            if b.subscription_cycle_id not in busy_cycles
+        ]
+        bookings = await _lock_free(
+            session,
+            select(Booking).where(
+                Booking.id.in_(lapsed_bookings),
+                Booking.status == BookingStatus.held,
+                Booking.hold_expires_at <= now,
+            ),
+        )
+        for booking in bookings:
+            booking.status = BookingStatus.expired
+        for cycle in cycles:
+            cycle.status = CycleStatus.expired
+        if cycles:
             await session.execute(
                 update(Subscription)
                 .where(
-                    Subscription.id.in_([c.subscription_id for c in lapsed]),
+                    Subscription.id.in_([c.subscription_id for c in cycles]),
                     Subscription.status == SubscriptionStatus.held,
                 )
                 .values(status=SubscriptionStatus.expired)
             )
-    return int(getattr(result, "rowcount", 0))
+    return len(bookings)
+
+
+async def _lock_free[M: (Booking, SubscriptionCycle)](session: AsyncSession, stmt: Select[M]) -> list[M]:
+    """The rows of `stmt` no other transaction holds, locked for this one."""
+    return list(await session.scalars(stmt.with_for_update(skip_locked=True)))
 
 
 CANCELLABLE = (BookingStatus.held, BookingStatus.confirmed)

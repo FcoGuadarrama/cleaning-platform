@@ -62,3 +62,7 @@ Settlement: `approved → paid`.
     first. The same key with a different body is rejected.
 14. Only a duplicate `WebhookEvent` is acknowledged as a replay; any other failure while applying an event leaves no
     trace, so a redelivery applies it.
+15. Recording a check-in or check-out again returns the stored record when the same user recorded it (the first
+    capture wins) and is rejected when someone else did; it never opens a second exception or a second earning.
+16. Releasing lapsed holds never waits on, or undoes, a transaction working on the same hold: a held row is skipped
+    and swept later, and a cycle being confirmed keeps its visits.

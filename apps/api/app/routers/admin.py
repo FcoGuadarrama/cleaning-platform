@@ -127,6 +127,7 @@ async def resolve_exception(
 async def manual_attendance(
     booking_id: int, body: ManualAttendanceRequest, session: SessionDep, admin: AdminDep
 ) -> AttendanceOut:
+    """A retry returns the record already stored when the same user recorded it (the first capture wins)."""
     row = await attendance.record_manual(session, admin, booking_id, body.kind, body.occurred_at, body.reason)
     return AttendanceOut.model_validate(row)
 

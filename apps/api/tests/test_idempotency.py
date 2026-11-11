@@ -2,11 +2,12 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Any
 
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import update
 
 from app.core.db import get_sessionmaker
 from app.core.timeutil import utcnow
+from app.main import create_app
 from app.models import Booking
 from tests.conftest import future_weekday, hold, register, saved_address
 from tests.test_subscription_checkout import choice
@@ -91,3 +92,18 @@ async def test_subscription_retry_with_same_key_returns_the_first_hold(
     assert first.status_code == retry.status_code == 201, retry.text
     assert retry.json()["id"] == first.json()["id"]
     assert len((await client.get("/subscriptions", headers=customer)).json()) == 1
+
+
+async def test_browser_preflight_allows_the_idempotency_header(monkeypatch) -> None:
+    """The Expo web app is another origin: without the header in CORS the browser never sends the POST."""
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:8081")
+    async with AsyncClient(transport=ASGITransport(app=create_app()), base_url="http://test") as browser:
+        r = await browser.options(
+            "/bookings",
+            headers={
+                "Origin": "http://localhost:8081",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization,content-type,idempotency-key",
+            },
+        )
+    assert r.status_code == 200, r.text

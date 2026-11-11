@@ -2840,6 +2840,7 @@
     },
     "/admin/bookings/{booking_id}/manual-attendance": {
       "post": {
+        "description": "A retry returns the record already stored when the same user recorded it (the first capture wins).",
         "operationId": "admin_manual_attendance",
         "parameters": [
           {
@@ -4929,6 +4930,7 @@
     },
     "/bookings/{booking_id}/check-in": {
       "post": {
+        "description": "A retry returns the record already stored when the same user recorded it (the first capture wins).",
         "operationId": "bookings_check_in",
         "parameters": [
           {
@@ -5046,6 +5048,7 @@
     },
     "/bookings/{booking_id}/check-out": {
       "post": {
+        "description": "A retry returns the record already stored when the same user recorded it (the first capture wins).",
         "operationId": "bookings_check_out",
         "parameters": [
           {

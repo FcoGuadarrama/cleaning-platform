@@ -70,6 +70,7 @@ async def sandbox_webhook(
 async def check_in(
     booking_id: int, body: AttendanceRequest, session: SessionDep, user: StaffDep
 ) -> AttendanceOut:
+    """A retry returns the record already stored when the same user recorded it (the first capture wins)."""
     row = await attendance.record_attendance(session, user, booking_id, AttendanceKind.check_in, body)
     return AttendanceOut.model_validate(row)
 
@@ -78,5 +79,6 @@ async def check_in(
 async def check_out(
     booking_id: int, body: AttendanceRequest, session: SessionDep, user: StaffDep
 ) -> AttendanceOut:
+    """A retry returns the record already stored when the same user recorded it (the first capture wins)."""
     row = await attendance.record_attendance(session, user, booking_id, AttendanceKind.check_out, body)
     return AttendanceOut.model_validate(row)

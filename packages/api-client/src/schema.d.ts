@@ -103,7 +103,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Admin Manual Attendance */
+        /**
+         * Admin Manual Attendance
+         * @description A retry returns the record already stored when the same user recorded it (the first capture wins).
+         */
         post: operations["admin_manual_attendance"];
         delete?: never;
         options?: never;
@@ -413,7 +416,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Bookings Check In */
+        /**
+         * Bookings Check In
+         * @description A retry returns the record already stored when the same user recorded it (the first capture wins).
+         */
         post: operations["bookings_check_in"];
         delete?: never;
         options?: never;
@@ -430,7 +436,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Bookings Check Out */
+        /**
+         * Bookings Check Out
+         * @description A retry returns the record already stored when the same user recorded it (the first capture wins).
+         */
         post: operations["bookings_check_out"];
         delete?: never;
         options?: never;

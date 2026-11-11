@@ -9,6 +9,7 @@ class Settings:
     database_url: str
     business_tz: ZoneInfo
     hold_ttl_minutes: int
+    hold_sweep_interval_seconds: float
     travel_buffer_minutes: int
     workday_start_hour: int
     workday_end_hour: int
@@ -34,6 +35,7 @@ def get_settings() -> Settings:
         database_url=os.environ["DATABASE_URL"],
         business_tz=ZoneInfo(os.environ.get("BUSINESS_TZ", "America/Mexico_City")),
         hold_ttl_minutes=_int("HOLD_TTL_MINUTES", 15),
+        hold_sweep_interval_seconds=float(os.environ.get("HOLD_SWEEP_INTERVAL_SECONDS", "30")),
         travel_buffer_minutes=_int("TRAVEL_BUFFER_MINUTES", 60),
         workday_start_hour=_int("WORKDAY_START_HOUR", 8),
         workday_end_hour=_int("WORKDAY_END_HOUR", 18),

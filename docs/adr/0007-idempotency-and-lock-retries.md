@@ -10,7 +10,8 @@ under a savepoint. Same key and body → the first attempt's resource (201). Sam
 `idempotency_key_reused`. A failed attempt rolls its key back, so retrying it runs again. Concurrent attempts wait
 on the unique index; replays read the row with a shared lock (`FOR SHARE`), which never deadlocks among
 themselves. Keys are kept; pruning is a later job. The mobile app keeps one key per distinct request body and drops
-it when the hold is dropped.
+it when the hold is dropped. CORS must allow the header: the Expo web app is another origin, and a preflight
+without it never lets the browser send the POST.
 
 **Lock-conflict retries.** `app.core.db.retry_on_lock_conflict` wraps every write service whose writes are one
 transaction. On MySQL 1213 (deadlock) or 1205 (lock-wait timeout) it re-runs the call up to 3 times with jitter,
