@@ -15,6 +15,12 @@ class Settings:
     idempotency_key_ttl_hours: int
     outbox_retention_days: int
     notification_channel: str
+    renewal_interval_seconds: float
+    spei_hold_hours: int
+    spei_clabe: str
+    spei_bank: str
+    spei_beneficiary: str
+    sandbox_renewal_outcome: str
     travel_buffer_minutes: int
     workday_start_hour: int
     workday_end_hour: int
@@ -49,6 +55,13 @@ def get_settings() -> Settings:
         idempotency_key_ttl_hours=_int("IDEMPOTENCY_KEY_TTL_HOURS", 24),
         outbox_retention_days=_int("OUTBOX_RETENTION_DAYS", 7),
         notification_channel=channel,
+        renewal_interval_seconds=float(os.environ.get("RENEWAL_INTERVAL_SECONDS", "900")),
+        spei_hold_hours=_int("SPEI_HOLD_HOURS", 24),
+        # Unset until the business account exists: SPEI checkout answers 409 spei_unavailable without them.
+        spei_clabe=os.environ.get("SPEI_CLABE", ""),
+        spei_bank=os.environ.get("SPEI_BANK", ""),
+        spei_beneficiary=os.environ.get("SPEI_BENEFICIARY", ""),
+        sandbox_renewal_outcome=os.environ.get("SANDBOX_RENEWAL_OUTCOME", "succeeded"),
         travel_buffer_minutes=_int("TRAVEL_BUFFER_MINUTES", 60),
         workday_start_hour=_int("WORKDAY_START_HOUR", 8),
         workday_end_hour=_int("WORKDAY_END_HOUR", 18),

@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from datetime import UTC, date, datetime, time, timedelta
 
-from sqlalchemy import Select, and_, or_, select, update
+from sqlalchemy import Select, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -25,30 +25,19 @@ from app.models import (
     User,
 )
 from app.schemas import BookingCreateRequest
-from app.services import addresses, audit, idempotency, outbox
-
-BLOCKING = (BookingStatus.confirmed, BookingStatus.in_progress, BookingStatus.pending_review)
-
-
-def _blocking_clause(now: datetime) -> object:
-    return or_(
-        Booking.status.in_(BLOCKING),
-        and_(Booking.status == BookingStatus.held, Booking.hold_expires_at > now),
-    )
+from app.services import addresses, audit, commitments, idempotency, outbox
+from app.services.commitments import Span, blocking_clause, clashes
+from app.services.recurrence import is_business_day
 
 
 def _overlapping(staff_id: int, start: datetime, end: datetime, now: datetime) -> Select[Booking]:
     buffer = timedelta(minutes=get_settings().travel_buffer_minutes)
     return select(Booking).where(
         Booking.staff_id == staff_id,
-        _blocking_clause(now),  # type: ignore[arg-type]
+        blocking_clause(now),  # type: ignore[arg-type]
         Booking.starts_at < end + buffer,
         Booking.ends_at > start - buffer,
     )
-
-
-def is_business_day(day: date) -> bool:
-    return day.weekday() < 5
 
 
 def day_window(day: date) -> tuple[datetime, datetime]:
@@ -61,12 +50,7 @@ def day_window(day: date) -> tuple[datetime, datetime]:
     )
 
 
-def clashes(existing: Sequence[Booking], start: datetime, end: datetime) -> bool:
-    buffer = timedelta(minutes=get_settings().travel_buffer_minutes)
-    return any(b.starts_at < end + buffer and b.ends_at > start - buffer for b in existing)
-
-
-def free_starts(existing: Sequence[Booking], day: date, duration: timedelta, now: datetime) -> list[datetime]:
+def free_starts(existing: Sequence[Span], day: date, duration: timedelta, now: datetime) -> list[datetime]:
     """Future start times (UTC) on `day` where a visit of `duration` clashes with none of `existing`."""
     if not is_business_day(day):
         return []
@@ -82,13 +66,22 @@ def free_starts(existing: Sequence[Booking], day: date, duration: timedelta, now
 
 
 async def blocking_bookings(
-    session: AsyncSession, staff_id: int, start: datetime, end: datetime, *, lock: bool = False
-) -> Sequence[Booking]:
-    """The staff member's bookings that block any visit inside [start, end), travel buffer included."""
+    session: AsyncSession,
+    staff_id: int,
+    start: datetime,
+    end: datetime,
+    *,
+    lock: bool = False,
+    exclude_subscription: int | None = None,
+) -> list[Span]:
+    """What blocks the staff member inside [start, end), travel buffer included: bookings, and the projected
+    visits of subscriptions (`exclude_subscription` leaves one subscription's own projection out)."""
     stmt = _overlapping(staff_id, start, end, utcnow()).order_by(Booking.starts_at)
     if lock:
         stmt = stmt.with_for_update()
-    return (await session.execute(stmt)).scalars().all()
+    booked: list[Span] = list((await session.execute(stmt)).scalars())
+    projected = await commitments.patterns(session, staff_id, exclude=exclude_subscription)
+    return booked + [visit for p in projected for visit in p.visits_between(start, end)]
 
 
 async def get_active_staff(session: AsyncSession, staff_id: int, *, lock: bool = False) -> StaffProfile:
@@ -156,9 +149,7 @@ async def create_hold(
         end = start + timedelta(minutes=offering.duration_minutes)
         validate_window(start, end)
         now = utcnow()
-        overlap = _overlapping(staff_id, start, end, now).limit(1).with_for_update()
-        clash = (await session.execute(overlap)).first()
-        if clash is not None:
+        if clashes(await blocking_bookings(session, staff_id, start, end, lock=True), start, end):
             raise conflict("slot_unavailable", "The selected time is no longer available")
         booking = Booking(
             customer_id=customer.id,

@@ -29,14 +29,20 @@ def migrated() -> None:
         subprocess.run(["alembic", *args], check=True, env=os.environ.copy())
 
 
-@pytest.fixture(autouse=True)
-async def clean_db() -> AsyncIterator[None]:
+async def _truncate_all() -> None:
     async with get_engine().begin() as conn:
         await conn.execute(text("SET FOREIGN_KEY_CHECKS=0"))
         for table in Base.metadata.sorted_tables:
             await conn.execute(text(f"TRUNCATE TABLE `{table.name}`"))
         await conn.execute(text("SET FOREIGN_KEY_CHECKS=1"))
+
+
+@pytest.fixture(autouse=True)
+async def clean_db() -> AsyncIterator[None]:
+    """Empty before and after: rows left by an aborted run would break the next session's `downgrade base`."""
+    await _truncate_all()
     yield
+    await _truncate_all()
 
 
 @pytest.fixture

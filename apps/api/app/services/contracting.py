@@ -4,7 +4,7 @@ Visits are ordinary bookings, so attendance, earnings and settlements treat them
 
 from collections import defaultdict
 from collections.abc import Sequence
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -32,11 +32,11 @@ from app.schemas import (
     SubscriptionOut,
     SubscriptionScheduleOut,
 )
-from app.services import addresses, audit, idempotency
+from app.services import addresses, audit, commitments, idempotency
+from app.services.commitments import Pattern, clashes, local_instant
 from app.services.recurrence import cycle_dates, cycle_end
 from app.services.scheduling import (
     blocking_bookings,
-    clashes,
     day_window,
     expire_holds,
     free_starts,
@@ -67,8 +67,16 @@ def _visit_dates(plan: SubscriptionPlan, weekdays: Sequence[int], starts_on: dat
     return cycle_dates(starts_on, list(weekdays))
 
 
-def _at(day: date, local: time) -> datetime:
-    return datetime.combine(day, local, get_settings().business_tz).astimezone(UTC)
+def _pattern(weekdays: Sequence[int], visit_start: time, duration: timedelta, first_day: date) -> Pattern:
+    """Visits after the first cycle; owner decision 2026-11-11: the cleaner stays blocked for them."""
+    return Pattern(None, frozenset(weekdays), visit_start, duration, cycle_end(first_day) + timedelta(days=1))
+
+
+async def _future_clash_days(session: AsyncSession, staff_id: int, pattern: Pattern) -> list[date]:
+    return pattern.clash_days(
+        await commitments.bookings_from(session, staff_id, pattern.from_day),
+        await commitments.patterns(session, staff_id),
+    )
 
 
 async def schedule(
@@ -84,6 +92,14 @@ async def schedule(
     free_each_day = [
         {start.astimezone(tz).time() for start in free_starts(existing, day, duration, now)} for day in dates
     ]
+    after_first_cycle = cycle_end(dates[0]) + timedelta(days=1)
+    later_bookings = await commitments.bookings_from(session, staff_id, after_first_cycle)
+    others = await commitments.patterns(session, staff_id)
+    free_later = {
+        t
+        for t in set.intersection(*free_each_day)
+        if not _pattern(weekdays, t, duration, dates[0]).clash_days(later_bookings, others)
+    }
     return SubscriptionScheduleOut(
         plan_id=plan.id,
         staff_id=staff_id,
@@ -92,7 +108,7 @@ async def schedule(
         ends_on=cycle_end(dates[0]),
         renews_on=cycle_end(dates[0]) + timedelta(days=1),
         visit_dates=dates,
-        start_times=sorted(set.intersection(*free_each_day)),
+        start_times=sorted(free_later),
     )
 
 
@@ -116,7 +132,10 @@ async def create_hold(
         address = await addresses.get_owned(session, customer, body.address_id)
         dates = _visit_dates(plan, body.weekdays, body.starts_on)
         duration = timedelta(minutes=plan.visit_duration_minutes)
-        visits = [(_at(day, body.visit_start), _at(day, body.visit_start) + duration) for day in dates]
+        visits = [
+            (local_instant(day, body.visit_start), local_instant(day, body.visit_start) + duration)
+            for day in dates
+        ]
         for start, end in visits:
             validate_window(start, end)
         existing = await blocking_bookings(session, body.staff_id, visits[0][0], visits[-1][1], lock=True)
@@ -124,7 +143,9 @@ async def create_hold(
             start.astimezone(settings.business_tz).date()
             for start, end in visits
             if clashes(existing, start, end)
-        ]
+        ] + await _future_clash_days(
+            session, body.staff_id, _pattern(body.weekdays, body.visit_start, duration, dates[0])
+        )
         if taken:
             raise AppError(
                 409,

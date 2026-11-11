@@ -20,3 +20,15 @@ def cycle_dates(starts_on: date, weekdays: list[int]) -> list[date]:
         raise ValueError("services run Monday to Friday")
     days = (starts_on + timedelta(days=i) for i in range(CYCLE_DAYS))
     return [d for d in days if d.weekday() in weekdays]
+
+
+def is_business_day(day: date) -> bool:
+    """Monday to Friday; public holidays are not modelled."""
+    return day.weekday() < 5
+
+
+def next_business_day(day: date) -> date:
+    following = day + timedelta(days=1)
+    while not is_business_day(following):
+        following += timedelta(days=1)
+    return following

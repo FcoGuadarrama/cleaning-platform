@@ -56,6 +56,13 @@ class PaymentStatus(enum.StrEnum):
     failed = "failed"
 
 
+class PaymentMethod(enum.StrEnum):
+    """Owner decision 2026-11-11: card and SPEI only. A SPEI transfer is confirmed by an agent."""
+
+    card = "card"
+    spei = "spei"
+
+
 class AttendanceKind(enum.StrEnum):
     check_in = "check_in"
     check_out = "check_out"
@@ -90,6 +97,12 @@ class SubscriptionStatus(enum.StrEnum):
     held = "held"
     active = "active"
     expired = "expired"
+    ended = "ended"
+
+
+class SubscriptionEndReason(enum.StrEnum):
+    cancelled = "cancelled"
+    unpaid = "unpaid"
 
 
 class CycleStatus(enum.StrEnum):
@@ -203,6 +216,19 @@ class Subscription(TimestampMixin, Base):
     currency: Mapped[str] = mapped_column(String(3))
     terms: Mapped[str] = mapped_column(Text)
     terms_accepted_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    payment_method: Mapped[PaymentMethod] = mapped_column(
+        _enum(PaymentMethod),
+        default=PaymentMethod.card,
+        server_default=PaymentMethod.card.value,
+        comment="How renewals are charged: the method of the latest checkout",
+    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(
+        UTCDateTime(), nullable=True, comment="Customer cancelled: no renewal, ends after the paid cycles"
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    end_reason: Mapped[SubscriptionEndReason | None] = mapped_column(
+        _enum(SubscriptionEndReason), nullable=True
+    )
 
 
 class SubscriptionCycle(TimestampMixin, Base):
@@ -294,6 +320,16 @@ class Payment(TimestampMixin, Base):
     amount_minor: Mapped[int] = mapped_column(BigInteger)
     currency: Mapped[str] = mapped_column(String(3))
     needs_refund: Mapped[bool] = mapped_column(Boolean, default=False)
+    method: Mapped[PaymentMethod] = mapped_column(
+        _enum(PaymentMethod), default=PaymentMethod.card, server_default=PaymentMethod.card.value
+    )
+    reviewed_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", name="fk_payments_reviewed_by_users"),
+        nullable=True,
+        comment="Agent who confirmed or rejected a SPEI transfer",
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    review_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class WebhookEvent(TimestampMixin, Base):
