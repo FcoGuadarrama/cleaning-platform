@@ -51,7 +51,7 @@ export default function CustomerAccount() {
       <AccountSection title="Ayuda">
         <List>
           <Row icon="headset" title="Soporte e incidencias" soon />
-          <Row icon="bell" title="Notificaciones y privacidad" soon />
+          <Row icon="bell" title="Notificaciones" subtitle="Elige qué avisos recibir en tu teléfono" onPress={() => router.push("/(customer)/notification-settings")} />
         </List>
       </AccountSection>
     </AccountScreen>

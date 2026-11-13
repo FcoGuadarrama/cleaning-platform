@@ -6,6 +6,8 @@ export default function StaffLayout() {
     <Stack screenOptions={stackScreenOptions}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="job/[id]" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="notification-settings" />
     </Stack>
   );
 }
