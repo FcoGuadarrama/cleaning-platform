@@ -47,6 +47,13 @@ async def mark_all_read(session: SessionDep, user: UserDep) -> Response:
     return Response(status_code=204)
 
 
+@router.delete("/notifications/{notification_id}", status_code=204, name="notifications_delete")
+async def delete_notification(notification_id: int, session: SessionDep, user: UserDep) -> Response:
+    """Removes the notification from the caller's inbox. 404 if it is not theirs."""
+    await inbox.remove(session, user, notification_id)
+    return Response(status_code=204)
+
+
 @router.get("/notification-preferences", name="notification_preferences_list")
 async def list_preferences(session: SessionDep, user: UserDep) -> list[NotificationPreferenceOut]:
     """Push on/off for each category of the caller's role. The inbox always keeps every notification."""

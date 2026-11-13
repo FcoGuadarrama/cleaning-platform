@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell } from "@lucide/vue";
+import { Bell, Trash2 } from "@lucide/vue";
 import { useRouter } from "vue-router";
 import { toast } from "vue-sonner";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,11 @@ async function open(item: NotificationItem): Promise<void> {
 
 async function readAll(): Promise<void> {
   const error = await notifications.markAllRead();
+  if (error) toast.error(error);
+}
+
+async function remove(item: NotificationItem): Promise<void> {
+  const error = await notifications.remove(item.id);
   if (error) toast.error(error);
 }
 
@@ -67,21 +72,34 @@ function onOpen(isOpen: boolean): void {
         <p v-else-if="notifications.recent.loaded && !notifications.items.length" class="px-3 py-6 text-center text-sm text-muted-foreground">
           No hay notificaciones.
         </p>
-        <DropdownMenuItem
-          v-for="item in notifications.items"
-          :key="item.id"
-          class="items-start gap-3 px-2.5 py-2"
-          @select="open(item)"
-        >
-          <span class="mt-1.5 size-2 shrink-0 rounded-full" :class="item.unread ? 'bg-primary' : 'bg-transparent'" aria-hidden="true" />
-          <span class="min-w-0 flex-1">
-            <span class="block" :class="item.unread ? 'font-semibold' : 'font-medium'">
-              <span v-if="item.unread" class="sr-only">Sin leer: </span>{{ item.title }}
+        <div v-for="item in notifications.items" :key="item.id" class="group relative">
+          <DropdownMenuItem
+            class="items-start gap-3 py-2 pr-10 pl-2.5"
+            aria-keyshortcuts="Delete"
+            @select="open(item)"
+            @keydown.delete.prevent="remove(item)"
+          >
+            <span class="mt-1.5 size-2 shrink-0 rounded-full" :class="item.unread ? 'bg-primary' : 'bg-transparent'" aria-hidden="true" />
+            <span class="min-w-0 flex-1">
+              <span class="block" :class="item.unread ? 'font-semibold' : 'font-medium'">
+                <span v-if="item.unread" class="sr-only">Sin leer: </span>{{ item.title }}
+              </span>
+              <span class="block text-muted-foreground">{{ item.body }}</span>
+              <span class="mt-0.5 block text-xs text-muted-foreground">{{ item.createdAt }}</span>
             </span>
-            <span class="block text-muted-foreground">{{ item.body }}</span>
-            <span class="mt-0.5 block text-xs text-muted-foreground">{{ item.createdAt }}</span>
-          </span>
-        </DropdownMenuItem>
+          </DropdownMenuItem>
+          <Button
+            variant="ghost"
+            size="icon"
+            tabindex="-1"
+            class="absolute top-1.5 right-1.5 size-7 text-muted-foreground opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-danger pointer-coarse:opacity-100"
+            :aria-label="`Borrar notificación: ${item.title}`"
+            title="Borrar"
+            @click.stop="remove(item)"
+          >
+            <Trash2 class="size-4" />
+          </Button>
+        </div>
       </div>
     </DropdownMenuContent>
   </DropdownMenu>

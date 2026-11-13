@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, not_found
@@ -55,6 +55,16 @@ async def mark_all_read(session: AsyncSession, user: User) -> None:
             .where(Notification.user_id == user.id, Notification.read_at.is_(None))
             .values(read_at=utcnow())
         )
+
+
+async def remove(session: AsyncSession, user: User, notification_id: int) -> None:
+    """Deletes one of the caller's notifications; a push still queued for it is skipped."""
+    async with session.begin():
+        deleted = await session.execute(
+            delete(Notification).where(Notification.id == notification_id, Notification.user_id == user.id)
+        )
+        if not deleted.rowcount:
+            raise not_found("Notification")
 
 
 async def preferences(session: AsyncSession, user: User) -> list[tuple[NotificationCategory, bool]]:
