@@ -1,7 +1,7 @@
 # WORKTREE STATE & HANDOFF LOG
 - **Feature:** 012 in-app notifications and push (docs/tasks/012-notifications.md)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-13T22:53:09Z
+- **Last Updated:** 2026-11-13T23:40:00Z
 - **Branch / Worktree:** feature/notifications (main worktree), from main c2a0c31
 - **Base SHA:** c2a0c31
 - **Contract Version:** docs/contracts/openapi.json sha256 c33ff92885b5f7f3b5e33118750b59201984bd2093ab7e6e8adf520718a36899
@@ -35,10 +35,15 @@ tables of 0009 were created twice; fixed by dropping only those empty tables and
 - Mobile header on every tab: src/screen.tsx `Screen` pins a brand bar (wordmark + role bell, hairline once
   content scrolls under it); the duplicate header on customer Inicio and the bell in staff Servicios were removed.
   Pushed screens keep their back bar.
+- Mobile tab bar: floating Liquid Glass capsule (src/TabBar.tsx, `AppTabs` in src/navigation.tsx). All glyphs outlined;
+  active tab = brand tint + heavier stroke + sliding lens (critically damped spring). GlassView (expo-glass-effect) on
+  iOS 26+, CSS backdrop blur on web, near-solid elsewhere. Tab roots pad scroll content with `useTabBarInset()`.
 - Open: the payment screen cannot say "your transfer was rejected" (failed SPEI) because the API only exposes the
   pending payment; booking 226 is in that state.
 
 ## Verification
+- 2026-11-13T23:40:00Z: mobile tsc clean after the floating tab bar. Chrome (Expo web, demo customer): bar floats with
+  blur over scrolling content, lens moves Inicio → Visitas, last row clears the bar. iOS/Android devices not tried.
 - 2026-11-13T22:53:09Z: mobile tsc clean after the shared header. Not seen in a browser (login needed).
 - 2026-11-13T22:46:25Z: pytest 111 passed (1 new); pnpm -r typecheck clean; check:drift clean; contract re-exported + client
   regenerated. Chrome: PaymentDue on booking 226; mobile inbox swipe deletes without opening the row (web

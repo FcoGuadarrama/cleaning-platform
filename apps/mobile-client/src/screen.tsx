@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bell } from "./Bell";
 import { Icon } from "./icons";
 import { useSession } from "./session";
+import { useTabBarInset } from "./TabBar";
 import { Text } from "./text";
 import { color } from "./theme";
 import { Wordmark } from "./ui";
@@ -36,6 +37,7 @@ function AppHeader({ scrolled }: { scrolled: boolean }) {
 /** Root screen of a tab: pinned brand bar over a white scrolling page. */
 export function Screen({ children, onRefresh, refreshing = false }: { children: ReactNode; onRefresh?: () => void; refreshing?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
+  const tabInset = useTabBarInset();
   function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     const past = e.nativeEvent.contentOffset.y > 4;
     if (past !== scrolled) setScrolled(past);
@@ -47,7 +49,7 @@ export function Screen({ children, onRefresh, refreshing = false }: { children: 
         className="flex-1"
         onScroll={onScroll}
         scrollEventThrottle={32}
-        contentContainerStyle={{ paddingTop: 12, paddingBottom: 32 }}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: tabInset }}
         refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.primary} /> : undefined}
       >
         <View className="gap-7 px-5">{children}</View>
