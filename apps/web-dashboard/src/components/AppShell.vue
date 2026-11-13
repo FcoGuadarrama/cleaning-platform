@@ -7,13 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useDirectory } from "../stores/directory";
+import { useNotifications } from "../stores/notifications";
 import AppNav from "./AppNav.vue";
 import CommandMenu from "./CommandMenu.vue";
+import NotificationsMenu from "./NotificationsMenu.vue";
 import ThemeMenu from "./ThemeMenu.vue";
 import UserMenu from "./UserMenu.vue";
 
 const route = useRoute();
 const directory = useDirectory();
+const notifications = useNotifications();
 const navOpen = ref(false);
 const searchOpen = ref(false);
 const { y } = useWindowScroll();
@@ -28,13 +31,19 @@ const visibility = useDocumentVisibility();
 onMounted(() => {
   void directory.exceptions.refresh();
   void directory.transfers.refresh();
+  void notifications.refresh();
 });
 
+function refreshLive(): void {
+  void directory.refreshLive();
+  void notifications.refresh({ background: true });
+}
+
 useIntervalFn(() => {
-  if (visibility.value === "visible") void directory.refreshLive();
+  if (visibility.value === "visible") refreshLive();
 }, LIVE_REFRESH_MS);
 watch(visibility, (state) => {
-  if (state === "visible") void directory.refreshLive();
+  if (state === "visible") refreshLive();
 });
 </script>
 
@@ -77,6 +86,7 @@ watch(visibility, (state) => {
           <span class="hidden sm:inline">Buscar</span>
           <Kbd class="ml-auto hidden sm:inline-flex">{{ isMac ? "⌘" : "Ctrl" }} K</Kbd>
         </Button>
+        <NotificationsMenu />
         <ThemeMenu />
       </header>
 

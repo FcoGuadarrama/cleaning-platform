@@ -395,11 +395,12 @@ async def _needs_refund(session: AsyncSession, payload: dict[str, Any]) -> list[
     payment = await session.get(Payment, payload["payment_id"])
     if payment is None:
         return []
+    _, paid_for = await _payment_owner(session, payment)
     return _to_admins(
         await _admins(session),
         "Reembolso pendiente",
         f"El pago {payment.provider_ref} llegó cuando la reserva ya había vencido.",
-        {"payment_id": payment.id},
+        {"payment_id": payment.id, **paid_for},
     )
 
 
