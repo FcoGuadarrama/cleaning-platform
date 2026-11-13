@@ -1,7 +1,7 @@
 import type { Schemas } from "@repo/api-client";
 import { useState } from "react";
 import { Linking, Platform } from "react-native";
-import { api, errorMessage } from "./api";
+import { api, errorCode, errorMessage } from "./api";
 import { captureAttendance } from "./gps";
 import type { Tone } from "./ui";
 
@@ -25,11 +25,12 @@ export function useAttendance(onDone: () => void) {
     setBusyId(b.id);
     const body = await captureAttendance();
     const path = b.status === "confirmed" ? "/bookings/{booking_id}/check-in" : "/bookings/{booking_id}/check-out";
-    const r = await api.POST(path, { params: { path: { booking_id: b.id } }, body }).catch(() => null);
+    const r = await api.POST(path, { params: { path: { booking_id: b.id } }, body });
     setBusyId(null);
-    if (!r) setNotice({ text: "Sin conexión: no se pudo enviar. Avisa a administración para registrarlo manualmente.", tone: "danger" });
+    // A retry is safe: the server answers with the record it already stored, so the notice reads r.data.
+    if (errorCode(r.error) === "network_error") setNotice({ text: "Sin conexión: no sabemos si quedó registrado. Vuelve a intentarlo con señal; si no se puede, avisa a administración.", tone: "danger" });
     else if (r.error) setNotice({ text: errorMessage(r.error), tone: "danger" });
-    else setNotice(CAPTURE_MESSAGES[body.capture_status] ?? null);
+    else setNotice(CAPTURE_MESSAGES[r.data.capture_status] ?? null);
     onDone();
   }
 

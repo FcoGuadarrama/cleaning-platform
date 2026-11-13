@@ -62,9 +62,8 @@ availability, sandbox payment, visit status, saved addresses (gap 7), "customer 
 - Still open: the service-area check, blocked by decision 7 (service area boundaries).
 - ADRs: geocoding provider (or none); whether the geofence uses the address's coordinates (relates to decision 5).
 
-## 8. Cleaning preferences and per-visit instructions ("Preferencias de limpieza", "Indicaciones": Mascotas, Prioridad)
-- Needs: preferences per address (pets, surfaces, priorities) plus a per-visit override, shown to staff on the job
-  detail screen.
+## 8. Per-visit instructions ("Indicaciones": Mascotas, Prioridad)
+- Needs: instructions per visit (pets, priorities), shown to staff on the job detail screen.
 - ADRs: free text vs structured fields (affects staff UI and admin reporting).
 
 ## 9. Service scope checklist ("Tu casa, a tu manera", "Ver qué incluye")

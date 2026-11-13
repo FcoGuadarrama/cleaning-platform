@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import retry_on_lock_conflict
 from app.core.errors import conflict, not_found
 from app.models import SubscriptionPlan, User
 from app.schemas import SubscriptionPlanRequest
@@ -26,6 +27,7 @@ async def list_all(session: AsyncSession) -> Sequence[SubscriptionPlan]:
     return rows.scalars().all()
 
 
+@retry_on_lock_conflict
 async def create(session: AsyncSession, admin: User, body: SubscriptionPlanRequest) -> SubscriptionPlan:
     async with session.begin():
         plan = SubscriptionPlan(**body.model_dump())
@@ -50,6 +52,7 @@ async def _lock_current(session: AsyncSession, plan_id: int) -> SubscriptionPlan
     return plan
 
 
+@retry_on_lock_conflict
 async def revise(
     session: AsyncSession, admin: User, plan_id: int, body: SubscriptionPlanRequest
 ) -> SubscriptionPlan:
@@ -71,6 +74,7 @@ async def revise(
     return plan
 
 
+@retry_on_lock_conflict
 async def set_visibility(
     session: AsyncSession, admin: User, plan_id: int, is_active: bool
 ) -> SubscriptionPlan:

@@ -3,10 +3,11 @@
 from collections.abc import Sequence
 from datetime import UTC, date, datetime, time, timedelta
 
-from sqlalchemy import Select, and_, or_, select, update
+from sqlalchemy import Select, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.db import retry_on_lock_conflict
 from app.core.errors import AppError, conflict, forbidden, not_found
 from app.core.timeutil import utcnow
 from app.models import (
@@ -20,33 +21,24 @@ from app.models import (
     StaffProfile,
     Subscription,
     SubscriptionCycle,
+    SubscriptionEndReason,
     SubscriptionStatus,
     User,
 )
-from app.services import addresses, audit
-
-BLOCKING = (BookingStatus.confirmed, BookingStatus.in_progress, BookingStatus.pending_review)
-
-
-def _blocking_clause(now: datetime) -> object:
-    return or_(
-        Booking.status.in_(BLOCKING),
-        and_(Booking.status == BookingStatus.held, Booking.hold_expires_at > now),
-    )
+from app.schemas import BookingCreateRequest
+from app.services import addresses, audit, commitments, idempotency, outbox
+from app.services.commitments import Span, blocking_clause, clashes
+from app.services.recurrence import is_business_day
 
 
 def _overlapping(staff_id: int, start: datetime, end: datetime, now: datetime) -> Select[Booking]:
     buffer = timedelta(minutes=get_settings().travel_buffer_minutes)
     return select(Booking).where(
         Booking.staff_id == staff_id,
-        _blocking_clause(now),  # type: ignore[arg-type]
+        blocking_clause(now),  # type: ignore[arg-type]
         Booking.starts_at < end + buffer,
         Booking.ends_at > start - buffer,
     )
-
-
-def is_business_day(day: date) -> bool:
-    return day.weekday() < 5
 
 
 def day_window(day: date) -> tuple[datetime, datetime]:
@@ -59,12 +51,7 @@ def day_window(day: date) -> tuple[datetime, datetime]:
     )
 
 
-def clashes(existing: Sequence[Booking], start: datetime, end: datetime) -> bool:
-    buffer = timedelta(minutes=get_settings().travel_buffer_minutes)
-    return any(b.starts_at < end + buffer and b.ends_at > start - buffer for b in existing)
-
-
-def free_starts(existing: Sequence[Booking], day: date, duration: timedelta, now: datetime) -> list[datetime]:
+def free_starts(existing: Sequence[Span], day: date, duration: timedelta, now: datetime) -> list[datetime]:
     """Future start times (UTC) on `day` where a visit of `duration` clashes with none of `existing`."""
     if not is_business_day(day):
         return []
@@ -80,13 +67,22 @@ def free_starts(existing: Sequence[Booking], day: date, duration: timedelta, now
 
 
 async def blocking_bookings(
-    session: AsyncSession, staff_id: int, start: datetime, end: datetime, *, lock: bool = False
-) -> Sequence[Booking]:
-    """The staff member's bookings that block any visit inside [start, end), travel buffer included."""
+    session: AsyncSession,
+    staff_id: int,
+    start: datetime,
+    end: datetime,
+    *,
+    lock: bool = False,
+    exclude_subscription: int | None = None,
+) -> list[Span]:
+    """What blocks the staff member inside [start, end), travel buffer included: bookings, and the projected
+    visits of subscriptions (`exclude_subscription` leaves one subscription's own projection out)."""
     stmt = _overlapping(staff_id, start, end, utcnow()).order_by(Booking.starts_at)
     if lock:
         stmt = stmt.with_for_update()
-    return (await session.execute(stmt)).scalars().all()
+    booked: list[Span] = list((await session.execute(stmt)).scalars())
+    projected = await commitments.patterns(session, staff_id, exclude=exclude_subscription)
+    return booked + [visit for p in projected for visit in p.visits_between(start, end)]
 
 
 async def get_active_staff(session: AsyncSession, staff_id: int, *, lock: bool = False) -> StaffProfile:
@@ -129,23 +125,32 @@ def validate_window(start: datetime, end: datetime) -> None:
         raise AppError(400, "outside_working_hours", "Outside working hours")
 
 
+@retry_on_lock_conflict
 async def create_hold(
-    session: AsyncSession, customer: User, staff_id: int, offering_id: int, start: datetime, address_id: int
+    session: AsyncSession, customer: User, body: BookingCreateRequest, idempotency_key: str | None = None
 ) -> Booking:
-    """Single transaction: lock staff row → check overlaps → insert hold."""
+    """Single transaction: claim the idempotency key → lock staff row → check overlaps → insert hold."""
+    staff_id = body.staff_id
     async with session.begin():
-        # Lock first: under REPEATABLE READ the snapshot starts at the first read, and only
-        # locking reads see rows committed by the transaction that held the lock before us.
+        key = (
+            await idempotency.claim(session, customer, idempotency_key, "booking", body)
+            if idempotency_key
+            else None
+        )
+        if key is not None and key.resource_id is not None:
+            replayed = await session.get(Booking, key.resource_id)
+            assert replayed is not None
+            return replayed
+        # Lock before any plain read: under REPEATABLE READ the snapshot starts at the first plain read, so it
+        # then includes every booking committed by the transaction that held the lock before us.
         await get_active_staff(session, staff_id, lock=True)
-        offering = await get_active_offering(session, offering_id)
-        address = await addresses.get_owned(session, customer, address_id)
-        start = start.astimezone(UTC)
+        offering = await get_active_offering(session, body.offering_id)
+        address = await addresses.get_owned(session, customer, body.address_id)
+        start = body.starts_at.astimezone(UTC)
         end = start + timedelta(minutes=offering.duration_minutes)
         validate_window(start, end)
         now = utcnow()
-        overlap = _overlapping(staff_id, start, end, now).limit(1).with_for_update()
-        clash = (await session.execute(overlap)).first()
-        if clash is not None:
+        if clashes(await blocking_bookings(session, staff_id, start, end, lock=True), start, end):
             raise conflict("slot_unavailable", "The selected time is no longer available")
         booking = Booking(
             customer_id=customer.id,
@@ -163,51 +168,104 @@ async def create_hold(
         )
         session.add(booking)
         await session.flush()
+        if key is not None:
+            key.resource_id = booking.id
         audit.record(session, customer.id, "booking.hold_created", "booking", booking.id)
     return booking
 
 
+@retry_on_lock_conflict
 async def expire_holds(session: AsyncSession) -> int:
-    """Releases lapsed holds: single-visit bookings, subscription visits, their cycle and, for a first
-    cycle, the subscription itself. Every update re-checks `held`, so a payment confirmed meanwhile is
-    never undone."""
+    """Releases lapsed holds: single-visit bookings, and subscription cycles with their visits. A lapsed first
+    cycle expires its subscription; a lapsed renewal (unpaid by the day before its first visit, owner decision
+    2026-11-11) ends it and frees the cleaner. Returns the number of bookings released.
+
+    Runs from the background sweeper and before every read that reports hold status, so it must stay cheap
+    and out of the way of writers: candidates come from a plain read (no locks when nothing has lapsed), then
+    are locked by primary key with SKIP LOCKED in the global order subscription, cycle, visits. A row another
+    transaction holds, such as a payment confirming it, is left for the next sweep instead of waited on; with
+    no range scan under a lock, no gap is locked against new holds either. Rows are re-checked once locked,
+    so a payment confirmed meanwhile is never undone."""
     async with session.begin():
         now = utcnow()
-        result = await session.execute(
-            update(Booking)
-            .where(Booking.status == BookingStatus.held, Booking.hold_expires_at <= now)
-            .values(status=BookingStatus.expired)
-        )
-        lapsed = (
+        lapsed = list(
             await session.execute(
                 select(SubscriptionCycle.id, SubscriptionCycle.subscription_id).where(
                     SubscriptionCycle.status == CycleStatus.held, SubscriptionCycle.hold_expires_at <= now
                 )
             )
-        ).all()
-        if lapsed:
-            await session.execute(
-                update(SubscriptionCycle)
-                .where(
-                    SubscriptionCycle.id.in_([c.id for c in lapsed]),
-                    SubscriptionCycle.status == CycleStatus.held,
-                )
-                .values(status=CycleStatus.expired)
+        )
+        subscriptions = {
+            s.id: s
+            for s in await _lock_free(
+                session, select(Subscription).where(Subscription.id.in_({c.subscription_id for c in lapsed}))
             )
-            await session.execute(
-                update(Subscription)
-                .where(
-                    Subscription.id.in_([c.subscription_id for c in lapsed]),
-                    Subscription.status == SubscriptionStatus.held,
+        }
+        cycles = await _lock_free(
+            session,
+            select(SubscriptionCycle).where(
+                SubscriptionCycle.id.in_([c.id for c in lapsed if c.subscription_id in subscriptions]),
+                SubscriptionCycle.status == CycleStatus.held,
+                SubscriptionCycle.hold_expires_at <= now,
+            ),
+        )
+        # The visits of a cycle someone else holds stay with that cycle: confirming it confirms them too.
+        busy_cycles = {c.id for c in lapsed} - {c.id for c in cycles}
+        lapsed_bookings = [
+            b.id
+            for b in await session.execute(
+                select(Booking.id, Booking.subscription_cycle_id).where(
+                    Booking.status == BookingStatus.held, Booking.hold_expires_at <= now
                 )
-                .values(status=SubscriptionStatus.expired)
             )
-    return int(getattr(result, "rowcount", 0))
+            if b.subscription_cycle_id not in busy_cycles
+        ]
+        bookings = await _lock_free(
+            session,
+            select(Booking).where(
+                Booking.id.in_(lapsed_bookings),
+                Booking.status == BookingStatus.held,
+                Booking.hold_expires_at <= now,
+            ),
+        )
+        for booking in bookings:
+            booking.status = BookingStatus.expired
+        for cycle in cycles:
+            cycle.status = CycleStatus.expired
+            _lapse_subscription(session, subscriptions[cycle.subscription_id], cycle, now)
+    return len(bookings)
+
+
+def _lapse_subscription(
+    session: AsyncSession, subscription: Subscription, cycle: SubscriptionCycle, now: datetime
+) -> None:
+    if cycle.sequence == 1 and subscription.status == SubscriptionStatus.held:
+        subscription.status = SubscriptionStatus.expired
+    elif cycle.sequence > 1 and subscription.status == SubscriptionStatus.active:
+        end_subscription(session, subscription, SubscriptionEndReason.unpaid, now)
+
+
+def end_subscription(
+    session: AsyncSession, subscription: Subscription, reason: SubscriptionEndReason, now: datetime
+) -> None:
+    """Deactivates a subscription: it stops blocking its cleaner. Call with the subscription locked."""
+    subscription.status = SubscriptionStatus.ended
+    subscription.end_reason, subscription.ended_at = reason, now
+    audit.record(session, None, "subscription.ended", "subscription", subscription.id, reason=reason.value)
+    outbox.publish(session, "subscription.ended", subscription.id, subscription_id=subscription.id)
+
+
+async def _lock_free[M: (Booking, Subscription, SubscriptionCycle)](
+    session: AsyncSession, stmt: Select[M]
+) -> list[M]:
+    """The rows of `stmt` no other transaction holds, locked for this one."""
+    return list(await session.scalars(stmt.with_for_update(skip_locked=True)))
 
 
 CANCELLABLE = (BookingStatus.held, BookingStatus.confirmed)
 
 
+@retry_on_lock_conflict
 async def cancel(session: AsyncSession, admin: User, booking_id: int, reason: str) -> tuple[Booking, bool]:
     """Admin cancel of a held/confirmed booking. A captured payment is only flagged for refund here:
     refund execution and late-cancellation compensation are open product decisions."""
@@ -241,6 +299,7 @@ async def cancel(session: AsyncSession, admin: User, booking_id: int, reason: st
             previous_status=previous.value,
             refund_payment_ids=[p.id for p in paid],
         )
+        outbox.publish(session, "booking.cancelled", booking.id, booking_id=booking.id)
     return booking, bool(paid)
 
 

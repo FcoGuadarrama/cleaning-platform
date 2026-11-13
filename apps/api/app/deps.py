@@ -1,7 +1,7 @@
 from collections.abc import Callable, Coroutine
 from typing import Annotated, Any
 
-from fastapi import Depends
+from fastapi import Depends, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +13,16 @@ from app.core.timeutil import utcnow
 from app.models import AuthToken, Role, User
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
+IdempotencyKeyHeader = Annotated[
+    str | None,
+    Header(
+        min_length=1,
+        max_length=64,
+        description="Client-generated key (a UUID) for this create. A retry with the same key and body "
+        "returns the resource the first attempt created; the same key with a different body is 409 "
+        "idempotency_key_reused.",
+    ),
+]
 _bearer = HTTPBearer(auto_error=False)
 
 
@@ -30,6 +40,8 @@ async def current_user(
     await session.commit()  # end the read transaction so services can open their own boundaries
     if user is None or not user.is_active:
         raise AppError(401, "unauthenticated", "Invalid or expired token")
+    # A detached snapshot: a service transaction that rolls back (and is retried) never expires it.
+    session.expunge(user)
     return user
 
 

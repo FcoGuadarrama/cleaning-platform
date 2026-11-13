@@ -35,5 +35,5 @@ async def app_error_handler(_: Request, exc: Exception) -> JSONResponse:
 
 
 ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
-    status: {"model": ErrorResponse} for status in (400, 401, 403, 404, 409)
+    status: {"model": ErrorResponse} for status in (400, 401, 403, 404, 409, 503)
 }

@@ -1,12 +1,16 @@
-"""GPS-assisted check-in/out. A failed capture is stored as a failure and opens an admin exception."""
+"""GPS-assisted check-in/out. A failed capture is stored as a failure and opens an admin exception.
+
+A booking has at most one check-in and one check-out. Recording one again is a retry whose response was lost:
+it returns the stored record (the first capture wins) when the same person recorded it, and conflicts
+otherwise."""
 
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.db import retry_on_lock_conflict
 from app.core.errors import AppError, conflict, not_found
 from app.core.timeutil import utcnow
 from app.models import (
@@ -22,7 +26,7 @@ from app.models import (
     User,
 )
 from app.schemas import AttendanceRequest
-from app.services import audit
+from app.services import audit, outbox
 from app.services.scheduling import get_visible_booking
 
 _EXPECTED_STATUS = {
@@ -48,14 +52,15 @@ def _validate_capture(req: AttendanceRequest) -> None:
         raise AppError(400, "gps_inconsistent", "Coordinates sent with a failed capture status")
 
 
+@retry_on_lock_conflict
 async def record_attendance(
     session: AsyncSession, staff_user: User, booking_id: int, kind: AttendanceKind, req: AttendanceRequest
 ) -> Attendance:
     _validate_capture(req)
     async with session.begin():
         booking = await get_visible_booking(session, staff_user, booking_id, lock=True)
-        if booking.status != _EXPECTED_STATUS[kind]:
-            raise conflict("invalid_booking_state", f"Cannot {kind.value} a booking in {booking.status}")
+        if replay := await _already_recorded(session, booking, kind, staff_user):
+            return replay
         low = req.accuracy_m is not None and req.accuracy_m > get_settings().gps_low_accuracy_m
         attendance = Attendance(
             booking_id=booking.id,
@@ -68,7 +73,8 @@ async def record_attendance(
             low_accuracy=low,
             recorded_by=staff_user.id,
         )
-        await _insert_attendance(session, attendance)
+        session.add(attendance)
+        await session.flush()
         if req.capture_status != CaptureStatus.captured:
             session.add(
                 AttendanceException(
@@ -77,6 +83,13 @@ async def record_attendance(
                     reason=req.capture_status.value,
                     status=ExceptionStatus.open,
                 )
+            )
+            outbox.publish(
+                session,
+                "attendance.exception_opened",
+                attendance.id,
+                booking_id=booking.id,
+                attendance_id=attendance.id,
             )
         audit.record(
             session,
@@ -91,14 +104,24 @@ async def record_attendance(
     return attendance
 
 
-async def _insert_attendance(session: AsyncSession, attendance: Attendance) -> None:
-    session.add(attendance)
-    try:
-        await session.flush()
-    except IntegrityError as exc:
-        raise conflict("attendance_exists", "Attendance already recorded") from exc
+async def _already_recorded(
+    session: AsyncSession, booking: Booking, kind: AttendanceKind, actor: User
+) -> Attendance | None:
+    """Call with the booking locked: attendance for it is only written under that lock. None when `kind` can
+    be recorded now."""
+    existing = await session.scalar(
+        select(Attendance).where(Attendance.booking_id == booking.id, Attendance.kind == kind)
+    )
+    if existing is not None:
+        if existing.recorded_by != actor.id:
+            raise conflict("attendance_exists", f"The {kind.value} was already recorded by someone else")
+        return existing
+    if booking.status != _EXPECTED_STATUS[kind]:
+        raise conflict("invalid_booking_state", f"Cannot {kind.value} a booking in {booking.status}")
+    return None
 
 
+@retry_on_lock_conflict
 async def record_manual(
     session: AsyncSession,
     admin: User,
@@ -114,8 +137,8 @@ async def record_manual(
         ).scalar_one_or_none()
         if booking is None:
             raise not_found("Booking")
-        if booking.status != _EXPECTED_STATUS[kind]:
-            raise conflict("invalid_booking_state", f"Cannot {kind.value} a booking in {booking.status}")
+        if replay := await _already_recorded(session, booking, kind, admin):
+            return replay
         attendance = Attendance(
             booking_id=booking.id,
             kind=kind,
@@ -123,7 +146,7 @@ async def record_manual(
             occurred_at=occurred_at,
             recorded_by=admin.id,
         )
-        await _insert_attendance(session, attendance)
+        session.add(attendance)
         audit.record(
             session, admin.id, f"attendance.manual_{kind.value}", "booking", booking.id, reason=reason
         )
@@ -168,8 +191,10 @@ async def _complete(session: AsyncSession, booking: Booking, actor_id: int) -> N
         )
     )
     audit.record(session, actor_id, "booking.completed", "booking", booking.id)
+    outbox.publish(session, "booking.completed", booking.id, booking_id=booking.id)
 
 
+@retry_on_lock_conflict
 async def resolve_exception(
     session: AsyncSession, admin: User, exception_id: int, approve: bool, note: str
 ) -> AttendanceException:

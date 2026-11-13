@@ -1,6 +1,6 @@
 import type { Schemas } from "@repo/api-client";
 import { describe, expect, it } from "vitest";
-import { currentCycle, scheduleLabel, toSubscriptionRow } from "./contractedSubscriptions";
+import { currentCycle, scheduleLabel, subscriptionStatus, toSubscriptionRow } from "./contractedSubscriptions";
 
 function visit(id: number, status: Schemas["BookingStatus"]): Schemas["BookingOut"] {
   return {
@@ -45,6 +45,12 @@ const subscription: Schemas["AdminSubscriptionOut"] = {
   terms_accepted_at: "2026-11-10T20:00:00Z",
   created_at: "2026-11-10T20:00:00Z",
   renews_on: "2026-12-15",
+  renewal_notice_on: "2026-12-10",
+  next_charge_on: "2026-12-11",
+  payment_method: "card",
+  cancelled_at: null,
+  ended_at: null,
+  end_reason: null,
   cycles: [cycle(10, "confirmed", [visit(1, "completed"), visit(2, "confirmed")])],
 };
 
@@ -63,7 +69,16 @@ describe("contracted subscriptions", () => {
       visitsDone: 1,
       visitsTotal: 2,
       renews: "Mar 15 de dic",
+      nextCharge: "Vie 11 de dic",
     });
+  });
+
+  it("tells a cancelled, an unpaid renewal and an ended plan apart", () => {
+    expect(subscriptionStatus({ ...subscription, cancelled_at: "2026-12-01T18:00:00Z" }).label).toBe("Cancela al cierre");
+    const renewal = cycle(11, "held", []);
+    expect(subscriptionStatus({ ...subscription, cycles: [...subscription.cycles, renewal] }).label).toBe("Renovación sin pagar");
+    expect(subscriptionStatus({ ...subscription, status: "ended", end_reason: "unpaid" }).label).toBe("Terminada sin pago");
+    expect(subscriptionStatus({ ...subscription, status: "ended", end_reason: "cancelled" }).label).toBe("Cancelada");
   });
 
   it("uses the paid cycle over a newer pending one, and the pending one before any payment", () => {

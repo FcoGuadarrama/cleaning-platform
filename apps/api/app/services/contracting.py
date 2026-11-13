@@ -4,14 +4,15 @@ Visits are ordinary bookings, so attendance, earnings and settlements treat them
 
 from collections import defaultdict
 from collections.abc import Sequence
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.errors import AppError, not_found
+from app.core.db import retry_on_lock_conflict
+from app.core.errors import AppError, conflict, not_found
 from app.core.timeutil import utcnow
 from app.models import (
     Booking,
@@ -31,11 +32,11 @@ from app.schemas import (
     SubscriptionOut,
     SubscriptionScheduleOut,
 )
-from app.services import addresses, audit
-from app.services.recurrence import cycle_dates, cycle_end
+from app.services import addresses, audit, commitments, idempotency, outbox
+from app.services.commitments import Pattern, clashes, local_instant
+from app.services.recurrence import cycle_dates, cycle_end, renewal_dates
 from app.services.scheduling import (
     blocking_bookings,
-    clashes,
     day_window,
     expire_holds,
     free_starts,
@@ -66,8 +67,16 @@ def _visit_dates(plan: SubscriptionPlan, weekdays: Sequence[int], starts_on: dat
     return cycle_dates(starts_on, list(weekdays))
 
 
-def _at(day: date, local: time) -> datetime:
-    return datetime.combine(day, local, get_settings().business_tz).astimezone(UTC)
+def _pattern(weekdays: Sequence[int], visit_start: time, duration: timedelta, first_day: date) -> Pattern:
+    """Visits after the first cycle; owner decision 2026-11-11: the cleaner stays blocked for them."""
+    return Pattern(None, frozenset(weekdays), visit_start, duration, cycle_end(first_day) + timedelta(days=1))
+
+
+async def _future_clash_days(session: AsyncSession, staff_id: int, pattern: Pattern) -> list[date]:
+    return pattern.clash_days(
+        await commitments.bookings_from(session, staff_id, pattern.from_day),
+        await commitments.patterns(session, staff_id),
+    )
 
 
 async def schedule(
@@ -83,6 +92,14 @@ async def schedule(
     free_each_day = [
         {start.astimezone(tz).time() for start in free_starts(existing, day, duration, now)} for day in dates
     ]
+    after_first_cycle = cycle_end(dates[0]) + timedelta(days=1)
+    later_bookings = await commitments.bookings_from(session, staff_id, after_first_cycle)
+    others = await commitments.patterns(session, staff_id)
+    free_later = {
+        t
+        for t in set.intersection(*free_each_day)
+        if not _pattern(weekdays, t, duration, dates[0]).clash_days(later_bookings, others)
+    }
     return SubscriptionScheduleOut(
         plan_id=plan.id,
         staff_id=staff_id,
@@ -91,21 +108,34 @@ async def schedule(
         ends_on=cycle_end(dates[0]),
         renews_on=cycle_end(dates[0]) + timedelta(days=1),
         visit_dates=dates,
-        start_times=sorted(set.intersection(*free_each_day)),
+        start_times=sorted(free_later),
     )
 
 
-async def create_hold(session: AsyncSession, customer: User, body: SubscriptionCreateRequest) -> int:
+@retry_on_lock_conflict
+async def create_hold(
+    session: AsyncSession, customer: User, body: SubscriptionCreateRequest, idempotency_key: str | None = None
+) -> int:
     """One transaction under the cleaner's row lock (same order as single bookings): check every visit, then
     insert the subscription with a copy of the plan, its first cycle and one held booking per visit."""
     settings = get_settings()
     async with session.begin():
+        key = (
+            await idempotency.claim(session, customer, idempotency_key, "subscription", body)
+            if idempotency_key
+            else None
+        )
+        if key is not None and key.resource_id is not None:
+            return key.resource_id
         await get_active_staff(session, body.staff_id, lock=True)
         plan = await _visible_plan(session, body.plan_id)
         address = await addresses.get_owned(session, customer, body.address_id)
         dates = _visit_dates(plan, body.weekdays, body.starts_on)
         duration = timedelta(minutes=plan.visit_duration_minutes)
-        visits = [(_at(day, body.visit_start), _at(day, body.visit_start) + duration) for day in dates]
+        visits = [
+            (local_instant(day, body.visit_start), local_instant(day, body.visit_start) + duration)
+            for day in dates
+        ]
         for start, end in visits:
             validate_window(start, end)
         existing = await blocking_bookings(session, body.staff_id, visits[0][0], visits[-1][1], lock=True)
@@ -113,7 +143,9 @@ async def create_hold(session: AsyncSession, customer: User, body: SubscriptionC
             start.astimezone(settings.business_tz).date()
             for start, end in visits
             if clashes(existing, start, end)
-        ]
+        ] + await _future_clash_days(
+            session, body.staff_id, _pattern(body.weekdays, body.visit_start, duration, dates[0])
+        )
         if taken:
             raise AppError(
                 409,
@@ -183,6 +215,8 @@ async def create_hold(session: AsyncSession, customer: User, body: SubscriptionC
             cycle_id=cycle.id,
             visits=len(visits),
         )
+        if key is not None:
+            key.resource_id = subscription.id
     return subscription.id
 
 
@@ -221,9 +255,22 @@ async def _present[S: SubscriptionOut](
     for s in subscriptions:
         own = cycles_by_subscription[s.id]
         paid = [c for c in own if c.status == CycleStatus.confirmed]
-        active = s.status == SubscriptionStatus.active and paid
-        renews_on = paid[-1].ends_on + timedelta(days=1) if active else None
-        out.append(model.model_validate({**_columns(s), "cycles": own, "renews_on": renews_on}))
+        renewing = s.status == SubscriptionStatus.active and s.cancelled_at is None and paid
+        renews_on = paid[-1].ends_on + timedelta(days=1) if renewing else None
+        # Before the next cycle exists: when the notice goes out and the charge is made.
+        upcoming = renewing and own[-1].status == CycleStatus.confirmed
+        notice_on, charge_on = renewal_dates(paid[-1].starts_on, s.weekdays) if upcoming else (None, None)
+        out.append(
+            model.model_validate(
+                {
+                    **_columns(s),
+                    "cycles": own,
+                    "renews_on": renews_on,
+                    "renewal_notice_on": notice_on,
+                    "next_charge_on": charge_on,
+                }
+            )
+        )
     return out
 
 
@@ -273,3 +320,51 @@ async def get_any(session: AsyncSession, subscription_id: int) -> AdminSubscript
         if row is None:
             raise not_found("Subscription")
         return (await _present(session, [row], AdminSubscriptionOut))[0]
+
+
+@retry_on_lock_conflict
+async def cancel(session: AsyncSession, customer: User, subscription_id: int) -> None:
+    """Owner decision 2026-11-11: no further charge; the paid visits stay and nothing is refunded; the
+    cleaner is free once the paid cycles end. A renewal still awaiting payment is dropped now (a late payment
+    for it is flagged for refund). Lock order: subscription, cycle, visits."""
+    async with session.begin():
+        subscription = await session.scalar(
+            select(Subscription)
+            .where(Subscription.id == subscription_id, Subscription.customer_id == customer.id)
+            .with_for_update()
+        )
+        if subscription is None:
+            raise not_found("Subscription")
+        if subscription.status != SubscriptionStatus.active or subscription.cancelled_at is not None:
+            raise conflict("subscription_not_cancellable", "Only an active subscription can be cancelled")
+        subscription.cancelled_at = utcnow()
+        unpaid = list(
+            await session.scalars(
+                select(SubscriptionCycle)
+                .where(
+                    SubscriptionCycle.subscription_id == subscription.id,
+                    SubscriptionCycle.status == CycleStatus.held,
+                )
+                .with_for_update()
+            )
+        )
+        for cycle in unpaid:
+            cycle.status = CycleStatus.expired
+        if unpaid:
+            await session.execute(
+                update(Booking)
+                .where(
+                    Booking.subscription_cycle_id.in_([c.id for c in unpaid]),
+                    Booking.status == BookingStatus.held,
+                )
+                .values(status=BookingStatus.expired)
+            )
+        audit.record(
+            session,
+            customer.id,
+            "subscription.cancelled",
+            "subscription",
+            subscription.id,
+            dropped_cycle_ids=[c.id for c in unpaid],
+        )
+        outbox.publish(session, "subscription.cancelled", subscription.id, subscription_id=subscription.id)

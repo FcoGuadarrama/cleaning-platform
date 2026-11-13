@@ -9,6 +9,18 @@ class Settings:
     database_url: str
     business_tz: ZoneInfo
     hold_ttl_minutes: int
+    hold_sweep_interval_seconds: float
+    outbox_dispatch_interval_seconds: float
+    housekeeping_interval_seconds: float
+    idempotency_key_ttl_hours: int
+    outbox_retention_days: int
+    notification_channel: str
+    renewal_interval_seconds: float
+    spei_hold_hours: int
+    spei_clabe: str
+    spei_bank: str
+    spei_beneficiary: str
+    sandbox_renewal_outcome: str
     travel_buffer_minutes: int
     workday_start_hour: int
     workday_end_hour: int
@@ -30,10 +42,29 @@ def get_settings() -> Settings:
     provider = os.environ.get("PAYMENT_PROVIDER", "sandbox")
     if provider != "sandbox":
         raise RuntimeError("Only the sandbox payment provider is enabled until the provider decision is made")
+    renewal_outcome = os.environ.get("SANDBOX_RENEWAL_OUTCOME", "succeeded")
+    if renewal_outcome not in ("succeeded", "failed"):
+        raise RuntimeError("SANDBOX_RENEWAL_OUTCOME must be succeeded or failed")
+    channel = os.environ.get("NOTIFICATION_CHANNEL", "log")
+    if channel != "log":
+        raise RuntimeError("Only the log notification channel is enabled until the channel decision is made")
     return Settings(
         database_url=os.environ["DATABASE_URL"],
         business_tz=ZoneInfo(os.environ.get("BUSINESS_TZ", "America/Mexico_City")),
         hold_ttl_minutes=_int("HOLD_TTL_MINUTES", 15),
+        hold_sweep_interval_seconds=float(os.environ.get("HOLD_SWEEP_INTERVAL_SECONDS", "30")),
+        outbox_dispatch_interval_seconds=float(os.environ.get("OUTBOX_DISPATCH_INTERVAL_SECONDS", "5")),
+        housekeeping_interval_seconds=float(os.environ.get("HOUSEKEEPING_INTERVAL_SECONDS", "3600")),
+        idempotency_key_ttl_hours=_int("IDEMPOTENCY_KEY_TTL_HOURS", 24),
+        outbox_retention_days=_int("OUTBOX_RETENTION_DAYS", 7),
+        notification_channel=channel,
+        renewal_interval_seconds=float(os.environ.get("RENEWAL_INTERVAL_SECONDS", "900")),
+        spei_hold_hours=_int("SPEI_HOLD_HOURS", 24),
+        # Unset until the business account exists: SPEI checkout answers 409 spei_unavailable without them.
+        spei_clabe=os.environ.get("SPEI_CLABE", ""),
+        spei_bank=os.environ.get("SPEI_BANK", ""),
+        spei_beneficiary=os.environ.get("SPEI_BENEFICIARY", ""),
+        sandbox_renewal_outcome=renewal_outcome,
         travel_buffer_minutes=_int("TRAVEL_BUFFER_MINUTES", 60),
         workday_start_hour=_int("WORKDAY_START_HOUR", 8),
         workday_end_hour=_int("WORKDAY_END_HOUR", 18),

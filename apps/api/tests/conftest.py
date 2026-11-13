@@ -12,6 +12,9 @@ from sqlalchemy import text
 
 os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
 os.environ.setdefault("SANDBOX_WEBHOOK_SECRET", "test-only-secret")
+os.environ.setdefault("SPEI_CLABE", "000000000000000000")
+os.environ.setdefault("SPEI_BANK", "Banco de prueba")
+os.environ.setdefault("SPEI_BENEFICIARY", "Cuenta de prueba")
 
 from app.core.config import get_settings  # noqa: E402
 from app.core.db import get_engine, get_sessionmaker  # noqa: E402
@@ -29,14 +32,20 @@ def migrated() -> None:
         subprocess.run(["alembic", *args], check=True, env=os.environ.copy())
 
 
-@pytest.fixture(autouse=True)
-async def clean_db() -> AsyncIterator[None]:
+async def _truncate_all() -> None:
     async with get_engine().begin() as conn:
         await conn.execute(text("SET FOREIGN_KEY_CHECKS=0"))
         for table in Base.metadata.sorted_tables:
             await conn.execute(text(f"TRUNCATE TABLE `{table.name}`"))
         await conn.execute(text("SET FOREIGN_KEY_CHECKS=1"))
+
+
+@pytest.fixture(autouse=True)
+async def clean_db() -> AsyncIterator[None]:
+    """Empty before and after: rows left by an aborted run would break the next session's `downgrade base`."""
+    await _truncate_all()
     yield
+    await _truncate_all()
 
 
 @pytest.fixture

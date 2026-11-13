@@ -9,6 +9,7 @@ from app.models import AttendanceException, ExceptionStatus, Role, ServiceOfferi
 from app.schemas import (
     AdminSubscriptionOut,
     AdminSubscriptionPlanOut,
+    AdminTransferOut,
     AttendanceExceptionOut,
     AttendanceOut,
     BookingCancelOut,
@@ -19,6 +20,7 @@ from app.schemas import (
     ManualAttendanceRequest,
     OfferingCreateRequest,
     OfferingOut,
+    PaymentOut,
     PayoutRequest,
     SettlementCreateRequest,
     SettlementOut,
@@ -26,9 +28,11 @@ from app.schemas import (
     StaffProfileOut,
     SubscriptionPlanRequest,
     SubscriptionPlanVisibilityRequest,
+    TransferConfirmRequest,
+    TransferRejectRequest,
     UserOut,
 )
-from app.services import attendance, audit, auth, contracting, earnings, scheduling, subscriptions
+from app.services import attendance, audit, auth, contracting, earnings, payments, scheduling, subscriptions
 
 router = APIRouter(prefix="/admin", tags=["admin"], responses=ERROR_RESPONSES)
 
@@ -127,6 +131,7 @@ async def resolve_exception(
 async def manual_attendance(
     booking_id: int, body: ManualAttendanceRequest, session: SessionDep, admin: AdminDep
 ) -> AttendanceOut:
+    """A retry returns the record already stored when the same user recorded it (the first capture wins)."""
     row = await attendance.record_manual(session, admin, booking_id, body.kind, body.occurred_at, body.reason)
     return AttendanceOut.model_validate(row)
 
@@ -162,3 +167,25 @@ async def record_payout(
     return SettlementOut.model_validate(
         await earnings.record_payout(session, admin, settlement_id, body.reference)
     )
+
+
+@router.get("/transfers", name="admin_list_transfers")
+async def list_transfers(session: SessionDep, _: AdminDep) -> list[AdminTransferOut]:
+    """SPEI transfers awaiting an agent, oldest first."""
+    return await payments.pending_transfers(session)
+
+
+@router.post("/payments/{payment_id}/confirm-transfer", name="admin_confirm_transfer")
+async def confirm_transfer(
+    payment_id: int, body: TransferConfirmRequest, session: SessionDep, admin: AdminDep
+) -> PaymentOut:
+    """The deposit arrived: confirms the booking or cycle. Past its hold, it is flagged for refund."""
+    return payments.present(await payments.confirm_transfer(session, admin, payment_id, body.note))
+
+
+@router.post("/payments/{payment_id}/reject-transfer", name="admin_reject_transfer")
+async def reject_transfer(
+    payment_id: int, body: TransferRejectRequest, session: SessionDep, admin: AdminDep
+) -> PaymentOut:
+    """No matching deposit: the payment fails; the hold keeps running so the customer can transfer again."""
+    return payments.present(await payments.reject_transfer(session, admin, payment_id, body.note))

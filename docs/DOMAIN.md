@@ -19,6 +19,11 @@
 - **Payment**: provider-agnostic record of a charge attempt for a booking or for a subscription cycle (exactly one;
   `provider`, `provider_ref`, status, amount).
 - **WebhookEvent**: received provider event, unique on (`provider`, `event_id`) → idempotency.
+- **IdempotencyKey**: a client's `Idempotency-Key` for one create, unique per user; maps a retry to the resource the
+  first attempt created. Deleted after `IDEMPOTENCY_KEY_TTL_HOURS` (24).
+- **OutboxMessage**: an event for the outside world (`booking.confirmed`, `booking.cancelled`, `booking.completed`,
+  `subscription.cycle_confirmed`, `payment.failed`, `payment.needs_refund`, `attendance.exception_opened`,
+  `settlement.paid`), written with the change that caused it; key `topic:subject id`, payload ids only.
 - **Attendance**: check-in / check-out record with GPS evidence or an explicit capture failure.
 - **AttendanceException**: admin resolution of a failed/absent GPS capture (audit trail).
 - **Earning**: amount owed to staff for a completed booking (rate snapshot). Belongs to an ISO week (business tz).
@@ -30,8 +35,9 @@
 ## States
 Booking: `held → confirmed → in_progress → completed`; `held → expired`; `held|confirmed → cancelled`;
 `confirmed → no_show_customer` (late cancel / customer-attributable).
-Subscription: `held → active`; `held → expired`. Cycle: `held → confirmed | expired`.
-Payment: `pending → succeeded | failed`. Attendance capture: `captured | permission_denied | unavailable | network_error`.
+Subscription: `held → active`; `held → expired`; `active → ended` (`cancelled` after the paid cycles, or `unpaid` when a
+renewal lapses). `cancelled_at` marks a cancellation that has not ended yet. Cycle: `held → confirmed | expired` (a
+renewal cycle is created `held` on its charge day). Payment: `pending → succeeded | failed`; method `card | spei`. Attendance capture: `captured | permission_denied | unavailable | network_error`.
 Earning: `earned → approved (by settlement) → paid (by payout)`.
 Settlement: `approved → paid`.
 
@@ -56,3 +62,21 @@ Settlement: `approved → paid`.
     refund. A lapsed hold expires the cycle, its visits and (for the first cycle) the subscription.
 12. A subscription keeps the price and terms it accepted; later plan versions never change it. Customers see only
     their own subscriptions and never the cleaner's pay.
+13. A retried hold creation with the same `Idempotency-Key` and body never creates a second hold; it returns the
+    first. The same key with a different body is rejected.
+14. Only a duplicate `WebhookEvent` is acknowledged as a replay; any other failure while applying an event leaves no
+    trace, so a redelivery applies it.
+15. Recording a check-in or check-out again returns the stored record when the same user recorded it (the first
+    capture wins) and is rejected when someone else did; it never opens a second exception or a second earning.
+16. Releasing lapsed holds never waits on, or undoes, a transaction working on the same hold: a held row is skipped
+    and swept later, and a cycle being confirmed keeps its visits.
+17. An outbox message exists if and only if the change that caused it committed, at most one per topic and subject.
+    It is delivered at least once and in no guaranteed order; a message that keeps failing ends `dead`, never lost.
+18. A subscription that is held (live hold) or active and not cancelled blocks its cleaner on its weekdays and time in
+    every future week, also before that cycle exists: no booking, contract or renewal may clash with it.
+19. A renewal is charged at most once per business day, and only between its charge day and the day before the new
+    cycle's first visit; unpaid then, the subscription ends `unpaid` and frees the cleaner. A cancelled subscription
+    is never charged again.
+20. Only an agent (admin) confirms or rejects a SPEI payment; the sandbox and the provider webhook never settle it.
+    A confirmation after the hold lapsed records the money and flags a refund; it books nothing.
+21. Lock order for every write: cleaner (staff row) → payment → subscription → cycle → visits (bookings).

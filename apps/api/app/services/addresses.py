@@ -7,6 +7,7 @@ from sqlalchemy import ColumnElement, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.db import retry_on_lock_conflict
 from app.core.errors import conflict, not_found
 from app.models import CustomerAddress, User
 from app.schemas import AddressCreateRequest, AddressUpdateRequest
@@ -53,6 +54,7 @@ async def list_addresses(session: AsyncSession, customer: User) -> Sequence[Cust
     return rows.scalars().all()
 
 
+@retry_on_lock_conflict
 async def create_address(
     session: AsyncSession, customer: User, body: AddressCreateRequest
 ) -> CustomerAddress:
@@ -74,6 +76,7 @@ async def create_address(
     return address
 
 
+@retry_on_lock_conflict
 async def update_address(
     session: AsyncSession, customer: User, address_id: int, body: AddressUpdateRequest
 ) -> CustomerAddress:
@@ -89,6 +92,7 @@ async def update_address(
     return address
 
 
+@retry_on_lock_conflict
 async def delete_address(session: AsyncSession, customer: User, address_id: int) -> None:
     """Past bookings keep their address text; their link to the deleted row becomes NULL."""
     async with session.begin():

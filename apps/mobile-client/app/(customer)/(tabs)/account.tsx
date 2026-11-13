@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { AccountScreen, AccountSection } from "../../../src/AccountScreen";
 import { useAddresses } from "../../../src/addresses";
 import { api } from "../../../src/api";
-import { SUBSCRIPTION_LABELS } from "../../../src/subscriptions";
+import { subscriptionStatus } from "../../../src/subscriptions";
 import { List, Row } from "../../../src/ui";
 import { useResource } from "../../../src/useResource";
 import { usualStaffId } from "../../../src/visits";
@@ -28,7 +28,6 @@ export default function CustomerAccount() {
             subtitle={main ? `${main.label}${saved.length > 1 ? ` y ${saved.length - 1} más` : ""}` : "Guarda tu casa u oficina"}
             onPress={() => router.push("/(customer)/addresses")}
           />
-          <Row icon="sliders" title="Preferencias de limpieza" subtitle="Mascotas, superficies y prioridades" soon />
           <Row
             icon="person"
             title="Mi profesional habitual"
@@ -42,7 +41,7 @@ export default function CustomerAccount() {
           <Row
             icon="layers"
             title="Mi suscripción"
-            subtitle={plan ? `${plan.plan_name} · ${SUBSCRIPTION_LABELS[plan.status].toLowerCase()}` : "Aún no tienes un plan"}
+            subtitle={plan ? `${plan.plan_name} · ${subscriptionStatus(plan).label.toLowerCase()}` : "Aún no tienes un plan"}
             onPress={() => router.push("/(customer)/subscription")}
           />
           <Row icon="card" title="Métodos de pago" soon />

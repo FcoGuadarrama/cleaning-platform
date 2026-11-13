@@ -26,17 +26,34 @@ export const formatYmd = (ymd: string) => formatShortDay(businessDayInstant(ymd)
 export const firstVisitOptions = (weekdays: number[], lookahead = 15) =>
   nextBusinessDays(lookahead).filter((d) => weekdays.includes(weekdayOf(d)));
 
-export const SUBSCRIPTION_LABELS: Record<Schemas["SubscriptionStatus"], string> = {
+const SUBSCRIPTION_LABELS: Record<Schemas["SubscriptionStatus"], string> = {
   held: "Pago pendiente",
   active: "Activa",
   expired: "Apartado vencido",
+  ended: "Terminada",
 };
 
-export const SUBSCRIPTION_TONES: Record<Schemas["SubscriptionStatus"], Tone> = {
+const SUBSCRIPTION_TONES: Record<Schemas["SubscriptionStatus"], Tone> = {
   held: "warning",
   active: "success",
   expired: "neutral",
+  ended: "neutral",
 };
+
+/** Status chip; a cancelled plan stays active until its paid visits are done. */
+export function subscriptionStatus(s: Subscription): { label: string; tone: Tone } {
+  if (s.status === "active" && s.cancelled_at) return { label: "Cancelada", tone: "warning" };
+  return { label: SUBSCRIPTION_LABELS[s.status], tone: SUBSCRIPTION_TONES[s.status] };
+}
+
+/** A renewal cycle the customer has not paid yet; it lapses at its `hold_expires_at`. */
+export const pendingRenewal = (s: Subscription) => {
+  const last = s.cycles.at(-1);
+  return s.status === "active" && last && last.sequence > 1 && last.status === "held" ? last : undefined;
+};
+
+/** Last day of the paid cycles: a cancelled plan's visits run until then. */
+export const paidUntil = (s: Subscription) => s.cycles.filter((c) => c.status === "confirmed").at(-1)?.ends_on;
 
 /** The cycle the customer is in now: the latest one paid, or the pending one while contracting. */
 export function currentCycle(s: Subscription) {

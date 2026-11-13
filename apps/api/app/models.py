@@ -56,6 +56,13 @@ class PaymentStatus(enum.StrEnum):
     failed = "failed"
 
 
+class PaymentMethod(enum.StrEnum):
+    """Owner decision 2026-11-11: card and SPEI only. A SPEI transfer is confirmed by an agent."""
+
+    card = "card"
+    spei = "spei"
+
+
 class AttendanceKind(enum.StrEnum):
     check_in = "check_in"
     check_out = "check_out"
@@ -90,6 +97,12 @@ class SubscriptionStatus(enum.StrEnum):
     held = "held"
     active = "active"
     expired = "expired"
+    ended = "ended"
+
+
+class SubscriptionEndReason(enum.StrEnum):
+    cancelled = "cancelled"
+    unpaid = "unpaid"
 
 
 class CycleStatus(enum.StrEnum):
@@ -203,6 +216,19 @@ class Subscription(TimestampMixin, Base):
     currency: Mapped[str] = mapped_column(String(3))
     terms: Mapped[str] = mapped_column(Text)
     terms_accepted_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    payment_method: Mapped[PaymentMethod] = mapped_column(
+        _enum(PaymentMethod),
+        default=PaymentMethod.card,
+        server_default=PaymentMethod.card.value,
+        comment="How renewals are charged: the method of the latest checkout",
+    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(
+        UTCDateTime(), nullable=True, comment="Customer cancelled: no renewal, ends after the paid cycles"
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    end_reason: Mapped[SubscriptionEndReason | None] = mapped_column(
+        _enum(SubscriptionEndReason), nullable=True
+    )
 
 
 class SubscriptionCycle(TimestampMixin, Base):
@@ -294,6 +320,19 @@ class Payment(TimestampMixin, Base):
     amount_minor: Mapped[int] = mapped_column(BigInteger)
     currency: Mapped[str] = mapped_column(String(3))
     needs_refund: Mapped[bool] = mapped_column(Boolean, default=False)
+    method: Mapped[PaymentMethod] = mapped_column(
+        _enum(PaymentMethod), default=PaymentMethod.card, server_default=PaymentMethod.card.value
+    )
+    reviewed_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", name="fk_payments_reviewed_by_users"),
+        nullable=True,
+        comment="Agent who confirmed or rejected a SPEI transfer",
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    review_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    charge_on: Mapped[date | None] = mapped_column(
+        Date, nullable=True, comment="Business day of an automatic renewal charge: at most one a day"
+    )
 
 
 class WebhookEvent(TimestampMixin, Base):
@@ -367,3 +406,48 @@ class AuditLog(TimestampMixin, Base):
     entity: Mapped[str] = mapped_column(String(32))
     entity_id: Mapped[int] = mapped_column(Integer)
     data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+
+class IdempotencyKey(TimestampMixin, Base):
+    """A client's Idempotency-Key for one create. A retry with the same key gets `resource_id` back instead
+    of a second resource; the fingerprint rejects reusing the key for a different request."""
+
+    __tablename__ = "idempotency_keys"
+    __table_args__ = (
+        UniqueConstraint("user_id", "key", name="uq_idempotency_keys_user_id_key"),
+        Index("ix_idempotency_keys_created_at", "created_at"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    key: Mapped[str] = mapped_column(String(64))
+    fingerprint: Mapped[str] = mapped_column(
+        String(64), comment="sha256 of the endpoint scope and request body"
+    )
+    resource_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class OutboxStatus(enum.StrEnum):
+    pending = "pending"
+    sent = "sent"
+    dead = "dead"
+
+
+class OutboxMessage(TimestampMixin, Base):
+    """An event for the outside world, written in the transaction that caused it and delivered afterwards by
+    the dispatcher, at least once. The payload carries ids only: the sender loads current data."""
+
+    __tablename__ = "outbox_messages"
+    __table_args__ = (Index("ix_outbox_messages_status_available_at", "status", "available_at"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(
+        String(128), unique=True, comment="topic:subject id; receivers use it as their idempotency key"
+    )
+    topic: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    status: Mapped[OutboxStatus] = mapped_column(_enum(OutboxStatus), default=OutboxStatus.pending)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    available_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utcnow, comment="Not delivered before this: retry backoff or a claim's lease"
+    )
+    last_error: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)

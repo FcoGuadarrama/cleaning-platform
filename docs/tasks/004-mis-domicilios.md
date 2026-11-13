@@ -22,7 +22,6 @@ on every booking.
 ## Not in scope (open decisions)
 - Service-area check: decision 7 (service area boundaries) is open. No address is rejected for its location.
 - Geocoding / coordinates: needs an ADR (provider, and whether the geofence uses them — decision 5).
-- Per-address cleaning preferences: gap 8.
 
 ## Technical limits (config, not business rules)
 - `MAX_ADDRESSES_PER_CUSTOMER` (default 10) caps the address book against abuse → 409 `address_limit`.

@@ -1,7 +1,9 @@
 import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
-import { api } from "../../../src/api";
-import { BOOKING_LABELS, BOOKING_TONES, formatClock, formatRelativeDay, sentenceCase } from "../../../src/format";
+import { api, errorCode, errorMessage } from "../../../src/api";
+import { BOOKING_LABELS, BOOKING_TONES, formatClock, formatDateTime, formatRelativeDay, sentenceCase } from "../../../src/format";
+import { type Payment, TransferDetails } from "../../../src/payment";
 import { Skeleton } from "../../../src/motion";
 import { FlowScreen } from "../../../src/screen";
 import { Text } from "../../../src/text";
@@ -15,6 +17,27 @@ const SIDE_STATES: Record<string, string> = {
   disputed: "Administración está revisando esta visita.",
   pending_review: "Administración está revisando el registro de esta visita.",
 };
+
+/** A held visit paid by SPEI: the transfer's details until an agent confirms it. */
+function AwaitingPayment({ bookingId, holdExpiresAt }: { bookingId: number; holdExpiresAt: string | null }) {
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    void api.GET("/bookings/{booking_id}/payment", { params: { path: { booking_id: bookingId } } }).then((r) => {
+      setPayment(r.data ?? null);
+      // No pending payment yet (checkout never started) is not an error here.
+      if (r.error && errorCode(r.error) !== "not_found") setError(errorMessage(r.error));
+    });
+  }, [bookingId]);
+  const deadline = holdExpiresAt ? ` Si no se completa antes del ${formatDateTime(holdExpiresAt)}, el horario se libera.` : "";
+  return (
+    <View className="gap-3">
+      <Notice tone="warning" text={`Tu pago está pendiente.${deadline}`} />
+      {payment?.transfer ? <TransferDetails transfer={payment.transfer} payBy={holdExpiresAt} /> : null}
+      {error ? <Notice tone="danger" text={error} /> : null}
+    </View>
+  );
+}
 
 export default function VisitDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -69,6 +92,7 @@ export default function VisitDetail() {
           </View>
 
           {SIDE_STATES[b.status] ? <Notice tone="neutral" text={SIDE_STATES[b.status]!} /> : null}
+          {b.status === "held" && !isPlanVisit(b) ? <AwaitingPayment bookingId={b.id} holdExpiresAt={b.hold_expires_at} /> : null}
 
           <View className="gap-2">
             <SectionTitle title="Tu casa, a tu manera" />

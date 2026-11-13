@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Header, Request
 
 from app.core.errors import ERROR_RESPONSES
-from app.deps import CustomerDep, SessionDep, StaffDep, UserDep
+from app.deps import CustomerDep, IdempotencyKeyHeader, SessionDep, StaffDep, UserDep
 from app.models import AttendanceKind, Role
 from app.schemas import (
     AttendanceOut,
     AttendanceRequest,
     BookingCreateRequest,
     BookingOut,
+    CheckoutRequest,
     PaymentOut,
     SandboxOutcomeRequest,
     WebhookAck,
@@ -18,10 +19,14 @@ router = APIRouter(tags=["bookings"], responses=ERROR_RESPONSES)
 
 
 @router.post("/bookings", status_code=201, name="bookings_create_hold")
-async def create_hold(body: BookingCreateRequest, session: SessionDep, user: CustomerDep) -> BookingOut:
-    booking = await scheduling.create_hold(
-        session, user, body.staff_id, body.offering_id, body.starts_at, body.address_id
-    )
+async def create_hold(
+    body: BookingCreateRequest,
+    session: SessionDep,
+    user: CustomerDep,
+    idempotency_key: IdempotencyKeyHeader = None,
+) -> BookingOut:
+    """A retry with the same `Idempotency-Key` returns the hold the first attempt created."""
+    booking = await scheduling.create_hold(session, user, body, idempotency_key)
     return BookingOut.model_validate(booking)
 
 
@@ -41,8 +46,19 @@ async def get_booking(booking_id: int, session: SessionDep, user: UserDep) -> Bo
 
 
 @router.post("/bookings/{booking_id}/checkout", status_code=201, name="bookings_checkout")
-async def checkout(booking_id: int, session: SessionDep, user: CustomerDep) -> PaymentOut:
-    return PaymentOut.model_validate(await payments.start_checkout(session, user, booking_id))
+async def checkout(
+    booking_id: int, session: SessionDep, user: CustomerDep, body: CheckoutRequest | None = None
+) -> PaymentOut:
+    """Card by default. SPEI keeps the hold 24 h and returns the transfer instructions; 409 `spei_unavailable`
+    until the business account is configured, `payment_in_progress` while the other method is pending."""
+    method = (body or CheckoutRequest()).method
+    return payments.present(await payments.start_checkout(session, user, booking_id, method))
+
+
+@router.get("/bookings/{booking_id}/payment", name="bookings_pending_payment")
+async def pending_payment(booking_id: int, session: SessionDep, user: CustomerDep) -> PaymentOut:
+    """The pending payment of a held booking, e.g. to show transfer instructions again. 404 if none."""
+    return payments.present(await payments.pending_payment(session, user, booking_id=booking_id))
 
 
 @router.post("/payments/{payment_id}/sandbox-outcome", name="payments_sandbox_outcome")
@@ -51,7 +67,7 @@ async def sandbox_outcome(
 ) -> PaymentOut:
     """Sandbox only: emits a signed provider event through the real webhook path."""
     payment = await payments.simulate_outcome(session, user, payment_id, body.outcome.value)
-    return PaymentOut.model_validate(payment)
+    return payments.present(payment)
 
 
 @router.post("/payments/webhooks/sandbox", name="payments_sandbox_webhook")
@@ -66,6 +82,7 @@ async def sandbox_webhook(
 async def check_in(
     booking_id: int, body: AttendanceRequest, session: SessionDep, user: StaffDep
 ) -> AttendanceOut:
+    """A retry returns the record already stored when the same user recorded it (the first capture wins)."""
     row = await attendance.record_attendance(session, user, booking_id, AttendanceKind.check_in, body)
     return AttendanceOut.model_validate(row)
 
@@ -74,5 +91,6 @@ async def check_in(
 async def check_out(
     booking_id: int, body: AttendanceRequest, session: SessionDep, user: StaffDep
 ) -> AttendanceOut:
+    """A retry returns the record already stored when the same user recorded it (the first capture wins)."""
     row = await attendance.record_attendance(session, user, booking_id, AttendanceKind.check_out, body)
     return AttendanceOut.model_validate(row)
