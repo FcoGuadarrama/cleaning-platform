@@ -28,7 +28,6 @@ export default function CustomerAccount() {
             subtitle={main ? `${main.label}${saved.length > 1 ? ` y ${saved.length - 1} más` : ""}` : "Guarda tu casa u oficina"}
             onPress={() => router.push("/(customer)/addresses")}
           />
-          <Row icon="sliders" title="Preferencias de limpieza" subtitle="Mascotas, superficies y prioridades" soon />
           <Row
             icon="person"
             title="Mi profesional habitual"
