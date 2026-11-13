@@ -1,7 +1,7 @@
 # WORKTREE STATE & HANDOFF LOG
 - **Feature:** 012 in-app notifications and push (docs/tasks/012-notifications.md)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-13T18:26:12Z
+- **Last Updated:** 2026-11-13T22:46:25Z
 - **Branch / Worktree:** feature/notifications (main worktree), from main c2a0c31
 - **Base SHA:** c2a0c31
 - **Contract Version:** docs/contracts/openapi.json sha256 c33ff92885b5f7f3b5e33118750b59201984bd2093ab7e6e8adf520718a36899
@@ -27,7 +27,18 @@ applies migrations itself when apps/api/alembic changes: running alembic by hand
 tables of 0009 were created twice; fixed by dropping only those empty tables and re-stamping 0008). Downgrade of
 0009 drops tables only (MySQL refuses dropping an index a FK needs). Host pnpm installed with npm i -g pnpm@12.16.1.
 
+## Follow-ups after task 012 (owner requests)
+- Mobile visit detail: a held one-off visit renders src/PaymentDue.tsx (reason, amount, deadline countdown, pay by
+  card/SPEI or the transfer's details, short visit summary) instead of the regular detail.
+- Delete notifications: DELETE /notifications/{id} (owner only, 404 otherwise; a queued push is skipped). Dashboard bell:
+  trash button per notice (Delete key too). Mobile inbox: swipe left (src/SwipeToDelete.tsx, PanResponder, no new deps).
+- Open: the payment screen cannot say "your transfer was rejected" (failed SPEI) because the API only exposes the
+  pending payment; booking 226 is in that state.
+
 ## Verification
+- 2026-11-13T22:46:25Z: pytest 111 passed (1 new); pnpm -r typecheck clean; check:drift clean; contract re-exported + client
+  regenerated. Chrome: PaymentDue on booking 226; mobile inbox swipe deletes without opening the row (web
+  click-after-drag guarded); dashboard trash deletes and keeps the menu open. Delete key and native devices not tried.
 - 2026-11-13T18:26:12Z: pytest 110 passed; ruff/mypy clean; alembic check clean; pnpm -r typecheck clean; vitest 36; check:drift
   clean. Local stack e2e (scratchpad scripts, demo customer): paid booking 225 → customer "Visita confirmada" + cleaner
   "Nuevo servicio asignado", push.send sent via log provider; SPEI checkout (booking 226, hold left to lapse) →

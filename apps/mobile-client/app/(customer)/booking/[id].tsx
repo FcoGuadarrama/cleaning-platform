@@ -1,10 +1,9 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
-import { api, errorCode, errorMessage } from "../../../src/api";
-import { BOOKING_LABELS, BOOKING_TONES, formatClock, formatDateTime, formatRelativeDay, sentenceCase } from "../../../src/format";
-import { type Payment, TransferDetails } from "../../../src/payment";
+import { api } from "../../../src/api";
+import { BOOKING_LABELS, BOOKING_TONES, formatClock, formatRelativeDay, sentenceCase } from "../../../src/format";
 import { Skeleton } from "../../../src/motion";
+import { PaymentDue } from "../../../src/PaymentDue";
 import { FlowScreen } from "../../../src/screen";
 import { Text } from "../../../src/text";
 import { Avatar, Button, Callout, Hairline, InfoNote, List, Notice, Row, SectionTitle, SkeletonRows, Soon, StatusChip } from "../../../src/ui";
@@ -18,27 +17,6 @@ const SIDE_STATES: Record<string, string> = {
   pending_review: "Administración está revisando el registro de esta visita.",
 };
 
-/** A held visit paid by SPEI: the transfer's details until an agent confirms it. */
-function AwaitingPayment({ bookingId, holdExpiresAt }: { bookingId: number; holdExpiresAt: string | null }) {
-  const [payment, setPayment] = useState<Payment | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    void api.GET("/bookings/{booking_id}/payment", { params: { path: { booking_id: bookingId } } }).then((r) => {
-      setPayment(r.data ?? null);
-      // No pending payment yet (checkout never started) is not an error here.
-      if (r.error && errorCode(r.error) !== "not_found") setError(errorMessage(r.error));
-    });
-  }, [bookingId]);
-  const deadline = holdExpiresAt ? ` Si no se completa antes del ${formatDateTime(holdExpiresAt)}, el horario se libera.` : "";
-  return (
-    <View className="gap-3">
-      <Notice tone="warning" text={`Tu pago está pendiente.${deadline}`} />
-      {payment?.transfer ? <TransferDetails transfer={payment.transfer} payBy={holdExpiresAt} /> : null}
-      {error ? <Notice tone="danger" text={error} /> : null}
-    </View>
-  );
-}
-
 export default function VisitDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const booking = useResource(() => api.GET("/bookings/{booking_id}", { params: { path: { booking_id: Number(id) } } }), [id]);
@@ -48,9 +26,11 @@ export default function VisitDetail() {
   const person = b ? staff.data?.find((s) => s.id === b.staff_id) : undefined;
   const offering = b ? offerings.data?.find((o) => o.id === b.offering_id) : undefined;
   const upcoming = !!b && UPCOMING.has(b.status);
+  // A one-off visit awaiting payment is a payment screen until it is paid; plan visits are paid with their cycle.
+  const awaitingPayment = !!b && b.status === "held" && !isPlanVisit(b);
 
   return (
-    <FlowScreen title="Detalle de visita" fallback="/(customer)/(tabs)/bookings">
+    <FlowScreen title={awaitingPayment ? "Pago pendiente" : "Detalle de visita"} fallback="/(customer)/(tabs)/bookings">
       {booking.error ? <Notice tone="danger" text={booking.error} /> : null}
       {!b && !booking.error ? (
         <View className="gap-3">
@@ -59,7 +39,10 @@ export default function VisitDetail() {
           <SkeletonRows count={3} />
         </View>
       ) : null}
-      {b ? (
+      {b && awaitingPayment ? (
+        <PaymentDue booking={b} staffName={person?.display_name} serviceName={offering?.name} onChange={() => void booking.refresh()} />
+      ) : null}
+      {b && !awaitingPayment ? (
         <>
           <View className="gap-2">
             <StatusChip label={BOOKING_LABELS[b.status]} tone={BOOKING_TONES[b.status]} />
@@ -92,7 +75,6 @@ export default function VisitDetail() {
           </View>
 
           {SIDE_STATES[b.status] ? <Notice tone="neutral" text={SIDE_STATES[b.status]!} /> : null}
-          {b.status === "held" && !isPlanVisit(b) ? <AwaitingPayment bookingId={b.id} holdExpiresAt={b.hold_expires_at} /> : null}
 
           <View className="gap-2">
             <SectionTitle title="Tu casa, a tu manera" />

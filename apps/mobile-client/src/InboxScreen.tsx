@@ -7,6 +7,7 @@ import { formatClock, formatRelativeDay } from "./format";
 import { notificationTarget, useInbox } from "./inbox";
 import { FlowScreen } from "./screen";
 import { Text } from "./text";
+import { SwipeToDelete, useWasSwiped } from "./SwipeToDelete";
 import { Button, EmptyState, List, Notice, SkeletonRows } from "./ui";
 
 type Item = Schemas["NotificationOut"];
@@ -15,13 +16,20 @@ const PAGE = 30;
 /** "Hoy, 14:30" or "jue 12 nov, 09:15". */
 const when = (iso: string) => `${formatRelativeDay(iso)}, ${formatClock(iso)}`;
 
-function NotificationRow({ item, onPress }: { item: Item; onPress: () => void }) {
+function NotificationRow({ item, onPress, onDelete }: { item: Item; onPress: () => void; onDelete: () => void }) {
   const unread = item.read_at === null;
+  const wasSwiped = useWasSwiped();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${unread ? "Sin leer. " : ""}${item.title}. ${item.body}`}
-      onPress={onPress}
+      accessibilityActions={[{ name: "delete", label: "Borrar" }]}
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === "delete") onDelete();
+      }}
+      onPress={() => {
+        if (!wasSwiped()) onPress();
+      }}
       className="flex-row items-start gap-3 py-4 active:opacity-60"
     >
       <View className={`mt-2 h-2.5 w-2.5 rounded-full ${unread ? "bg-primary" : "bg-transparent"}`} />
@@ -86,6 +94,17 @@ export function InboxScreen({ role, fallback }: { role: "customer" | "staff"; fa
     void inbox.refresh();
   }
 
+  /** Gone from the list at once; if the server refuses, it comes back with the error. */
+  async function remove(item: Item) {
+    setItems((current) => current?.filter((n) => n.id !== item.id) ?? null);
+    const { error: failed } = await api.DELETE("/notifications/{notification_id}", { params: { path: { notification_id: item.id } } });
+    if (failed !== undefined) {
+      setError(errorMessage(failed));
+      void load();
+    }
+    if (item.read_at === null || failed !== undefined) void inbox.refresh();
+  }
+
   const unread = items?.some((n) => n.read_at === null) ?? false;
 
   return (
@@ -104,7 +123,9 @@ export function InboxScreen({ role, fallback }: { role: "customer" | "staff"; fa
           ) : null}
           <List>
             {items.map((item) => (
-              <NotificationRow key={item.id} item={item} onPress={() => void open(item)} />
+              <SwipeToDelete key={item.id} label="Borrar" onDelete={() => void remove(item)}>
+                <NotificationRow item={item} onPress={() => void open(item)} onDelete={() => void remove(item)} />
+              </SwipeToDelete>
             ))}
           </List>
           {hasMore ? <Button label="Ver anteriores" variant="outline" busy={loadingMore} onPress={loadMore} /> : null}

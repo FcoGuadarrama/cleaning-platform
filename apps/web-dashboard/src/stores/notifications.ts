@@ -32,5 +32,13 @@ export const useNotifications = defineStore("notifications", () => {
     return null;
   }
 
-  return { unread, recent, items, unreadCount, refresh, markRead, markAllRead };
+  /** Drops the notice from the list right away; a failed delete brings it back with the next refresh. */
+  async function remove(id: number): Promise<string | null> {
+    if (recent.data) recent.data = recent.data.filter((n) => n.id !== id);
+    const { error } = await api.DELETE("/notifications/{notification_id}", { params: { path: { notification_id: id } } });
+    await refresh({ background: true });
+    return error ? errorMessage(error) : null;
+  }
+
+  return { unread, recent, items, unreadCount, refresh, markRead, markAllRead, remove };
 });

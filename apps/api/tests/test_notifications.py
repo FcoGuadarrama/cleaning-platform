@@ -104,6 +104,20 @@ async def test_inbox_read_state_is_per_user(client: AsyncClient, customer, world
     assert (await client.get("/notifications/unread-count", headers=world["staff"])).json() == {"count": 0}
 
 
+async def test_a_user_deletes_only_their_own_notifications(client: AsyncClient, customer, world) -> None:
+    await paid_booking(client, customer, world)
+    await _drain()
+    [notice] = await _inbox(client, customer)
+
+    other = await client.delete(f"/notifications/{notice['id']}", headers=world["staff"])
+    assert other.status_code == 404
+    assert (await client.delete(f"/notifications/{notice['id']}", headers=customer)).status_code == 204
+    assert await _inbox(client, customer) == []
+    assert (await client.get("/notifications/unread-count", headers=customer)).json() == {"count": 0}
+    assert len(await _inbox(client, world["staff"])) == 1, "the cleaner keeps theirs"
+    assert (await client.delete(f"/notifications/{notice['id']}", headers=customer)).status_code == 404
+
+
 async def test_inbox_pages_back_newest_first(client: AsyncClient, admin, customer, world) -> None:
     bid = await paid_booking(client, customer, world)
     cancel = await client.post(f"/admin/bookings/{bid}/cancel", headers=admin, json={"reason": "Prueba"})
