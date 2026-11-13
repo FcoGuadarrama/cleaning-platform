@@ -1,22 +1,58 @@
 import { router, type Href } from "expo-router";
-import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { useState, type ReactNode } from "react";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Bell } from "./Bell";
 import { Icon } from "./icons";
+import { useSession } from "./session";
 import { Text } from "./text";
 import { color } from "./theme";
+import { Wordmark } from "./ui";
 
-/** Root screen of a tab: white page, content starts under the status bar. */
-export function Screen({ children, onRefresh, refreshing = false }: { children: ReactNode; onRefresh?: () => void; refreshing?: boolean }) {
+/** Brand bar shared by every tab: wordmark and the inbox bell, with a hairline once content scrolls beneath it. */
+function AppHeader({ scrolled }: { scrolled: boolean }) {
   const insets = useSafeAreaInsets();
+  const { user } = useSession();
   return (
-    <ScrollView
-      className="flex-1 bg-background"
-      contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 32 }}
-      refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.primary} /> : undefined}
+    <View
+      className={`flex-row items-center justify-between border-b bg-background px-5 pb-2 ${scrolled ? "border-border" : "border-transparent"}`}
+      style={{ paddingTop: insets.top + 12 }}
     >
-      <View className="gap-7 px-5">{children}</View>
-    </ScrollView>
+      <Wordmark />
+      {user?.role === "staff" || user?.role === "customer" ? <Bell role={user.role} /> : null}
+    </View>
+  );
+}
+
+/** Root screen of a tab: pinned brand bar over a white scrolling page. */
+export function Screen({ children, onRefresh, refreshing = false }: { children: ReactNode; onRefresh?: () => void; refreshing?: boolean }) {
+  const [scrolled, setScrolled] = useState(false);
+  function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const past = e.nativeEvent.contentOffset.y > 4;
+    if (past !== scrolled) setScrolled(past);
+  }
+  return (
+    <View className="flex-1 bg-background">
+      <AppHeader scrolled={scrolled} />
+      <ScrollView
+        className="flex-1"
+        onScroll={onScroll}
+        scrollEventThrottle={32}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 32 }}
+        refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.primary} /> : undefined}
+      >
+        <View className="gap-7 px-5">{children}</View>
+      </ScrollView>
+    </View>
   );
 }
 

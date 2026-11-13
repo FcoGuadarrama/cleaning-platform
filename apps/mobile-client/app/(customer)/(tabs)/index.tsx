@@ -3,7 +3,6 @@ import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 import { shortAddress, useAddresses } from "../../../src/addresses";
 import { api } from "../../../src/api";
-import { Bell } from "../../../src/Bell";
 import { DateBlock } from "../../../src/DateBlock";
 import { BOOKING_LABELS, BOOKING_TONES, formatDuration, formatClock, formatRelativeDay, formatWeekday } from "../../../src/format";
 import { Icon } from "../../../src/icons";
@@ -13,7 +12,7 @@ import { Screen } from "../../../src/screen";
 import { UPCOMING, visitTitle } from "../../../src/visits";
 import { Text } from "../../../src/text";
 import { color } from "../../../src/theme";
-import { Avatar, Button, Card, Hairline, SectionTitle, SkeletonCard, StatusLine, TextLink, Wordmark } from "../../../src/ui";
+import { Avatar, Button, Card, Hairline, SectionTitle, SkeletonCard, StatusLine, TextLink } from "../../../src/ui";
 import { useResource } from "../../../src/useResource";
 
 type Booking = Schemas["BookingOut"];
@@ -86,10 +85,6 @@ export default function Home() {
   return (
     <Screen onRefresh={refresh}>
       <View className="gap-3">
-        <View className="flex-row items-center justify-between">
-          <Wordmark />
-          <Bell role="customer" />
-        </View>
         {addresses.data ? (
           <Pressable
             accessibilityRole="button"

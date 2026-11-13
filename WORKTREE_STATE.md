@@ -1,7 +1,7 @@
 # WORKTREE STATE & HANDOFF LOG
 - **Feature:** 012 in-app notifications and push (docs/tasks/012-notifications.md)
 - **Current Agent:** claude-code
-- **Last Updated:** 2026-11-13T22:46:25Z
+- **Last Updated:** 2026-11-13T22:53:09Z
 - **Branch / Worktree:** feature/notifications (main worktree), from main c2a0c31
 - **Base SHA:** c2a0c31
 - **Contract Version:** docs/contracts/openapi.json sha256 c33ff92885b5f7f3b5e33118750b59201984bd2093ab7e6e8adf520718a36899
@@ -32,10 +32,14 @@ tables of 0009 were created twice; fixed by dropping only those empty tables and
   card/SPEI or the transfer's details, short visit summary) instead of the regular detail.
 - Delete notifications: DELETE /notifications/{id} (owner only, 404 otherwise; a queued push is skipped). Dashboard bell:
   trash button per notice (Delete key too). Mobile inbox: swipe left (src/SwipeToDelete.tsx, PanResponder, no new deps).
+- Mobile header on every tab: src/screen.tsx `Screen` pins a brand bar (wordmark + role bell, hairline once
+  content scrolls under it); the duplicate header on customer Inicio and the bell in staff Servicios were removed.
+  Pushed screens keep their back bar.
 - Open: the payment screen cannot say "your transfer was rejected" (failed SPEI) because the API only exposes the
   pending payment; booking 226 is in that state.
 
 ## Verification
+- 2026-11-13T22:53:09Z: mobile tsc clean after the shared header. Not seen in a browser (login needed).
 - 2026-11-13T22:46:25Z: pytest 111 passed (1 new); pnpm -r typecheck clean; check:drift clean; contract re-exported + client
   regenerated. Chrome: PaymentDue on booking 226; mobile inbox swipe deletes without opening the row (web
   click-after-drag guarded); dashboard trash deletes and keeps the menu open. Delete key and native devices not tried.

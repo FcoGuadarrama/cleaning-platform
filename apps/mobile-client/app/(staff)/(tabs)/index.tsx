@@ -3,7 +3,6 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { api } from "../../../src/api";
-import { Bell } from "../../../src/Bell";
 import { attendLabel, canAttend, openDirections, useAttendance } from "../../../src/attendance";
 import { DateBlock } from "../../../src/DateBlock";
 import { BOOKING_LABELS, BOOKING_TONES, formatLongDay, formatRange, formatRelativeDay, sentenceCase } from "../../../src/format";
@@ -90,7 +89,7 @@ export default function StaffHome() {
   return (
     <Screen onRefresh={bookings.refresh}>
       <View className="gap-5">
-        <LargeTitle overline={`Hola, ${firstName}`} title="Tus servicios" trailing={<Bell role="staff" />} />
+        <LargeTitle overline={`Hola, ${firstName}`} title="Tus servicios" />
         <View className="flex-row gap-3">
           <Stat value={upcoming.length} label="Por hacer" />
           <Stat value={done} label="Terminados" />
