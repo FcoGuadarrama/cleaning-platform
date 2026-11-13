@@ -90,6 +90,8 @@ async def pending_or_new(
     session.add(payment)
     await session.flush()
     audit.record(session, actor_id, "payment.checkout_started", "payment", payment.id, method=method.value)
+    if spei_payment:
+        outbox.publish(session, "payment.transfer_pending", payment.id, payment_id=payment.id)
     return payment
 
 

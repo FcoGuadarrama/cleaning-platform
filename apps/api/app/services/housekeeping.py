@@ -1,5 +1,6 @@
-"""Deletes rows whose purpose has passed: idempotency keys past any client's retry window and delivered
-outbox messages past the retention period. Dead outbox messages are kept for inspection."""
+"""Deletes rows whose purpose has passed: idempotency keys past any client's retry window, delivered outbox
+messages and inbox notifications past their retention periods. Dead outbox messages are kept for
+inspection."""
 
 from datetime import timedelta
 
@@ -8,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.timeutil import utcnow
-from app.models import IdempotencyKey, OutboxMessage, OutboxStatus
+from app.models import IdempotencyKey, Notification, OutboxMessage, OutboxStatus
 
 BATCH = 500
 
@@ -18,16 +19,19 @@ async def prune(session: AsyncSession) -> int:
     settings, now = get_settings(), utcnow()
     keys_before = now - timedelta(hours=settings.idempotency_key_ttl_hours)
     sent_before = now - timedelta(days=settings.outbox_retention_days)
-    return await _delete_in_batches(
-        session, IdempotencyKey, IdempotencyKey.created_at < keys_before
-    ) + await _delete_in_batches(
-        session,
-        OutboxMessage,
-        (OutboxMessage.status == OutboxStatus.sent) & (OutboxMessage.sent_at < sent_before),
+    notices_before = now - timedelta(days=settings.notification_retention_days)
+    return (
+        await _delete_in_batches(session, IdempotencyKey, IdempotencyKey.created_at < keys_before)
+        + await _delete_in_batches(
+            session,
+            OutboxMessage,
+            (OutboxMessage.status == OutboxStatus.sent) & (OutboxMessage.sent_at < sent_before),
+        )
+        + await _delete_in_batches(session, Notification, Notification.created_at < notices_before)
     )
 
 
-async def _delete_in_batches[M: (IdempotencyKey, OutboxMessage)](
+async def _delete_in_batches[M: (IdempotencyKey, OutboxMessage, Notification)](
     session: AsyncSession, model: type[M], condition: ColumnElement[bool]
 ) -> int:
     """Short transactions deleting by primary key: no long range lock blocks the writers of the table."""

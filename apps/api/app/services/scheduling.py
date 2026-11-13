@@ -299,7 +299,13 @@ async def cancel(session: AsyncSession, admin: User, booking_id: int, reason: st
             previous_status=previous.value,
             refund_payment_ids=[p.id for p in paid],
         )
-        outbox.publish(session, "booking.cancelled", booking.id, booking_id=booking.id)
+        outbox.publish(
+            session,
+            "booking.cancelled",
+            booking.id,
+            booking_id=booking.id,
+            was_confirmed=int(previous == BookingStatus.confirmed),
+        )
     return booking, bool(paid)
 
 

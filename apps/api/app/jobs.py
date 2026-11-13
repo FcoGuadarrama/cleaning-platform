@@ -2,6 +2,7 @@
 (SKIP LOCKED claims, idempotent deletes), so no leader election is needed."""
 
 import asyncio
+import functools
 import logging
 from collections.abc import Awaitable, Callable
 
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.core.db import get_sessionmaker
-from app.services import housekeeping, outbox, renewals
+from app.services import housekeeping, notifications, outbox, reminders, renewals
 from app.services.scheduling import expire_holds
 
 logger = logging.getLogger(__name__)
@@ -21,9 +22,14 @@ def start(settings: Settings) -> list[asyncio.Task[None]]:
     """An interval of 0 turns a job off."""
     jobs: list[tuple[str, float, Job]] = [
         ("hold sweep", settings.hold_sweep_interval_seconds, expire_holds),
-        ("outbox dispatch", settings.outbox_dispatch_interval_seconds, outbox.dispatch),
+        (
+            "outbox dispatch",
+            settings.outbox_dispatch_interval_seconds,
+            functools.partial(outbox.dispatch, deliver=notifications.deliver),
+        ),
         ("housekeeping", settings.housekeeping_interval_seconds, housekeeping.prune),
         ("renewals", settings.renewal_interval_seconds, renewals.run),
+        ("visit reminders", settings.visit_reminder_interval_seconds, reminders.run),
     ]
     return [asyncio.create_task(_every(name, interval, job)) for name, interval, job in jobs if interval > 0]
 

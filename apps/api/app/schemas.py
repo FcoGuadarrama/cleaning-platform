@@ -12,6 +12,7 @@ from app.models import (
     CycleStatus,
     EarningStatus,
     ExceptionStatus,
+    NotificationCategory,
     PaymentMethod,
     PaymentStatus,
     Role,
@@ -460,3 +461,38 @@ class EarningsSummaryOut(BaseModel):
     paid_minor: int
     items: list[EarningOut]
     settlements: list[SettlementOut]
+
+
+# notifications
+class NotificationOut(Out):
+    id: int
+    category: NotificationCategory
+    kind: str = Field(description="The event that caused it, e.g. booking.confirmed")
+    title: str
+    body: str
+    data: dict[str, int] = Field(
+        description="Ids of what it is about (booking_id, subscription_id, payment_id, settlement_id)"
+    )
+    created_at: datetime
+    read_at: datetime | None
+
+
+class UnreadCountOut(BaseModel):
+    count: int
+
+
+class NotificationPreferenceOut(BaseModel):
+    category: NotificationCategory
+    push_enabled: bool
+
+
+class NotificationPreferenceRequest(Strict):
+    push_enabled: bool
+
+
+class PushDeviceRequest(Strict):
+    token: Annotated[
+        str,
+        Field(max_length=255, pattern=r"^Expo(nent)?PushToken\[[A-Za-z0-9_-]{1,200}\]$"),
+    ]
+    platform: Literal["ios", "android"]
