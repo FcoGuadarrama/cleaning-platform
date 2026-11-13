@@ -29,5 +29,5 @@ Migration 0007 adds the table and an index on `idempotency_keys.created_at`.
 **Jobs.** `app.jobs` runs the hold sweep, outbox dispatch (every 5 s) and housekeeping in each API process from the
 FastAPI lifespan; an interval of 0 turns a job off. All three are safe to run concurrently in several processes.
 
-**Open.** No admin view of `dead` messages yet; inspect the table. A real channel replaces `_log_channel`, keyed on
-`OutboxMessage.key`.
+**Open.** No admin view of `dead` messages yet; inspect the table. Superseded in part by ADR 0011: the `log` channel
+and `NOTIFICATION_CHANNEL` are gone; `dispatch` takes a delivery function (inbox fan-out + Expo push).

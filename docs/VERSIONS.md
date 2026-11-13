@@ -15,6 +15,7 @@ stable. No alpha/beta/rc/nightly/canary/Innovation. Upgrades are reviewed change
 | SQLAlchemy | 2.1.6 | No official LTS channel | https://pypi.org/project/SQLAlchemy/ | async engine, `mysql+asyncmy` | — |
 | Alembic | 1.20.1 | No official LTS channel | https://pypi.org/project/alembic/ | | — |
 | asyncmy | 0.2.17 | No official LTS channel | https://pypi.org/project/asyncmy/ | Async MySQL driver supported by SQLAlchemy dialects | — |
+| HTTPX | 0.28.1 | No official LTS channel | https://pypi.org/project/httpx/ | Runtime since task 012 (Expo push calls); same version the tests already used (verified 2026-11-13) | — |
 | Uvicorn | 0.54.0 | No official LTS channel | https://pypi.org/project/uvicorn/ | | — |
 | Vue | 3.5.44 | No official LTS channel | https://www.npmjs.com/package/vue | | — |
 | Vite | 8.3.5 | No official LTS channel | https://www.npmjs.com/package/vite | | — |
@@ -37,6 +38,7 @@ stable. No alpha/beta/rc/nightly/canary/Innovation. Upgrades are reviewed change
 | Expo Router | ~58.0.29 | No official LTS channel | SDK 58 bundledNativeModules | | — |
 | react-native-css-interop | 0.2.7 | No official LTS channel | nativewind@4.2.7 dependency | Direct dependency so Metro resolves it under pnpm isolated installs | — |
 | expo-location / expo-secure-store | ~58.0.20 / ~58.0.2 | No official LTS channel | SDK 58 bundledNativeModules | Foreground location only | — |
+| expo-notifications / expo-device | ~58.1.9 / ~58.0.5 | No official LTS channel | SDK 58 bundledNativeModules (`~58.1.7` / `~58.0.5`), verified 2026-11-13 | Push token + permissions (task 012); config plugin in app.json. Push on devices needs an EAS project id | — |
 | react-native-svg | 15.16.0 | No official LTS channel | SDK 58 bundledNativeModules (`15.16.0`, exact) | Mobile icon set (`apps/mobile-client/src/icons.tsx`); no icon font dependency | — |
 | expo-font | ~58.0.11 | No official LTS channel | SDK 58 bundledNativeModules (`~58.0.11`) | Loads the brand typeface (`apps/mobile-client/src/fonts.ts`) | — |
 | @expo-google-fonts/outfit | 0.4.2 | No official LTS channel | https://www.npmjs.com/package/@expo-google-fonts/outfit (published 2025-06-06; 0.4.3 exists, 0.4.2 kept as the older verified build) | Outfit 400–800, the "brisa" brand typeface (owner choice 2026-11-06); **needs review** | — |
