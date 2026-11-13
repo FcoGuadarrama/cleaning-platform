@@ -23,8 +23,9 @@ Routers never touch ORM internals beyond calling services; services own transact
 - 0005 Auth: opaque random bearer tokens, SHA-256 hashed at rest, expiring; mobile stores in SecureStore.
 - 0007 `Idempotency-Key` on hold creation; write services retry InnoDB deadlocks/lock timeouts (then 503).
 - 0008 Check-in/out retries return the stored record; lapsed holds are swept with `SKIP LOCKED` (job + reads).
-- 0009 Transactional outbox (log channel until the channel decision) and housekeeping of keys and sent messages.
+- 0009 Transactional outbox (delivered by ADR 0011's notifications) and housekeeping of keys and sent messages.
 - 0010 Renewal job, cancellation, card + SPEI (agent-confirmed) payments; subscriptions block their cleaner ahead.
+- 0011 In-app notifications fanned out from the outbox, Expo push per device, push preferences, visit reminders.
 
 ## Time and money
 UTC `DATETIME(6)` in DB; API emits RFC 3339 with `Z`. Weekday/week rules evaluated in `America/Mexico_City`.

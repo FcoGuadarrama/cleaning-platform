@@ -9,7 +9,7 @@ from app.core.db import get_sessionmaker
 from app.core.timeutil import utcnow
 from app.models import OutboxMessage
 from app.payments import sandbox
-from app.services import outbox
+from app.services import notifications, outbox
 from tests.conftest import future_weekday, hold, paid_booking
 from tests.test_attendance_earnings import GPS
 from tests.test_attendance_replay import _at
@@ -26,9 +26,9 @@ async def _queue(*subjects: int) -> None:
             outbox.publish(session, "test.event", subject, n=subject)
 
 
-async def _dispatch() -> int:
+async def _dispatch(deliver: outbox.Deliver = notifications.deliver) -> int:
     async with get_sessionmaker()() as session:
-        return await outbox.dispatch(session)
+        return await outbox.dispatch(session, deliver)
 
 
 async def _make_due() -> None:
@@ -60,7 +60,7 @@ async def test_events_are_published_with_their_change(client: AsyncClient, admin
             "pending",
         ),
         (f"payment.failed:{payment['id']}", {"payment_id": payment["id"]}, "pending"),
-        (f"booking.cancelled:{other['id']}", {"booking_id": other["id"]}, "pending"),
+        (f"booking.cancelled:{other['id']}", {"booking_id": other["id"], "was_confirmed": 0}, "pending"),
     ]
 
 
@@ -90,13 +90,12 @@ async def test_dispatch_delivers_each_due_message_once() -> None:
     assert [(m.status, m.attempts) for m in await _messages()] == [("sent", 1), ("sent", 1)]
 
 
-async def test_failed_delivery_backs_off_then_dies(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def unreachable(_: OutboxMessage) -> None:
+async def test_failed_delivery_backs_off_then_dies() -> None:
+    async def unreachable(*_: object) -> None:
         raise ConnectionError("channel down")
 
-    monkeypatch.setattr(outbox, "_deliver", unreachable)
     await _queue(1)
-    assert await _dispatch() == 0
+    assert await _dispatch(unreachable) == 0
     [message] = await _messages()
     assert (message.status, message.attempts, message.last_error) == (
         "pending",
@@ -104,30 +103,29 @@ async def test_failed_delivery_backs_off_then_dies(monkeypatch: pytest.MonkeyPat
         "ConnectionError: channel down",
     )
     assert message.available_at > utcnow()
-    await _dispatch()
+    await _dispatch(unreachable)
     assert (await _messages())[0].attempts == 1, "not retried before its backoff"
 
     for _ in range(outbox.MAX_ATTEMPTS - 1):
         await _make_due()
-        await _dispatch()
+        await _dispatch(unreachable)
     assert [(m.status, m.attempts) for m in await _messages()] == [("dead", outbox.MAX_ATTEMPTS)]
     await _make_due()
-    await _dispatch()
+    await _dispatch(unreachable)
     assert (await _messages())[0].attempts == outbox.MAX_ATTEMPTS, "a dead message is never retried"
 
 
 async def test_concurrent_dispatchers_claim_disjoint_messages(monkeypatch: pytest.MonkeyPatch) -> None:
     delivered: list[str] = []
 
-    async def slow(message: OutboxMessage) -> None:
+    async def slow(_: object, message: outbox.Delivery) -> None:
         await asyncio.sleep(0.05)
         delivered.append(message.key)
 
-    monkeypatch.setattr(outbox, "_deliver", slow)
     monkeypatch.setattr(outbox, "BATCH", 3)
     await _queue(*range(1, 10))
     for _ in range(5):
-        await asyncio.gather(*(_dispatch() for _ in range(3)))
+        await asyncio.gather(*(_dispatch(slow) for _ in range(3)))
     assert sorted(delivered) == sorted(f"test.event:{i}" for i in range(1, 10))
 
 

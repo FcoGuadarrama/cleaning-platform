@@ -29,6 +29,9 @@
   then the subscription ends and the cleaner is free.
 - Cancellation (owner, 2026-11-11): no further charge, the paid visits of the current cycle stay, no refund; the
   cleaner is free from the next cycle.
+- Notifications (owner, 2026-11-13, task 012): in-app inbox for customers, staff and admins; push to the mobile app
+  through the Expo Push Service (admins: inbox only, in the dashboard); push can be muted per category, the inbox keeps
+  everything; day-before visit reminder (customer and cleaner) and a notice to the cleaner for each new service.
 - Payment methods (owner, 2026-11-11): card and SPEI only. A SPEI transfer is confirmed by an agent in the web
   dashboard; the slot (or the plan's first cycle) is held 24 h while waiting.
 
@@ -46,7 +49,8 @@
 | Subscription first visit | at most 28 days ahead | `SUBSCRIPTION_START_WINDOW_DAYS` setting |
 | GPS poor accuracy | > 100 m flagged as `low_accuracy` (still recorded, not auto-rejected) | setting |
 | Earnings amount | admin-defined `EarningRate` versioned; none seeded in prod | DB |
-| Notifications | events queued in the outbox, delivered to the log only; the app shows renewal notices | ADR 0009, `NOTIFICATION_CHANNEL` |
+| Visit reminder time | 18:00 the day before (business tz) | `VISIT_REMINDER_LOCAL_TIME` |
+| Notification retention | inbox keeps 90 days | `NOTIFICATION_RETENTION_DAYS` |
 
 ## Open decisions (block only the noted flow)
 1. Prices, durations, travel buffer — blocks pilot pricing, not sandbox.
@@ -55,7 +59,8 @@
    Failed renewals, cancellation and the methods (card + SPEI) were decided 2026-11-11 (see Confirmed).
 4. Cleaner compensation for late cancellation / customer-attributable failure.
 5. Geofence radius, GPS data retention, automatic payment consequences of GPS.
-6. Exact admin permission levels, staff verification, notification channels, incident handling SLAs.
+6. Exact admin permission levels, staff verification, incident handling SLAs. Notification channels: in-app + push
+   decided 2026-11-13 (see Confirmed); email / WhatsApp still open.
 7. Kit content/price/delivery; service area boundaries.
 
 ## Release stages

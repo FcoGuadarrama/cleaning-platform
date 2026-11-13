@@ -13,6 +13,8 @@ export default function CustomerLayout() {
       <Stack.Screen name="plans/[id]" />
       <Stack.Screen name="subscribe" />
       <Stack.Screen name="subscription/index" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="notification-settings" />
     </Stack>
   );
 }

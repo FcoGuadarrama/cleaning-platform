@@ -24,6 +24,10 @@
 - **OutboxMessage**: an event for the outside world (`booking.confirmed`, `booking.cancelled`, `booking.completed`,
   `subscription.cycle_confirmed`, `payment.failed`, `payment.needs_refund`, `attendance.exception_opened`,
   `settlement.paid`), written with the change that caused it; key `topic:subject id`, payload ids only.
+- **Notification**: one notice in a user's inbox (category, title, body, ids for the deep link, read time), rendered
+  when its outbox event was delivered; unique per event and recipient. Deleted after `NOTIFICATION_RETENTION_DAYS`.
+- **PushDevice**: an Expo push token of a signed-in customer or cleaner; disabled at sign-out or when Expo reports it
+  unregistered. **NotificationPreference**: a category whose push the user muted (no row = on).
 - **Attendance**: check-in / check-out record with GPS evidence or an explicit capture failure.
 - **AttendanceException**: admin resolution of a failed/absent GPS capture (audit trail).
 - **Earning**: amount owed to staff for a completed booking (rate snapshot). Belongs to an ISO week (business tz).
@@ -80,3 +84,6 @@ Settlement: `approved → paid`.
 20. Only an agent (admin) confirms or rejects a SPEI payment; the sandbox and the provider webhook never settle it.
     A confirmation after the hold lapsed records the money and flags a refund; it books nothing.
 21. Lock order for every write: cleaner (staff row) → payment → subscription → cycle → visits (bookings).
+22. A notification reaches only its recipient: inbox reads and marks are scoped to the caller, and a push goes only to
+    devices the recipient registered, never for a category they muted. One outbox event gives at most one notification
+    per recipient.

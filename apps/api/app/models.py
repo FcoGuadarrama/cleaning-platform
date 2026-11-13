@@ -451,3 +451,56 @@ class OutboxMessage(TimestampMixin, Base):
     )
     last_error: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+
+
+class NotificationCategory(enum.StrEnum):
+    """What a user can mute push for. Customer: visits, billing. Staff: visits, payouts. Admin: operations."""
+
+    visits = "visits"
+    billing = "billing"
+    payouts = "payouts"
+    operations = "operations"
+
+
+class Notification(TimestampMixin, Base):
+    """One notice in a user's inbox, rendered when its outbox event was delivered. Unique per event and
+    recipient, so a redelivered event adds nothing."""
+
+    __tablename__ = "notifications"
+    __table_args__ = (
+        UniqueConstraint("source_key", "user_id", name="uq_notifications_source_key_user_id"),
+        Index("ix_notifications_user_id_id", "user_id", "id"),
+        Index("ix_notifications_created_at", "created_at"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    category: Mapped[NotificationCategory] = mapped_column(_enum(NotificationCategory))
+    kind: Mapped[str] = mapped_column(String(64), comment="The outbox topic that caused it")
+    title: Mapped[str] = mapped_column(String(120))
+    body: Mapped[str] = mapped_column(String(300))
+    data: Mapped[dict[str, Any]] = mapped_column(JSON, comment="Ids of what it is about, for the deep link")
+    source_key: Mapped[str] = mapped_column(String(128), comment="Key of the outbox message that caused it")
+    read_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+
+
+class PushDevice(TimestampMixin, Base):
+    """An Expo push token. A token belongs to whoever registered it last (one phone, one signed-in user)."""
+
+    __tablename__ = "push_devices"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token: Mapped[str] = mapped_column(String(255), unique=True)
+    platform: Mapped[str] = mapped_column(String(16))
+    last_seen_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    disabled_at: Mapped[datetime | None] = mapped_column(
+        UTCDateTime(), nullable=True, comment="Expo reported the token unregistered, or the user signed out"
+    )
+
+
+class NotificationPreference(Base):
+    """A category the user muted (or unmuted) for push. No row means push is on."""
+
+    __tablename__ = "notification_preferences"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    category: Mapped[NotificationCategory] = mapped_column(_enum(NotificationCategory), primary_key=True)
+    push_enabled: Mapped[bool] = mapped_column(Boolean)

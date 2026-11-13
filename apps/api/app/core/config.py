@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from datetime import time
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 
@@ -14,7 +15,11 @@ class Settings:
     housekeeping_interval_seconds: float
     idempotency_key_ttl_hours: int
     outbox_retention_days: int
-    notification_channel: str
+    push_provider: str
+    expo_access_token: str
+    notification_retention_days: int
+    visit_reminder_local_time: time
+    visit_reminder_interval_seconds: float
     renewal_interval_seconds: float
     spei_hold_hours: int
     spei_clabe: str
@@ -45,9 +50,9 @@ def get_settings() -> Settings:
     renewal_outcome = os.environ.get("SANDBOX_RENEWAL_OUTCOME", "succeeded")
     if renewal_outcome not in ("succeeded", "failed"):
         raise RuntimeError("SANDBOX_RENEWAL_OUTCOME must be succeeded or failed")
-    channel = os.environ.get("NOTIFICATION_CHANNEL", "log")
-    if channel != "log":
-        raise RuntimeError("Only the log notification channel is enabled until the channel decision is made")
+    push_provider = os.environ.get("PUSH_PROVIDER", "log")
+    if push_provider not in ("log", "expo"):
+        raise RuntimeError("PUSH_PROVIDER must be log or expo")
     return Settings(
         database_url=os.environ["DATABASE_URL"],
         business_tz=ZoneInfo(os.environ.get("BUSINESS_TZ", "America/Mexico_City")),
@@ -57,7 +62,12 @@ def get_settings() -> Settings:
         housekeeping_interval_seconds=float(os.environ.get("HOUSEKEEPING_INTERVAL_SECONDS", "3600")),
         idempotency_key_ttl_hours=_int("IDEMPOTENCY_KEY_TTL_HOURS", 24),
         outbox_retention_days=_int("OUTBOX_RETENTION_DAYS", 7),
-        notification_channel=channel,
+        push_provider=push_provider,
+        # Only needed when the Expo project enables enhanced push security.
+        expo_access_token=os.environ.get("EXPO_ACCESS_TOKEN", ""),
+        notification_retention_days=_int("NOTIFICATION_RETENTION_DAYS", 90),
+        visit_reminder_local_time=time.fromisoformat(os.environ.get("VISIT_REMINDER_LOCAL_TIME", "18:00")),
+        visit_reminder_interval_seconds=float(os.environ.get("VISIT_REMINDER_INTERVAL_SECONDS", "900")),
         renewal_interval_seconds=float(os.environ.get("RENEWAL_INTERVAL_SECONDS", "900")),
         spei_hold_hours=_int("SPEI_HOLD_HOURS", 24),
         # Unset until the business account exists: SPEI checkout answers 409 spei_unavailable without them.

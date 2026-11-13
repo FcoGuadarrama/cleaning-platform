@@ -3,6 +3,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
 import { useBrandFonts } from "../src/fonts";
+import { InboxProvider, usePushTaps } from "../src/inbox";
 import { stackScreenOptions } from "../src/navigation";
 import { SessionProvider, useSession } from "../src/session";
 
@@ -12,6 +13,7 @@ import { SessionProvider, useSession } from "../src/session";
  */
 function AppStack() {
   const { user, ready } = useSession();
+  usePushTaps();
   // Waiting for the stored session keeps a deep link from being dropped (or firing requests) before the token loads.
   if (!ready) return null;
   return (
@@ -35,13 +37,15 @@ export default function RootLayout() {
   if (!fontsReady) return null;
   return (
     <SessionProvider>
-      <StatusBar style="dark" />
-      {/* On wide web viewports the app keeps a phone-width column instead of stretching. */}
-      <View className="flex-1 bg-surface web:items-center">
-        <View className="w-full flex-1 bg-background web:max-w-[480px] web:border-x web:border-border">
-          <AppStack />
+      <InboxProvider>
+        <StatusBar style="dark" />
+        {/* On wide web viewports the app keeps a phone-width column instead of stretching. */}
+        <View className="flex-1 bg-surface web:items-center">
+          <View className="w-full flex-1 bg-background web:max-w-[480px] web:border-x web:border-border">
+            <AppStack />
+          </View>
         </View>
-      </View>
+      </InboxProvider>
     </SessionProvider>
   );
 }
